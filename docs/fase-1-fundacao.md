@@ -13,7 +13,7 @@ A Fase 1 original era grande demais. Ela fica em três sub-etapas, nesta ordem:
 |---|---|---|
 | **1A – Esqueleto e ingestão** | `dev` (PC do trabalho, sem GPU) | Monorepo, CI, config, banco, contratos, orquestrador com cache e retomada, ingestão completa sobre fixtures sintéticas |
 | **1B – Marcadores e prévia** | `dev` (testes com mocks); validação final em `prod` | Gravador de marcadores (opção A), diário `.markers.jsonl`, reconciliação, CLI `ingest/status/preview`, prévia MP4, FCPXML mínimo |
-| **1C – Itens do PC de casa** | `prod` (kit montado em `dev`) | Kit de teste do Resolve, spike da FIFINE, guia do OBS, testes físicos (GpuGate, hotkeys, gravação real com `MIC_RAW`), gabarito (formato). Benchmark de modelos fica na **Fase 2** |
+| **1C – Itens do PC de casa** | `prod` (kit montado em `dev`) | Kit de teste do Resolve, spike da FIFINE, guia do OBS, testes físicos (GpuGate, hotkeys, gravação real com o microfone ativo), gabarito (formato). Benchmark de modelos fica na **Fase 2** |
 
 1A não depende de nada em aberto. 1B depende das decisões D1–D3 abaixo. 1C depende de o criador estar no PC de casa.
 Cada sub-etapa só começa com os critérios da anterior cumpridos, exceto 1C, que pode ser executada em paralelo assim
@@ -105,7 +105,7 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 4. **Teste de instalação de CUDA** (RTX 3060): confere se cuBLAS/cuDNN do CTranslate2 convivem com o PyTorch no mesmo ambiente (⚠️ seção 5.2), sem medir desempenho de modelo. O benchmark de velocidade e VRAM é da **Fase 2** (decisão de 2026-11-16).
 5. **Gabarito**: formato (CSV, D3) + script de validação documentados. A anotação em si (2–3 h) é do criador, quando puder.
 6. **Validação em `prod`** do que a 1A/1B só testaram com mocks: gravação real com marcadores via gravador, ingestão, prévia e importação do FCPXML.
-7. **Gravação de teste com `MIC_RAW` ativo** (nova; o `Cronista_Teste.mp4` tem a faixa 3 silenciosa): necessária para testar fala e objetivos na Fase 2 e 5A.
+7. **Gravação de teste com o microfone (fonte `MIC`, faixa 3) ativo** (nova; o `MIC_RAW` foi descartado, histórico §41; o `Cronista_Teste.mp4` tem a faixa 3 silenciosa): necessária para testar fala e objetivos na Fase 2 e 5A.
 
 ### Critérios de aceite (1C)
 

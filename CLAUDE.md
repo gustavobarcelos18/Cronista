@@ -32,7 +32,7 @@ por série, com duração-alvo de 30–50 min**, montado a partir de várias ses
   benchmark de roteiro da Fase 2; o fallback padrão continua sendo o `NullProvider`.
 - **Caminho de mão única** app → Resolve; efeitos sempre reversíveis (trilha acima do original).
 - Gravação: OBS em Hybrid MP4, H.264 8-bit SDR (NV12, Rec. 709), **60 fps exatos** (timeline e renders também),
-  faixa 1 = mix, 2 = jogo, 3 = microfone (fonte de microfone sem filtro, separada da que tem RNNoise no mix).
+  faixa 1 = mix, 2 = jogo, 3 = microfone (fonte única `MIC` com RNNoise nas faixas 1 e 3; sem fonte crua, histórico §41).
   Nunca analisar o mix. Sem facecam.
 - **Resolve gratuito:** nunca gerar nada que dependa de recurso do Studio (Speed Warp, Magic Mask, Super Scale,
   redução de ruído de vídeo etc.), porque deixa marca d'água. Limites e estratégia de render na seção 6.5 do plano.

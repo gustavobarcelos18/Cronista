@@ -1031,6 +1031,30 @@ de "Em aberto", apesar da decisão do §39. Não foi corrigido aqui.
 
 ---
 
+## 41. Microfone sem a fonte crua (2026-11-16)
+
+Origem: no teste do Resolve com as gravações reais, o microfone não tocava (A2 muda). Medido: a faixa 3 do
+`Cronista_Teste.mp4` está a −91 dB, silêncio digital, porque o `MIC_RAW` estava mudo no OBS. O criador perguntou por que
+o `MIC_MIX` não foi usado, propôs dois arranjos (1 jogo+mic mix, 2 jogo, 3 mic mix, 4 mic raw; ou 1 jogo, 2 mic mix, 3 mic
+raw) e depois decidiu: **"vamos desconsiderar o mic raw"**.
+
+**Decisão:** uma fonte de microfone só (`MIC`), com RNNoise, nas faixas 1 (mix) e 3 (microfone). Faixas: 1 = mix, 2 = jogo,
+3 = microfone. Sem fonte crua. O código não muda: o app extrai as faixas de índice 1 (jogo) e 2 (microfone) (`AUDIO_TRACKS`).
+Resolve a dúvida em aberto da seção 9 do plano ("para que serve o mix com RNNoise?").
+
+**Custos assumidos (⚠️ a medir na Fase 2):**
+- Teclado e respiração ficam atenuados na faixa 3; as classes `teclado` e `respiracao` do gabarito podem não ser
+  detectáveis. Se o benchmark mostrar isso, reabrir com uma fonte crua na faixa 4 (ou tirar as classes).
+- O benchmark "WER com e sem DeepFilterNet" passa a testar limpeza sobre um sinal que já passou pelo RNNoise.
+- Sem cópia sem filtro, a limpeza do OBS não se refaz depois.
+
+**Efeitos práticos:** a configuração do OBS é mais simples (uma fonte, sem o problema de duas fontes no mesmo
+dispositivo). As gravações de teste atuais (faixa 3 vazia) continuam inúteis para fala; falta gravar com `MIC` ligado.
+Documentos ajustados: `CLAUDE.md`, plano (seções 2, 6.4, 9 e listas), `integrations/obs/GUIA.md`, fase 1.
+Os trechos de §39 que citam `MIC_RAW` descrevem o estado antes desta decisão.
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

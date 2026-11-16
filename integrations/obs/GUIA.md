@@ -9,7 +9,7 @@ Marcado com ⚠️ o que veio de memória e precisa de confirmação na tela do 
 |---|---|---|
 | Formato | **Hybrid MP4** (`hybrid_mp4`) | Sobrevive a queda (o arquivo é reparável) e aceita marcadores de capítulo |
 | Codificador | **NVENC H.264** (`obs_nvenc_h264_tex`), CQP 21, keyint 2 s | 8-bit; o Resolve gratuito não decodifica bem 10-bit (plano 6.5) |
-| Trilhas de áudio | **1, 2 e 3** (máscara `RecTracks=7`) | 1 = mix, 2 = jogo, 3 = microfone cru |
+| Trilhas de áudio | **1, 2 e 3** (máscara `RecTracks=7`) | 1 = mix, 2 = jogo, 3 = microfone (com RNNoise) |
 | Resolução | Base e saída 1920×1080 | |
 | FPS | **Valor comum 60** (`FPSType=0`, `FPSCommon=60`), nunca "Fracionário" | 60 fps exatos; 59,94 é rejeitado pela ingestão |
 | Formato de cor | **NV12**, espaço **Rec. 709**, intervalo **Parcial** | SDR 8-bit |
@@ -29,21 +29,21 @@ avançadas**, coluna "Trilhas"):
 | Fonte | Tipo | Trilhas | Observação |
 |---|---|---|---|
 | `AUDIO_GAME` | Captura de saída de áudio | **1 e 2** | O jogo, sem o microfone |
-| `MIC_MIX` | Captura de entrada de áudio | **1** | Microfone **com** filtros (supressão de ruído RNNoise, ganho): é o que se ouve no mix |
-| `MIC_RAW` | Captura de entrada de áudio | **3** | Mesmo microfone, **sem nenhum filtro**, **não silenciado** |
+| `MIC` | Captura de entrada de áudio | **1 e 3** | O microfone, **com** supressão de ruído (filtro RNNoise) e ganho, **não silenciado** |
+
+Decisão de 2026-11-16 (histórico §41): **não existe mais a fonte `MIC_RAW`**. Uma fonte só, `MIC`, nas faixas 1 e 3.
 
 Regras:
-- A análise usa só as faixas 2 e 3. Filtros em `MIC_RAW` estragam o que a Fase 2 mede (fala, respiração, risada).
-- `MIC_RAW` fica com o ícone de alto-falante **ligado** (não mudo). Mudo silencia a trilha dele na gravação:
-  foi o que deixou a faixa 3 do `Cronista_Teste.mp4` vazia.
-- O OBS aceita duas fontes apontando para o **mesmo dispositivo** de entrada? ⚠️ Testar: crie as duas fontes com o
-  mesmo microfone e confira se as duas mostram nível no mixer. Se o WASAPI recusar a segunda, alternativa: usar
-  o microfone em `MIC_RAW` e deixar `MIC_MIX` apontar para um monitor virtual, ou aceitar o mix sem filtro.
+- `MIC` fica com o ícone de alto-falante **ligado** (não mudo). Mudo silencia as trilhas dele na gravação: foi o que
+  deixou a faixa 3 do `Cronista_Teste.mp4` vazia (−91 dB, silêncio digital).
+- A análise usa só as faixas 2 e 3. Teclado e respiração ficam atenuados pelo RNNoise: se a detecção dessas classes
+  falhar no benchmark da Fase 2, a alternativa é uma fonte crua na faixa 4 (decisão a reabrir).
+- Como configurar no OBS: apague a fonte `MIC_RAW`; renomeie `MIC_MIX` para `MIC`, aponte para o microfone que você
+  vai usar, em Propriedades de áudio avançadas marque as trilhas **1 e 3** (e só elas) e confira o filtro RNNoise.
 
-**Estado do PC de casa em 2026-11-16 (lido do arquivo de cena, não da tela):**
-`MIC_RAW` está nas trilhas 3 (+7/8) e **mudo**; `MIC_MIX` está na trilha 1, **sem filtros** (sem RNNoise) e aponta
-para **outro dispositivo** que o `MIC_RAW` (o da FIFINE SC3); `AUDIO_GAME` nas trilhas 1 e 2. Falta, portanto: tirar
-o mudo de `MIC_RAW`, decidir qual microfone vale e pôr RNNoise em `MIC_MIX` se ele for mesmo o do mix.
+**Estado do PC de casa em 2026-11-16 (lido do arquivo de cena às 13:16, não da tela; o OBS só grava as cenas ao fechar):**
+`MIC_RAW` nas trilhas 3 (+7/8) e **mudo**; `MIC_MIX` na trilha 1, **sem filtros** e em **outro dispositivo** (o da FIFINE
+SC3); `AUDIO_GAME` nas trilhas 1 e 2. Falta o ajuste acima.
 
 ## 3. Servidor WebSocket (para o gravador de marcadores)
 

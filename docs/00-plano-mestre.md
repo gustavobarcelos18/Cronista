@@ -144,11 +144,14 @@ outra: a divisão continua de uma sessão para a seguinte, até o próximo `Novo
   um ponto de falha.
 - Faixa 1 = mix · Faixa 2 = **jogo** · Faixa 3 = **microfone**. (Faixa 4 para Discord/amigos não é necessária:
   só a voz do criador aparece nas gravações.)
-- **Microfone em duas fontes no OBS.** No OBS o filtro fica na fonte, não na faixa, e vale para todas as faixas que
-  a fonte alimenta. Por isso o mesmo microfone entra duas vezes: uma fonte com supressão de ruído (RNNoise) roteada
-  só para a faixa 1 (mix) e outra sem filtro roteada só para a faixa 3 (em Propriedades avançadas de áudio,
-  desmarcar as demais faixas de cada fonte). A faixa 3 fica crua, e o pipeline faz o próprio tratamento.
-  ⚠️ De memória: confirmar no PC de casa que o OBS aceita o mesmo dispositivo em duas fontes (guia da Fase 1).
+- **Microfone em uma fonte só no OBS (decisão de 2026-11-16, histórico §41; substitui a das duas fontes).** Uma fonte
+  `MIC` com supressão de ruído (RNNoise) roteada para as faixas 1 (mix) e 3 (microfone). **Não existe mais a fonte
+  `MIC_RAW`**: a faixa 3 sai com RNNoise do OBS. Custos assumidos: (a) teclado e respiração ficam atenuados na faixa
+  3, então a detecção dessas classes (seção 3, gabarito) depende de o RNNoise preservar sinal suficiente, o que só o
+  benchmark da Fase 2 mostra; (b) não há cópia sem filtro para refazer a limpeza depois. Ganho: uma fonte, sem o
+  risco de duas fontes no mesmo dispositivo nem de uma delas ficar muda (foi o que esvaziou a faixa 3 nos testes).
+  *Versão anterior (substituída):* duas fontes do mesmo microfone, uma com RNNoise só na faixa 1 e uma sem filtro só
+  na faixa 3, que ficava crua para o pipeline tratar.
 
 ---
 
@@ -336,8 +339,8 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 > Frameworks de ML padronizados em **PyTorch + ONNX Runtime**, para evitar um segundo framework de GPU com CUDA
 > próprio no Windows. Por isso o OCR é RapidOCR (ONNX) e não PaddleOCR. O DeepFilterNet está sem atualização desde
 > 2023 e pode não instalar com Python 3.12 e PyTorch recentes (⚠️ verificar); como ele só entra se melhorar o WER, a
-> falta dele não bloqueia a análise. A cadeia de voz da mixagem precisa de redução de ruído de qualquer forma (a
-> faixa 3 é crua) e não depende dele: ver a alternativa na seção 6.4.
+> falta dele não bloqueia a análise. A faixa 3 já sai com RNNoise do OBS (histórico §41); a cadeia de voz da mixagem
+> pode ainda precisar de redução de ruído e não depende dele: ver a alternativa na seção 6.4.
 >
 > **Exceção aceita: CTranslate2.** O faster-whisper roda sobre o CTranslate2, que traz dependências de CUDA próprias
 > (cuBLAS/cuDNN), fora do par PyTorch + ONNX Runtime. A exceção é aceita porque o faster-whisper é a melhor opção
@@ -552,7 +555,7 @@ Trilhas da timeline exportada (no Resolve, a trilha de número maior fica por ci
 | A4 | Música (vazia até a Fase 8; depois, trilhas da biblioteca com corte no beat e ducking) |
 | A5 | SFX: sons do brand kit (transição de dia, "som de morte") e SFX de meme (Fase 8) |
 | A6 | Áudio do jogo cru (faixa 2 original), desativado; só existe quando A1 recebe um stem processado |
-| A7 | Microfone cru (faixa 3 original), desativado; só existe quando A2 recebe um stem processado |
+| A7 | Microfone original (faixa 3, já com RNNoise do OBS), desativado; só existe quando A2 recebe um stem processado |
 | Legendas | Roteiro (SRT importado à parte) |
 
 Os stems crus em A6/A7 cumprem a regra "stems mixados + stems crus abaixo" da seção 6.4: para desfazer a mixagem,
@@ -619,8 +622,8 @@ A mixagem básica foi antecipada para a Fase 6 (ganho alto, risco baixo); o rest
 polir quando o primeiro corte já estiver bom e o Studio permitir controlar os efeitos.
 
 Detalhes da mixagem:
-- **Redução de ruído da voz não depende do benchmark de WER.** A faixa 3 é crua (teclado, respiração) e é ela que
-  vira a trilha A2 do vídeo, então a cadeia de voz sempre limpa o áudio. Ferramenta escolhida na Fase 6, ouvindo o
+- **Redução de ruído da voz não depende do benchmark de WER.** A faixa 3 (com RNNoise do OBS, histórico §41) é a que
+  vira a trilha A2 do vídeo; se o RNNoise do OBS não bastar, a cadeia de voz limpa mais. Ferramenta escolhida na Fase 6, ouvindo o
   resultado: DeepFilterNet, se instalar; senão, os filtros do próprio FFmpeg (⚠️ de memória: `arnndn`, que é RNNoise,
   e `afftdn`). O benchmark da Fase 2 decide só se a limpeza entra **antes da transcrição**.
 - **Ducking sob a narração complementar.** A narração da trilha A3 é gravada depois, no Resolve, justamente onde não
@@ -956,7 +959,7 @@ Só se avança com os critérios da fase anterior cumpridos.
   - Dependências: a 5A só começa depois do padrão de evidência e da unicidade de `Artifact` por variante (Fase 2,
     lacunas 2 e 3), dos sinais em série temporal (Fase 2, lacuna 4), dos estados de cena (Fase 3) e dos eventos e segmentos
     (Fase 4). Nada disso entra antes; a 1B e a 1C não ganham tabelas novas.
-- ✅ **Aceite:** em sessões gravadas com `MIC_RAW` ativo e um gabarito de objetivos e estados, precisão e revocação
+- ✅ **Aceite:** em sessões gravadas com o microfone (faixa 3) ativo e um gabarito de objetivos e estados, precisão e revocação
   medidas e registradas; nenhum objetivo confirmado sem evidência; citação inválida nunca vira objetivo confirmado.
   Os números de corte são definidos no início da 5A.
 
@@ -1043,6 +1046,9 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Sem facecam (seções 6.6 e 6.7).
 - Produto: **um único vídeo de 30–50 min** por série, montado a partir de sessões de duração variável (3 h, 6 h, 10 h…) (seções 0.1, 1 e 2).
 - O app não substitui o Resolve como editor, mas pode codificar vídeo quando é só execução (seção 1).
+- **Microfone sem a fonte crua (2026-11-16, histórico §41):** o `MIC_RAW` foi descartado; fonte única `MIC` com RNNoise
+  nas faixas 1 (mix) e 3 (microfone). Faixas: 1 = mix, 2 = jogo, 3 = microfone (com RNNoise). O código não muda
+  (`AUDIO_TRACKS`); a detecção de teclado e respiração depende do benchmark da Fase 2 (seções 2 e 3).
 - **Spike do Resolve gratuito 21.2 (2026-11-16, histórico §39):** FCPXML importa pelo menu; marcadores só por script
   (Lua colado no Console, único que o gratuito aceita); legenda SRT pelo menu Importar → Legenda, com fala vazia em 0 s;
   scripting externo bloqueado; HEVC recusado (o projeto usa H.264). O Resolve fica como editor (seção 6.5).
@@ -1053,7 +1059,8 @@ Só se avança com os critérios da fase anterior cumpridos.
   dia é definido na edição. `Construção ▶/■` é uma tecla só, que alterna (seção 4).
 - A contagem de dias aparece na tela, mas o número final e a divisão são decididos na edição; `Novo dia` é proposta,
   e cartelas/contador saem editáveis (seções 4 e 6.3).
-- Gravação e timeline em 60 fps exatos; microfone em duas fontes no OBS (RNNoise só na do mix) (seção 2).
+- Gravação e timeline em 60 fps exatos; microfone em uma fonte só no OBS, com RNNoise, nas faixas 1 e 3 (seção 2,
+  histórico §41). *Substitui* "duas fontes, RNNoise só na do mix".
 - Processamento automático ao fim da gravação, com pausa enquanto o OBS grava ou um jogo em tela cheia está aberto (seção 4.1).
 - ML em PyTorch + ONNX Runtime; OCR com RapidOCR em frames do master; DeepFilterNet só se melhorar o WER (seção 5.2).
 - Exceção aceita: o CTranslate2 (base do faster-whisper) traz CUDA próprio; se conflitar com o PyTorch, a
@@ -1115,7 +1122,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **Montagem inteligente como preferência editorial** (seção 6.3). Timelapse é uma das opções, escolhida por trecho.
 - **Fase 5A** (objetivos, subobjetivos, estados e evidências), entre a Fase 4 e a Fase 5 (seção 7).
 - **Benchmarks de modelos na Fase 2**, não na 1C. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE, GpuGate,
-  gravação real com `MIC_RAW` ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).
+  gravação real com o microfone ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).
 
 **Lacunas técnicas identificadas (2026-11-16) e fase de correção:**
 1. **Tempo do marcador em float de segundos** (`marker.media_time_s`) → guardar em **quadros inteiros a 60 fps**. Fase: **1B, antes do merge** (o modelo do marcador é entregue pela 1B).
@@ -1181,8 +1188,8 @@ tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadr
      antes de afirmar "Fairlight completo" (seção 6.5).
    - Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público?
 9. Dúvidas levantadas na quarta revisão (histórico §22), sem resposta ainda:
-   - Para que serve o mix com RNNoise? A análise nunca usa a faixa 1 e a timeline usa as faixas 2 e 3; o mix só toca
-     no proxy. Uma fonte única de microfone, sem filtro, nas faixas 1 e 3 seria mais simples (seção 2).
+   - ~~Para que serve o mix com RNNoise?~~ **Resolvida em 2026-11-16 (histórico §41):** o criador descartou o
+     `MIC_RAW`; uma fonte única `MIC`, com RNNoise, nas faixas 1 e 3.
    - Como o criador sabe que o toque foi registrado com o jogo em tela cheia? Na tecla de construção, que alterna, um
      toque perdido inverte tudo dali em diante. E se o programa de marcadores não estiver aberto? (seção 4)
      **Parcialmente tratado na 1B (histórico §31):** som por tipo a cada toque (dois toques para o fim da

@@ -20,6 +20,9 @@ from cronista.recorder.ports import Clock, ObsError, ObsEvent, RecordFile, Recor
 
 EVENT_SUBSCRIPTION_OUTPUTS = 1 << 6  # `EventSubscription::Outputs` (protocolo 5.x)
 WATCH_INTERVAL_S = 0.5
+OBS_WS_SCHEME = "ws"
+"""Único esquema que o obs-websocket oferece (não há TLS). O texto claro é tratado por `_require_local`:
+o gravador só conversa com o OBS deste PC (loopback), então o tráfego não sai da máquina."""
 
 
 def _is_loopback(host: str) -> bool:
@@ -44,7 +47,7 @@ class SimpleObsLink:
         self._host = host
         bare = host.strip("[]")
         netloc = f"[{bare}]" if ":" in bare else bare  # IPv6 na URL leva colchetes
-        self._url = f"ws://{netloc}:{port}"  # NOSONAR: só loopback (`_require_local`); o OBS não oferece TLS
+        self._url = f"{OBS_WS_SCHEME}://{netloc}:{port}"
         self._password = password or ""
         self._clock = clock
         self._identify_timeout_s = identify_timeout_s

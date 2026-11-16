@@ -738,7 +738,10 @@ inválida, escrita de diário falhando, retomada com pausa nos 4 cruzamentos, be
   `make_timecoded`, que lia e regravava o mesmo caminho: agora trunca no lugar (`truncate`), sem ler nada;
   (2) `ws://` em texto claro: o OBS não oferece TLS, então o gravador **só conversa com o OBS deste PC** (host
   loopback; outro host é recusado com erro claro), o que já era premissa (ele procura o arquivo da gravação no disco
-  local). O `ws://` loopback é o único que o OBS entrega, então a linha leva `NOSONAR` com a justificativa.
+  local). O `ws://` loopback é o único que o OBS entrega. O Sonar **não honrou** `# NOSONAR` nessa regra (S5332 vem como
+  vulnerabilidade), então o esquema virou a constante documentada `OBS_WS_SCHEME`; a mitigação real é a recusa de host
+  que não seja loopback. Se o Sonar ainda acusar o texto claro, é falso positivo a marcar como "Safe" na interface
+  do SonarCloud (decisão do criador), não algo a esconder no código.
   Achado no teste: IPv6 (`::1`) gerava URL inválida; agora leva colchetes.
 - **Consequência assumida:** OBS em outro PC não é suportado pelo gravador nem pelo `GpuGate`. Se um dia for preciso,
   exige outro jeito de achar o arquivo da gravação (hoje é o disco local) e TLS/túnel.

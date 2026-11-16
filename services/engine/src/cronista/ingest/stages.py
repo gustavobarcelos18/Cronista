@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -107,27 +108,41 @@ class ProxyStage:
         return StageResult(files=[str(out)], data={"proxy": str(out)})
 
 
+AUDIO_TRACKS: tuple[tuple[str, int], ...] = (("game", 1), ("mic", 2))
+"""Rótulo → índice da faixa entre as de áudio (0 = mix, que nunca é extraído nem analisado)."""
+
+
+def audio_extract_args(media: Path, outputs: Sequence[tuple[int, Path]]) -> list[str]:
+    """Uma leitura só do master, uma saída WAV por faixa.
+
+    `-rf64 auto`: o WAV comum tem cabeçalho de 32 bits e para em 4 GB; uma faixa estéreo 48 kHz 16-bit
+    passa disso em ~6,2 h de gravação. Acima do limite o FFmpeg escreve RF64; abaixo, continua WAV comum.
+    """
+    args = ["-i", str(media)]
+    for index, out in outputs:
+        args += ["-map", f"0:a:{index}", "-c:a", "pcm_s16le", "-rf64", "auto", str(out)]
+    return args
+
+
 class AudioStage:
     """WAV das faixas 2 (jogo) e 3 (microfone), cópias de trabalho regeneráveis do master."""
 
     name = "audio"
-    version = "1"
+    version = "2"  # 2: RF64 acima de 4 GB e leitura única do master
     needs: tuple[str, ...] = ("normalize",)
     uses_gpu = False
 
     def params(self, settings: Settings) -> dict[str, Any]:
-        return {"tracks": ["game", "mic"]}
+        return {"tracks": [label for label, _ in AUDIO_TRACKS]}
 
     def run(self, ctx: StageContext) -> StageResult:
-        media = _media_of(ctx)
-        outputs: dict[str, str] = {}
-        for label, index in (("game", 1), ("mic", 2)):
-            out = ctx.out_dir / f"{label}.wav"
-            run_ffmpeg(
-                ctx.settings, ["-i", str(media), "-map", f"0:a:{index}", "-c:a", "pcm_s16le", str(out)]
-            )
-            outputs[label] = str(out)
-        return StageResult(files=list(outputs.values()), data=outputs)
+        outputs = {label: ctx.out_dir / f"{label}.wav" for label, _ in AUDIO_TRACKS}
+        run_ffmpeg(
+            ctx.settings,
+            audio_extract_args(_media_of(ctx), [(index, outputs[label]) for label, index in AUDIO_TRACKS]),
+        )
+        data = {label: str(path) for label, path in outputs.items()}
+        return StageResult(files=list(data.values()), data=data)
 
 
 def ingest_stages() -> list[Stage]:
@@ -135,4 +150,12 @@ def ingest_stages() -> list[Stage]:
     return [NormalizeStage(), ProxyStage(), AudioStage()]
 
 
-__all__ = ["AudioStage", "MediaProbe", "NormalizeStage", "ProxyStage", "ingest_stages"]
+__all__ = [
+    "AUDIO_TRACKS",
+    "AudioStage",
+    "MediaProbe",
+    "NormalizeStage",
+    "ProxyStage",
+    "audio_extract_args",
+    "ingest_stages",
+]

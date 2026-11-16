@@ -433,6 +433,21 @@ da seção 5.2); gabarito em CSV; sem Fase 1.5. Também propostos, a confirmar: 
 - Itens dos §21–§24 respondidos por isso: dia implícito, marcador só no arquivo, direção dos contratos, ferramenta do
   gabarito, disparo do processamento e linguagem do gravador.
 
+## 27. Correção na 1A: WAV acima de 4 GB
+
+**Contexto:** uma sessão do PC do trabalho implementou em paralelo outra versão da Fase 1, sobre uma cópia
+desatualizada do repositório (sem os §19–§26). O criador escolheu manter esta branch como base; a outra versão ficou
+só na branch local `backup/fase-1-versao-alternativa` (não enviada), como material de partida da 1B. Dela veio esta
+correção, aprovada pelo criador.
+
+**Problema:** o WAV comum tem cabeçalho de 32 bits e para em 4 GB. Uma faixa estéreo 48 kHz 16-bit (~0,7 GB/h) passa
+disso com ~6,2 h de gravação, e as sessões podem ter 10 h. Verificado com FFmpeg 9.0.2 em 2026-11-15: num WAV de
+4,6 GB sem RF64 o FFmpeg avisa que "output file will be broken".
+
+**Decisão:** a etapa `audio` grava com `-rf64 auto` (RF64 só acima do limite; abaixo continua WAV comum) e extrai jogo
+e microfone numa leitura só do master. A versão da etapa subiu para 2, o que invalida o cache dos WAVs já gerados
+(seção 2).
+
 ---
 
 ## Decisões em aberto

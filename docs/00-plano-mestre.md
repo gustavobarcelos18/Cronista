@@ -114,7 +114,9 @@ tende a ficar sem "respiro" de farm/timelapse e com poucas falhas para gerar hum
 O áudio original fica sempre dentro do vídeo (o master guarda as três faixas). Os WAVs extraídos por faixa são só
 cópias de trabalho para a análise e o waveform (~0,7 GB/h por faixa, ~35 GB para jogo + microfone em 25 h): ficam no
 cache do SSD e podem ser apagados e regenerados do master. Se o spike exigir WAVs na timeline do Resolve (seção 6.3),
-os usados passam a ficar no HD, junto dos masters.
+os usados passam a ficar no HD, junto dos masters. Uma sessão de mais de ~6,2 h passa do limite de 4 GB do WAV comum;
+a extração grava RF64 nesse caso (`-rf64 auto`, histórico §27). ⚠️ Conferir na Fase 2 que as bibliotecas de análise
+leem RF64 (de memória: libsndfile/`soundfile` lê).
 
 **Stems processados são sempre WAVs.** A partir da Fase 6, as trilhas A1 e A2 recebem stems com ducking e cadeia de
 voz (seção 6.3). Eles não cabem dentro do MP4: são WAVs novos, referenciados pela timeline, e ficam no HD, em

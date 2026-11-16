@@ -104,7 +104,7 @@ local function main()
   end)
 
   for _, name in ipairs({
-    "01-basico", "02a-titulo", "02b-velocidade", "02c-zoom-keyframes", "02d-transicao", "02e-overlay-alfa",
+    "01-basico", "01b-marcador-sequencia", "01c-marcador-gap", "02a-titulo", "02b-velocidade", "02c-zoom-keyframes", "02d-transicao", "02e-overlay-alfa",
     "02f-hevc", "03-audio",
   }) do
     step("importar " .. name .. ".fcpxml (ImportTimelineFromFile)", function()
@@ -112,7 +112,8 @@ local function main()
       if not tl then error("devolveu nil: o Resolve recusou o arquivo (veja o Console)") end
       if name == "01-basico" then state.timeline_basico = tl end
       return "timeline=" .. tostring(tl:GetName()) .. " video=" .. tl:GetTrackCount("video") ..
-        " audio=" .. tl:GetTrackCount("audio") .. " fps=" .. tostring(tl:GetSetting("timelineFrameRate"))
+        " audio=" .. tl:GetTrackCount("audio") .. " fps=" .. tostring(tl:GetSetting("timelineFrameRate")) ..
+        " marcadores=" .. count(tl:GetMarkers())
     end)
   end
 
@@ -122,12 +123,9 @@ local function main()
     if not tl then error("sem timeline") end
     local clip = tl:GetItemListInTrack("video", 1)[1]
     if not clip then error("sem clipe de vídeo na V1") end
-    return "SetLUT=" .. tostring(clip:SetLUT(1, KIT .. "\\teste.cube"))
-  end)
-
-  step("importar legenda SRT", function()
-    local items = pool:ImportMedia({ { FilePath = KIT .. "\\roteiro.srt" } })
-    return "itens=" .. count(items) .. " (conferir a legenda na página Edição)"
+    local ok = clip:SetLUT(1, KIT .. "\\teste.cube")
+    if not ok then error("SetLUT devolveu false (a LUT precisa estar na pasta de LUTs do Resolve)") end
+    return "SetLUT=true"
   end)
 
   finish()

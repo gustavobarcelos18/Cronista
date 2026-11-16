@@ -121,6 +121,30 @@ def fcpxml_basico(files: dict[str, Path]) -> str:
     return _wrap("01-basico", resources, spine, 600)
 
 
+def _basico_sem_marcador(files: dict[str, Path], name: str, gap: bool) -> str:
+    """01-basico sem marcador no clipe: o marcador de clipe não chegou ao Resolve (2026-11-16); testa dois lugares."""
+    resources = _resources(files, ["A_h264", "B_h264"])
+    marks = (
+        f'<marker start="{_t(120)}" duration="{_t(1)}" value="Momento" note="momento|teste-001"/>\n'
+        f'            <chapter-marker start="{_t(0)}" duration="{_t(1)}" value="Novo dia"/>'
+    )
+    clip1 = f'<asset-clip ref="r2" name="01-corte" offset="0s" start="0s" duration="{_t(300)}" {_CLIP}>'
+    clip2 = f'<asset-clip ref="r3" name="02-outra-fonte" offset="{_t(300)}" start="{_t(60)}" duration="{_t(300)}" {_CLIP}/>'
+    if gap:  # marcadores num <gap> que cobre a trilha principal; os clipes entram ancorados (lane)
+        lane = '<asset-clip lane="1"'
+        spine = (
+            f'            <gap name="Gap" offset="0s" start="0s" duration="{_t(600)}">\n'
+            f"            {marks}\n"
+            f"            {clip1.replace('<asset-clip', lane)}</asset-clip>\n"
+            f"            {clip2.replace('<asset-clip', lane)}\n"
+            "            </gap>"
+        )
+        return _wrap(name, resources, spine, 600)
+    spine = f"            {clip1}</asset-clip>\n            {clip2}"
+    xml = _wrap(name, resources, spine, 600)
+    return xml.replace("          </spine>\n", f"          </spine>\n          {marks}\n")
+
+
 _CLIP = 'format="r1" tcFormat="NDF"'
 
 
@@ -279,6 +303,8 @@ def make_resolve_kit(settings: Settings, out: Path, with_media: bool = True) -> 
     written = dict(files)
     for name, content in {
         "01-basico.fcpxml": fcpxml_basico(files),
+        "01b-marcador-sequencia.fcpxml": _basico_sem_marcador(files, "01b-marcador-sequencia", gap=False),
+        "01c-marcador-gap.fcpxml": _basico_sem_marcador(files, "01c-marcador-gap", gap=True),
         **{f"{n}.fcpxml": fcpxml_recurso(files, n) for n in RECURSOS},
         "03-audio.fcpxml": fcpxml_audio(files),
         "marcadores.edl": marker_edl(),

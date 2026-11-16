@@ -1,9 +1,10 @@
-"""FCPXML pelo caminho OTIO → adaptador `fcpx_xml`, com correções mínimas e validação estrutural.
+"""FCPXML 1.9 escrito à mão a partir da timeline OTIO, mais validação estrutural.
 
-Spike do adaptador (plano, seção 6.5; medido na 1B, histórico §30). O que ele faz bem: tempos em quadros
-inteiros de 1/60 s, um clipe por trecho, áudio em lanes -1 (A1) e -2 (A2), um `asset` por arquivo.
-O que corrigimos aqui, sem mudar a timeline: remover os `asset-clip` soltos na raiz (nada os referencia e a
-posição não é válida no esquema ⚠️ de memória), dar largura/altura ao `format` e tirar o `uid` vazio.
+O adaptador `fcpx_xml` do OTIO (spike da 1B, histórico §30) gerou um arquivo que o Resolve 21.2 recusou
+(sem `<library>`) e depois travou na importação (2026-11-16, histórico §39). Por isso o app escreve o FCPXML
+no mesmo desenho dos arquivos do kit (`devtools/resolve_kit.py`), que o Resolve importa:
+`library > event > project`, `asset` com `src`, um `asset-clip` por trecho na V1 e o áudio do jogo (lane -1)
+e do microfone (lane -2) como `asset-clip` conectados. Todo tempo é um número inteiro de quadros de 1/60 s.
 Não existe DTD oficial offline: `check_fcpxml` confere o que dá para provar (referências, grade de quadros,
 duração da sequência, lanes). A validação de verdade é a importação no Resolve (1C).
 """
@@ -22,27 +23,88 @@ _TIME_ATTRS = ("offset", "duration", "start")
 _XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n\n'
 
 
-def render_fcpxml(timeline: otio.schema.Timeline) -> str:
-    raw = otio.adapters.write_to_string(timeline, "fcpx_xml")
-    root = ET.fromstring(raw)
+def _t(frames: float) -> str:
+    return f"{round(frames)}/{FPS}s"
 
-    for element in list(root.findall("asset-clip")):  # soltos na raiz; os da sequência são <clip>
-        root.remove(element)
-    for fmt in root.iter("format"):
-        fmt.set("name", f"FFVideoFormat{HEIGHT}p{FPS}")
-        fmt.set("width", str(WIDTH))
-        fmt.set("height", str(HEIGHT))
-    for project in root.iter("project"):
-        if project.get("uid") == "":
-            del project.attrib["uid"]
-    # O Resolve recusa `<project>` solto na raiz (erro "inherited value for key 'library'", 2026-11-16):
-    # o esquema exige <library><event><project>, como nos arquivos do kit que importam.
-    loose = root.find("project")
-    if loose is not None:
-        root.remove(loose)
-        library = ET.SubElement(root, "library")
-        event = ET.SubElement(library, "event", {"name": "Cronista"})
-        event.append(loose)
+
+def render_fcpxml(timeline: otio.schema.Timeline) -> str:
+    """V1 vira o `spine`; cada trilha de áudio seguinte vira a lane -1, -2... do clipe de mesmo índice."""
+    video = next(t for t in timeline.tracks if t.kind == otio.schema.TrackKind.Video)
+    audio = [t for t in timeline.tracks if t.kind == otio.schema.TrackKind.Audio]
+
+    root = ET.Element("fcpxml", version="1.9")
+    resources = ET.SubElement(root, "resources")
+    ET.SubElement(
+        resources,
+        "format",
+        id="r1",
+        name=f"FFVideoFormat{HEIGHT}p{FPS}",
+        frameDuration=f"1/{FPS}s",
+        width=str(WIDTH),
+        height=str(HEIGHT),
+    )
+    ids: dict[str, str] = {}
+
+    def asset_id(clip: otio.schema.Clip, is_video: bool) -> str:
+        url = clip.media_reference.target_url
+        if url not in ids:
+            ids[url] = f"r{len(ids) + 2}"
+            rng = clip.media_reference.available_range
+            attrs = {
+                "id": ids[url],
+                "name": clip.media_reference.name or url.rsplit("/", 1)[-1],
+                "src": url,
+                "start": "0s",
+                "duration": _t(rng.duration.value),
+            }
+            if is_video:  # o áudio do mestre fica de fora: o do jogo e o do microfone vêm dos WAVs
+                attrs |= {"format": "r1", "hasVideo": "1", "hasAudio": "0"}
+            else:
+                attrs |= {"hasVideo": "0", "hasAudio": "1", "audioSources": "1", "audioChannels": "2"}
+                attrs["audioRate"] = "48000"
+            ET.SubElement(resources, "asset", attrs)
+        return ids[url]
+
+    library = ET.SubElement(root, "library")
+    event = ET.SubElement(library, "event", name="Cronista")
+    project = ET.SubElement(event, "project", name=timeline.name or "sessao")
+    sequence = ET.SubElement(
+        project, "sequence", format="r1", tcStart="0s", tcFormat="NDF", audioLayout="stereo", audioRate="48k"
+    )
+    spine = ET.SubElement(sequence, "spine")
+
+    cursor = 0
+    for index, clip in enumerate(video):
+        rng = clip.source_range
+        start, duration = round(rng.start_time.value), round(rng.duration.value)
+        parent = ET.SubElement(
+            spine,
+            "asset-clip",
+            ref=asset_id(clip, True),
+            name=clip.name,
+            offset=_t(cursor),
+            start=_t(start),
+            duration=_t(duration),
+            format="r1",
+            tcFormat="NDF",
+        )
+        for lane, track in enumerate(audio, start=1):
+            if index >= len(track):
+                continue
+            child = track[index]
+            # O deslocamento de um clipe conectado conta no tempo do pai, que começa em `start`.
+            ET.SubElement(
+                parent,
+                "asset-clip",
+                ref=asset_id(child, False),
+                lane=str(-lane),
+                name=child.name,
+                offset=_t(start),
+                start=_t(start),
+                duration=_t(duration),
+            )
+        cursor += duration
+    sequence.set("duration", _t(cursor))
 
     ET.indent(root, space="  ")
     return _XML_HEAD + ET.tostring(root, encoding="unicode") + "\n"
@@ -116,7 +178,7 @@ def check_fcpxml(xml: str) -> list[str]:
         declared = _parse_time(sequence.get("duration", ""))
         if declared != total:
             problems.append(f"duração da sequência {sequence.get('duration')} ≠ soma dos clipes {total}s")
-        lanes = {c.get("lane") for c in spine.iter("clip")}
+        lanes = {c.get("lane") for c in spine.iter() if c.get("lane")}
         if not {"-1", "-2"} <= lanes:
             problems.append("faltam as lanes de áudio -1 (A1, jogo) e -2 (A2, microfone)")
     return problems

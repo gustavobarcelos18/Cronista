@@ -154,7 +154,7 @@ def test_check_reports_malformed_xml() -> None:
     assert "mal formado" in check_fcpxml("<fcpxml><resources></fcpxml>")[0]
 
 
-def test_render_strips_loose_asset_clips_from_adapter_output() -> None:
+def test_render_writes_library_event_project_and_audio_lanes() -> None:
     timeline = otio.schema.Timeline(name="t")
     track = otio.schema.Track(name="V1", kind=otio.schema.TrackKind.Video)
     reference = otio.schema.ExternalReference(
@@ -173,6 +173,23 @@ def test_render_strips_loose_asset_clips_from_adapter_output() -> None:
         )
     )
     timeline.tracks.append(track)
+    audio = otio.schema.Track(name="A1", kind=otio.schema.TrackKind.Audio)
+    audio.append(
+        otio.schema.Clip(
+            name="c",
+            media_reference=otio.schema.ExternalReference(
+                target_url="file:///x/game.wav", available_range=reference.available_range
+            ),
+            source_range=track[0].source_range,
+        )
+    )
+    timeline.tracks.append(audio)
     xml = render_fcpxml(timeline)
-    assert "<asset-clip" not in xml
     assert 'uid=""' not in xml
+    root = ET.fromstring(xml)
+    assert root.find("library/event/project/sequence/spine/asset-clip") is not None
+    child = root.find("library/event/project/sequence/spine/asset-clip/asset-clip")
+    assert child is not None and child.get("lane") == "-1"
+    # Conectado: offset = start do pai (60 quadros), não zero.
+    assert child.get("offset") == "60/60s" and child.get("start") == "60/60s"
+    assert root.find("library/event/project/sequence").get("duration") == "120/60s"  # type: ignore[union-attr]

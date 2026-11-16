@@ -912,6 +912,13 @@ pronto); foi instalado depois, no mesmo dia (ver "Segunda passada" abaixo).
   não tem importação de marcadores por EDL nos menus; `AddMarker` pelo Console funciona. **Decisão:** marcadores só por script.
 - SRT: pelo menu Importar → Legenda; o clipe do Pool começa na 1ª fala e desloca 1 s se solto no início. **Decisão:**
   o app gera o SRT com uma fala vazia em 0 s (conferido: falas em 1 s, 4 s e 8 s).
+- **FCPXML do app (A16): o adaptador OTIO `fcpx_xml` foi abandonado.** O arquivo que ele gerou (versão 1.8, `<project>`
+  solto, `<clip>` com `<video>` e `<gap>` aninhados) foi recusado pelo Resolve ("Unable to find inherited value for key
+  'library'"); com `library/event` por cima o Resolve abriu a janela "Carregar XML" e **travou** depois do Ok (mais de
+  uma hora). **Decisão:** o app escreve o FCPXML 1.9 à mão (`export/fcpxml.py`), no desenho dos arquivos do kit que
+  importam: `asset-clip` por trecho na V1, áudio do jogo e do microfone (WAVs) como `asset-clip` nas lanes -1 e -2. O
+  `.otio` continua sendo gravado. Resultado da importação desse novo arquivo: pendente. Isso substitui a escolha da 1B
+  (histórico §30) de usar o adaptador com correções mínimas.
 - O criador perguntou se dava para trocar o editor, se necessário: avaliado, **não é necessário**; Kdenlive fica como
   plano B (de memória, não verificado).
 - Erros meus corrigidos no caminho: o roteiro apontava Linha de Tempo → Importar para o EDL de marcadores (o menu não

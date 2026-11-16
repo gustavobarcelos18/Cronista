@@ -10,6 +10,7 @@ from typing import Any
 
 from cronista.config import Settings
 from cronista.domain.models import MediaProbe
+from cronista.domain.timeline import FileChapter
 from cronista.pipeline.stage import StageError
 
 
@@ -85,3 +86,20 @@ def probe_media(settings: Settings, path: Path) -> MediaProbe:
         audio_streams=audio_count,
         interrupted=duration is None or is_unfinalized_mp4(path),
     )
+
+
+def probe_chapters(settings: Settings, path: Path) -> list[FileChapter]:
+    """Marcadores (capítulos) gravados dentro do arquivo, via `ffprobe -show_chapters`.
+
+    Falha do ffprobe devolve lista vazia: o diário ainda cobre o tempo dos marcadores.
+    """
+    cmd = [settings.ffprobe, "-v", "error", "-print_format", "json", "-show_chapters", str(path)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return []
+    info: dict[str, Any] = json.loads(proc.stdout)
+    chapters: list[FileChapter] = []
+    for raw in info.get("chapters", []):
+        title = str(raw.get("tags", {}).get("title", ""))
+        chapters.append(FileChapter(title=title, media_time_s=float(raw.get("start_time", 0.0))))
+    return chapters

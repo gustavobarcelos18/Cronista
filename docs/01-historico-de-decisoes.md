@@ -448,6 +448,36 @@ disso com ~6,2 h de gravação, e as sessões podem ter 10 h. Verificado com FFm
 e microfone numa leitura só do master. A versão da etapa subiu para 2, o que invalida o cache dos WAVs já gerados
 (seção 2).
 
+## 28. Início da 1B: marcadores como passo da sessão
+
+**Contexto:** a 1B começou pelo diário `.markers.jsonl`, a reconstrução do tempo de mídia, a reconciliação e a
+ingestão de marcadores (tarefas 1, 2 e 4 do plano da 1B). Ficam para as próximas partes: gravador (opção A), prévia
+MP4, FCPXML mínimo e o `GpuGate` real.
+
+**Decisões de implementação:**
+- A ingestão de marcadores **não é uma etapa com cache por arquivo**, e sim um passo idempotente da sessão
+  (`ingest/markers.py`). O diário pertence à sessão e cresce entre ingestões, e a chave de cache do orquestrador só
+  enxerga o arquivo de mídia; ler capítulos é barato. Cada ingestão refaz as linhas `marker` da sessão (reingerir
+  não duplica).
+- `Construção ▶/■` é pareada pela ordem dos toques (ímpar abre, par fecha), atravessando arquivos da mesma sessão;
+  coluna nova `marker.phase` (`start`/`end`, migração 0002). Aberta no fim da sessão: cria um `■` sintético
+  (`<id>-fim`, `source=synthetic`) no fim do último arquivo, com aviso.
+- O dia implícito é um marcador `novo_dia` sintético (`dia-implicito`, tempo 0) criado só se nem esta sessão nem
+  uma sessão anterior do projeto tem `Novo dia`.
+- Marcador só no arquivo vira `Momento` mesmo que o título seja `tipo|id` válido (decisão do §26 mantida); o título
+  original vai no aviso.
+- Toque durante pausa fica no ponto onde a gravação parou, com aviso.
+- O diário é reaberto sem corromper: se a última linha ficou cortada, o escritor começa com uma quebra de linha.
+
+**Verificado com o OBS real (2026-11-16, OBS em pt-BR, arquivo finalizado):** `ffprobe -show_chapters` traz um capítulo
+inicial em 0 s ("Iniciar", título traduzido), os toques da hotkey nativa ("Sem nome 1", "Sem nome 2") nos tempos
+corretos e um capítulo final "Dummy" que só fecha o último intervalo. Os capítulos do OBS são contíguos (fim de um =
+início do próximo). A ingestão descarta o inicial (reconhecido pela posição: primeiro, em 0 s, sem `tipo|id`, já que
+o título muda com o idioma) e o "Dummy" (`drop_obs_bookends`); sem isso todo arquivo ganharia um `Momento` falso
+em 0 s. O primeiro capítulo em 0 s, que eu tinha tomado por artefato do muxer do FFmpeg, é na verdade o
+capítulo inicial do próprio OBS; os tempos dos toques reais não sofrem esse deslocamento. **Ainda por verificar:**
+nome com `tipo|id` via `CreateRecordChapter`, e se os capítulos sobrevivem a uma gravação interrompida/ao remux.
+
 ---
 
 ## Decisões em aberto

@@ -37,6 +37,9 @@ def ingest(
         for stage in result.results.values():
             for warning in stage.warnings:
                 typer.echo(f"  aviso: {warning}")
+    typer.echo(f"marcadores: {report.markers.count}")
+    for warning in report.markers.warnings:
+        typer.echo(f"  aviso: {warning}")
     for path, error in report.failures.items():
         typer.echo(f"FALHOU {path}: {error}", err=True)
     raise typer.Exit(0 if report.ok else 1)

@@ -6,7 +6,7 @@
   "main": "types.ts",
   "types": "types.ts",
   "scripts": {
-    "gen": "json2ts -i schema.json -o types.ts --additionalProperties false --unreachableDefinitions --bannerComment \"/* GERADO por `pnpm gen` a partir de schema.json. Não edite. */\""
+    "gen": "json2ts -i schema.json -o types.ts --additionalProperties false --unreachableDefinitions --bannerComment \"/* GERADO por pnpm gen a partir de schema.json. Não edite. */\""
   },
   "devDependencies": {
     "json-schema-to-typescript": "^15.0.0"

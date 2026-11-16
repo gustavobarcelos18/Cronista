@@ -1,4 +1,4 @@
-/* GERADO por `pnpm gen` a partir de schema.json. Não edite. */
+/* GERADO por pnpm gen a partir de schema.json. Não edite. */
 
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema

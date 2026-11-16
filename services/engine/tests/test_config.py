@@ -15,10 +15,11 @@ def _write(path: Path, text: str) -> None:
 def test_local_overrides_versioned(tmp_path: Path) -> None:
     cfg = tmp_path / "config"
     _write(cfg / "dev.yaml", "env: dev\ndata_dir: data\nproxy_height: 360\n")
-    _write(cfg / "dev.local.yaml", "proxy_height: 240\ndata_dir: D:/midia\n")
+    midia = tmp_path / "midia"  # absoluto em qualquer SO (`D:/midia` não é absoluto no Linux)
+    _write(cfg / "dev.local.yaml", f"proxy_height: 240\ndata_dir: {midia.as_posix()}\n")
     settings = load_settings("dev", cfg)
     assert settings.proxy_height == 240
-    assert settings.data_dir == Path("D:/midia")
+    assert settings.data_dir == midia
 
 
 def test_relative_data_dir_is_resolved_from_repo_root(tmp_path: Path) -> None:

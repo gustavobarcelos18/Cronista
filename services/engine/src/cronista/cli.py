@@ -10,6 +10,9 @@ from typing import Annotated
 import typer
 from sqlalchemy import select
 
+from cronista.audio.models import build_models
+from cronista.audio.report import write_session_report
+from cronista.audio.service import AnalysisError, analyze_session
 from cronista.config import load_settings
 from cronista.db.models import Job, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
@@ -88,9 +91,53 @@ def status() -> None:
                     typer.echo(f"    {Path(media.path).name}")
                     for job in db.scalars(select(Job).where(Job.media_file_id == media.id).order_by(Job.id)):
                         extra = f" ({job.error})" if job.error else ""
-                        typer.echo(f"      {job.stage}: {job.status}{extra}")
+                        name = f"{job.stage}:{job.variant}" if job.variant else job.stage
+                        typer.echo(f"      {name}: {job.status}{extra}")
         if db.scalar(select(RecordingSession.id)) is None and db.scalar(select(MediaFile.id)) is None:
             typer.echo("Nada ingerido ainda.")
+
+
+@app.command()
+def analyze(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+) -> None:
+    """Análise de áudio da sessão: sinais de CPU e, onde houver modelos, fala e eventos sonoros."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        recover_orphans(db)
+        try:
+            report = analyze_session(db, session, settings, build_gate(settings), build_models(settings))
+        except AnalysisError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    for name, result in report.files.items():
+        typer.echo(f"{name}: executadas={result.executed} em_cache={result.cached}")
+    for key, count in report.events.items():
+        typer.echo(f"  eventos {key}: {count}")
+    for skipped in report.skipped:
+        typer.echo(f"  não rodou: {skipped}")
+    for name, error in report.failures.items():
+        typer.echo(f"FALHOU {name}: {error}", err=True)
+    raise typer.Exit(0 if report.ok else 1)
+
+
+@app.command()
+def report(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    out: Annotated[
+        Path | None, typer.Option(help="HTML de saída (padrão: data/reports/sessao-N.html)")
+    ] = None,
+) -> None:
+    """Relatório HTML da sessão: sinais, marcadores, eventos e fala (arquivo único, abre sem rede)."""
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        try:
+            path = write_session_report(db, session, settings, out)
+        except LookupError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    typer.echo(str(path))
 
 
 @app.command()

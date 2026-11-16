@@ -1090,6 +1090,34 @@ rotinas detectadas). Os cortes precisam ser validados com o criador antes do ben
 
 ---
 
+## 43. Fase 2A implementada (2026-11-16)
+
+Aprovado pelo criador o plano do §42 ("Aprovar e começar 2A"), a 2A foi feita na branch `fase/2-audio`. As propostas do §42
+sobre formato de sinais, tabela `event` e coluna `variant` **viraram decisão** ao serem implementadas; os números de corte da
+2C continuam propostas.
+
+**O que existe:** `variant` em `artifact` e `job` com unicidade por `(arquivo, etapa, variante)` (migração 0005); a variante vira
+pasta no cache e só aceita `[A-Za-z0-9._-]`; `needs`, relatório e logs usam `nome:variante`. `Evidence`/`AnalysisEvent` e a tabela
+`event` (0006), em que reexecutar uma etapa substitui só os eventos da própria execução. Sinais como `.npy` float32 na grade de 6
+quadros (10 Hz): `game.energy_db`, `game.onset`, `game.novelty`, `game.periodicity`, `mic.energy_db`, `mic.energy_rel_db`, todos
+relativos à sessão (mediana móvel de 5 min), sem nada por jogo. Portas `SpeechDetector`, `Transcriber`, `SoundEventClassifier`
+(adaptadores reais só na 2B), etapas `speech` e `sound_events` (no microfone só risada e grito; o mix nunca é analisado),
+`cronista analyze <sessão>` e `cronista report <sessão>` (HTML único, sem rede, com texto escapado).
+Dependências novas: `numpy` e `soundfile` (libsndfile 1.2.2, que lê RF64).
+
+**Medido com a gravação real (`claude_teste.mp4`, 37 min, `prod`):** sinais em ~8 s (10 min sintéticos: 1,1 s; extrapolação
+para 10 h: ~1 min); o banco de `data/prod` migrou sem perder linhas. Faixa do microfone com mediana −51,7 dB e picos de −12 dB
+(fala presente); novidade do jogo com mediana 0 e p99 11; periodicidade com mediana 0,22 e máximo 0,63. **Ainda não dizem se
+detectam rotina ou fala de verdade:** isso é a 2C, com o gabarito.
+
+**Achado da validação real:** dois dos três arquivos da sessão 1 (`Cronista_Teste.mp4`, `testeia.mp4`) já não existem na pasta de
+gravação. O `analyze` quebrava com traceback; agora é falha clara por arquivo (a sessão continua nos demais). O banco ainda os lista.
+
+**Não verificado:** CI no GitHub (Ubuntu e Windows); RF64 acima de 4 GB e uso de memória em sessões de horas; retomada após
+interrupção específica da análise; `Evidence`/`AnalysisEvent` ainda fora do JSON Schema dos contratos (o Studio só chega na Fase 7).
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

@@ -61,6 +61,9 @@ def analyze_session(
     stages = [*ingest_stages(), *analysis]
     for media in session.media_files:
         name = Path(media.path).name
+        if not Path(media.path).is_file():
+            report.failures[name] = f"arquivo não encontrado: {media.path} (movido ou apagado?)"
+            continue
         try:
             result = run_pipeline(db, media, stages, settings, gate)
         except StageFailedError as exc:

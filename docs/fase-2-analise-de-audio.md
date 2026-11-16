@@ -3,7 +3,7 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 2; seções 3 e 5.2).
 Decisões que alimentam esta fase: [histórico §36, §40 e §41](01-historico-de-decisoes.md).
 
-Status: plano escrito em 2026-11-16, ainda sem código · Branch: `fase/2-audio` (a partir da `main` com a 1C integrada, PR #6).
+Status (2026-11-16): **2A implementada** na branch `fase/2-audio` (histórico §43), faltando CI e `/code-review`; 2B e 2C não começadas · Branch: `fase/2-audio` (a partir da `main` com a 1C integrada, PR #6).
 
 ## Divisão
 
@@ -56,13 +56,13 @@ Até lá, 2A e 2B entregam tudo o que é verificável sem gabarito, e os modelos
 
 ### Critérios de aceite (2A)
 
-- [ ] `uv run pytest`, `ruff`, `mypy` (e `mypy --platform linux`) passam sem GPU e sem modelo baixado; CI verde em Ubuntu **e** Windows.
-- [ ] Duas variantes da mesma etapa coexistem para o mesmo arquivo, sem se sobrescrever; mudar o parâmetro de uma invalida só ela e as seguintes.
-- [ ] A migração `0005`/`0006` aplica sobre um banco existente (inclusive o de `data/prod`) sem perder linhas.
-- [ ] Sobre sinais sintéticos: trem de cliques regular tem `periodicity` alta e `novelty` baixa; uma explosão no meio de ruído estável gera pico de `novelty` e `periodicity` baixa; silêncio não gera eventos.
-- [ ] WAV RF64 (> 4 GB, gerado sintético ou por `-rf64 always` em arquivo curto) é lido em blocos sem erro; memória não cresce com a duração.
-- [ ] Reexecutar a análise não duplica eventos; retomada após interrupção refaz só a etapa interrompida.
-- [ ] O relatório HTML abre sem rede e mostra sinais, marcadores e fala da fixture sintética.
+- [~] `uv run pytest`, `ruff`, `mypy` (e `mypy --platform linux`) passam sem GPU e sem modelo baixado; CI verde em Ubuntu **e** Windows. *(local: 255 testes, ruff e mypy nas duas plataformas; falta rodar a CI no GitHub.)*
+- [x] Duas variantes da mesma etapa coexistem para o mesmo arquivo, sem se sobrescrever; mudar o parâmetro de uma invalida só ela e as seguintes.
+- [x] A migração `0005`/`0006` aplica sobre um banco existente (inclusive o de `data/prod`) sem perder linhas.
+- [x] Sobre sinais sintéticos: trem de cliques regular tem `periodicity` alta e `novelty` baixa; uma explosão no meio de ruído estável gera pico de `novelty` e `periodicity` baixa; silêncio não gera eventos.
+- [~] WAV RF64 (> 4 GB, gerado sintético ou por `-rf64 always` em arquivo curto) é lido em blocos sem erro; memória não cresce com a duração. *(RF64 testado num arquivo pequeno; > 4 GB e consumo de memória em sessão de horas não medidos.)*
+- [~] Reexecutar a análise não duplica eventos; retomada após interrupção refaz só a etapa interrompida. *(reexecução sem duplicar: testada; retomada após interrupção: só a cobertura geral do orquestrador, sem teste específico da análise.)*
+- [x] O relatório HTML abre sem rede e mostra sinais, marcadores e fala da fixture sintética. *(conferido também com a gravação real de 37 min.)*
 
 ### Testes (2A)
 

@@ -182,3 +182,18 @@ def test_without_models_only_cpu_signals_run_and_the_report_says_what_was_skippe
 def test_utterance_model_validates_ranges() -> None:
     with pytest.raises(ValueError):
         Utterance(text="x", start_s=-1, end_s=1)
+
+
+def test_missing_master_is_a_clear_per_file_failure(db: Session, settings: Settings, tmp_path: Path) -> None:
+    from cronista.db.models import Project
+
+    project = Project(name="p")
+    db.add(project)
+    db.flush()
+    session = RecordingSession(project_id=project.id, folder="x")
+    db.add(session)
+    db.flush()
+    db.add(MediaFile(session_id=session.id, path=str(tmp_path / "apagado.mp4")))
+    db.commit()
+    report = analyze_session(db, session.id, settings, AlwaysFreeGate())
+    assert not report.ok and "arquivo não encontrado" in report.failures["apagado.mp4"]

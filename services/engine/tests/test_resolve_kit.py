@@ -99,10 +99,19 @@ def test_midia_do_kit(tmp_path: Path, settings: Settings) -> None:
         capture_output=True, text=True, check=True,
     )  # fmt: skip
     assert "a" in alpha.stdout.strip()  # yuva444p10le: tem canal alfa
-    # O retângulo precisa existir de fato: sem `replace=1` no drawbox o alfa não é escrito e o overlay sai todo vazio.
-    px = subprocess.run(
-        [settings.ffmpeg, "-v", "error", "-f", "lavfi", "-i", "color=black:s=1920x1080:d=1", "-i", str(files["overlay_alfa"]),
-         "-filter_complex", "[0][1]overlay=shortest=1,format=rgb24,crop=1:1:300:200", "-frames:v", "1", "-f", "rawvideo", "-"],
-        capture_output=True, check=True,
-    )  # fmt: skip
+    # O retângulo precisa existir de fato: sem `replace=1` no drawbox o alfa não é escrito.
+    graph = "[0][1]overlay=shortest=1,format=rgb24,crop=1:1:300:200"
+    cmd = [settings.ffmpeg, "-v", "error", "-f", "lavfi", "-i", "color=black:s=1920x1080:d=1"]
+    cmd += [
+        "-i",
+        str(files["overlay_alfa"]),
+        "-filter_complex",
+        graph,
+        "-frames:v",
+        "1",
+        "-f",
+        "rawvideo",
+        "-",
+    ]
+    px = subprocess.run(cmd, capture_output=True, check=True)
     assert px.stdout[0] > 150 and px.stdout[1] < 40  # vermelho dentro do retângulo

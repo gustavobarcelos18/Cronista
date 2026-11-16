@@ -114,7 +114,9 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 - [ ] Guia do OBS seguido do zero produz uma gravação que passa na validação da ingestão.
 - [x] Teste de instalação CUDA (item 4) registrado (histórico §39: torch + CTranslate2 convivem); alimenta o benchmark da Fase 2.
 - [x] Formato do gabarito e script de validação prontos (`docs/gabarito.md`, `cronista gabarito`); a anotação é do criador.
-- [x] Kit do Resolve e roteiro prontos (`integrations/resolve/`); falta instalar o Resolve e preencher o roteiro.
+- [x] Kit do Resolve e roteiro prontos (`integrations/resolve/`); Resolve 21.2.1.0006 instalado e testado em parte
+  (importação, título, overlay, áudio, legenda e marcadores respondidos; faltam relink, FCPXML do app, desempenho e
+  render). Resultados na seção 6.5 do plano e no histórico §39.
 
 ## Aceite da Fase 1 (do plano mestre)
 

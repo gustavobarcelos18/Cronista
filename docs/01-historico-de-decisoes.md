@@ -866,7 +866,8 @@ por ser decisão de renderização e não evidência.
 ## 39. 1C: primeira passada no PC de casa (2026-11-16)
 
 O PC de casa (`prod`: RTX 3060, driver 610.88, OBS 33.0.1, FFmpeg 9.0.2) foi usado pela primeira vez. Branch
-`fase/1c-pc-de-casa`. **O DaVinci Resolve não está instalado** neste PC: tudo que depende dele ficou como kit pronto.
+`fase/1c-pc-de-casa`. **O DaVinci Resolve não estava instalado** neste PC na primeira passada (tudo que dependia dele ficou como kit
+pronto); foi instalado depois, no mesmo dia (ver "Segunda passada" abaixo).
 
 **Decisões:**
 - **Classes do gabarito** (proposta inicial, em `docs/gabarito.md` e `cronista/gabarito.py`): `fala`, `risada`, `grito`,
@@ -896,8 +897,29 @@ O PC de casa (`prod`: RTX 3060, driver 610.88, OBS 33.0.1, FFmpeg 9.0.2) foi usa
   como dispositivo de marcação** ("não funcionam para o que precisamos"); vale o caminho 3 do plano (teclas F13–F24
   por macro, mouse ou macropad). O spike fica em `integrations/fifine/` só como registro.
 
-**Pendente (precisa do criador):** instalar o Resolve e preencher o roteiro; ajustes do OBS acima;
-gravação com `MIC_RAW` ativo; anotação do gabarito.
+**Segunda passada: Resolve gratuito 21.2.1.0006 (PT-BR), mesmo dia.** Instalado e testado com o kit
+(`cronista resolve-kit`). Detalhes e ressalvas na seção 6.5 do plano; resumo:
+- Scripting externo **bloqueado**. O Console interno só aceita Lua, sem `io`/`dofile`/`loadfile`/`require`; scripts em
+  `Scripts\Utility` não aparecem no menu. O teste roda colando `teste-linha-unica.lua` (gerado por
+  `integrations/resolve/gerar_linha_unica.py`). Um projeto novo por rodada: reaproveitar o anterior fez o Resolve
+  recusar timelines de mesmo nome e mascarou resultados (a recusa do título na 2ª rodada era isso, não o UID).
+- FCPXML: entram `01`, `02a` a `02e` e `03-audio`; HEVC (`02f`) é recusado; o FCPXML com tudo junto foi recusado,
+  por isso o kit tem um arquivo por recurso. Título nativo, overlay com alfa e 3 trilhas de áudio (canal desativado
+  chega como clipe desativado) confirmados nos prints.
+- Bug nosso achado no teste: o `overlay_alfa.mov` saía 100% transparente (`drawbox` sem `replace=1`); corrigido, com
+  teste automático do pixel.
+- Marcadores: nenhuma das três posições no FCPXML (clipe, sequência, gap) vira marcador de timeline; o Resolve gratuito
+  não tem importação de marcadores por EDL nos menus; `AddMarker` pelo Console funciona. **Decisão:** marcadores só por script.
+- SRT: pelo menu Importar → Legenda; o clipe do Pool começa na 1ª fala e desloca 1 s se solto no início. **Decisão:**
+  o app gera o SRT com uma fala vazia em 0 s (conferido: falas em 1 s, 4 s e 8 s).
+- O criador perguntou se dava para trocar o editor, se necessário: avaliado, **não é necessário**; Kdenlive fica como
+  plano B (de memória, não verificado).
+- Erros meus corrigidos no caminho: o roteiro apontava Linha de Tempo → Importar para o EDL de marcadores (o menu não
+  existe nessa versão) e dizia que o script aparecia em Área de Trabalho → Scripts.
+
+**Pendente (precisa do criador):** ajustes do OBS acima (a configuração no disco ainda não foi reverificada);
+gravação com `MIC_RAW` ativo; anotação do gabarito; no Resolve: relink, HEVC à mão, tons de áudio, desempenho e render
+(blocos A5, A16, D do roteiro). Resultado do `SetLUT` e dos marcadores de clipe da última rodada não chegou em texto.
 
 ---
 

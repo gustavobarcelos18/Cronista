@@ -681,9 +681,38 @@ As fontes são a documentação oficial e o teste prático:
   usar os WAVs extraídos de cada faixa (seção 6.3).
 - ⚠️ **Hybrid MP4 após queda:** se o Resolve abre o arquivo remuxado sem recodificar (seção 2).
 
+**Resultado do spike no PC de casa (2026-11-16, Resolve 21.2.1.0006 gratuito, interface em português; histórico §39):**
+- ✅ **Importação de FCPXML 1.9** (menu Arquivo → Importar → Linha de Tempo, ou `ImportTimelineFromFile`): cortes,
+  volume, título (vira "Texto - Dia 1" na V2, o UID de memória funcionou), velocidade, zoom com keyframes, transição,
+  overlay e áudio entram a 60 fps. Conteúdo fino (velocidade 2x, keyframes, transição) ainda **não foi inspecionado**
+  no Resolve. ❌ HEVC (`02f`) é recusado; sem impacto, o OBS grava H.264. Um recurso ruim derruba o arquivo inteiro
+  (o `02-recursos` combinado foi recusado): o app deve importar só o que o Resolve aceita.
+- ✅ **Overlay com alfa** (ProRes 4444): fica na trilha acima, transparente, sem fundo preto.
+- ✅ **Áudio:** o FCPXML do kit cria 3 trilhas (A1–A3); o canal `enabled="0"` chega como clipe desativado (A1 cinza com
+  "M"). ⚠️ Qual faixa do MP4 caiu em cada trilha ainda não foi conferido de ouvido.
+- ❌ **Marcadores pelo FCPXML:** nenhum chega como marcador de timeline, nem dentro do clipe, nem na `<sequence>`, nem
+  num `<gap>` (painel Marcadores vazio). O Resolve gratuito 21.2 **não tem importação de marcadores por EDL** nos menus
+  Arquivo, Marcar e Linha de Tempo. ✅ `AddMarker` pelo script interno funciona (cor, nome e nota). Conclusão:
+  **marcadores só entram por script**.
+- ✅ **Legenda SRT:** Arquivo → Importar → Legenda… cria um item no Pool; arrastado à timeline vira a trilha ST1.
+  Detalhe: o clipe começa na primeira fala e, solto no início, desloca tudo (chegou 1 s adiantado). **O app gera o SRT
+  com uma fala vazia em 0 s** (confirmado: com ela as falas ficam em 1 s, 4 s e 8 s). `ImportMedia` não importa SRT.
+- ❌ **Scripting externo:** bloqueado (`scriptapp` devolve nulo; o README da API diz que é só Studio). O script
+  **interno** só roda pelo Console (Área de Trabalho → Console), que no gratuito aceita **só Lua**, sem `io`, `dofile`,
+  `loadfile` nem `require`: o código vai **colado numa linha**. Scripts na pasta `Scripts\Utility` **não aparecem** no
+  menu Scripts, mesmo após reiniciar. `ImportTimelineFromFile`, `AddMarker`, `CreateProject` (nome inédito) e
+  `SetSettings` funcionam por esse Console; `ImportMedia` com dicionário devolve vazio. `SetLUT` devolveu `false`.
+- ⚠️ **Ainda sem resposta:** relink (A5), FCPXML do próprio app (A16), HEVC importado à mão, tons de áudio por trilha,
+  cartela editável de fato, LUT, desempenho e render (bloco D do roteiro), ProRes na página Entrega.
+- **Editor:** nada do que falhou impede o produto. Trocar o Resolve não se justifica; plano B, se um bloqueio futuro
+  surgir: Kdenlive (de memória, não verificado: gratuito, projeto em XML do MLT, sem marca d'água).
+
 **Estratégia:**
 - **Rota A (base):** o app gera FCPXML/OTIO + SRT e você importa pelo menu File → Import.
-- **Rota B (quase um clique):** script interno do Cronista instalado na pasta de scripts do Resolve, executado pelo menu.
+- **Rota B (quase um clique):** *rebaixada em 2026-11-16 (ver resultado do spike acima)*: o gratuito não lista scripts
+  no menu; o script interno é um Lua de uma linha **colado no Console**, e fica reservado aos **marcadores coloridos**
+  (e, opcionalmente, criar projeto e importar). Na versão original: script interno do Cronista instalado na pasta de
+  scripts do Resolve, executado pelo menu.
   Ele lê o pacote exportado pelo app e cria o projeto, importa a mídia e a timeline, adiciona marcadores coloridos com notas,
   aplica a LUT e configura o preset de render.
 - Zooms animados e VFX: **renderizados pelo app** na trilha acima do original (ou composição Fusion importada, se o spike aprovar).
@@ -942,6 +971,9 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Sem facecam (seções 6.6 e 6.7).
 - Produto: **um único vídeo de 30–50 min** por série, montado a partir de sessões de duração variável (3 h, 6 h, 10 h…) (seções 0.1, 1 e 2).
 - O app não substitui o Resolve como editor, mas pode codificar vídeo quando é só execução (seção 1).
+- **Spike do Resolve gratuito 21.2 (2026-11-16, histórico §39):** FCPXML importa pelo menu; marcadores só por script
+  (Lua colado no Console, único que o gratuito aceita); legenda SRT pelo menu Importar → Legenda, com fala vazia em 0 s;
+  scripting externo bloqueado; HEVC recusado (o projeto usa H.264). O Resolve fica como editor (seção 6.5).
 - Marcador = "aconteceu algo aqui" (ponto no tempo dentro do arquivo); os capítulos do vídeo vêm só de `Novo dia`
   (seção 4). O "contador de dias persistido por projeto" foi substituído (ver abaixo).
 - Quem cria o marcador: **opção A**, programa do Cronista ao lado do OBS via obs-websocket (seção 4).

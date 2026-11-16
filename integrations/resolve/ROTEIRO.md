@@ -2,7 +2,10 @@
 
 Origem: checklist do plano mestre, seção 6.5. Preencha **Resultado** (OK / parcial / falhou) e **Observação** de
 cada item. Os itens com ⚠️ no plano ganham resposta aqui e depois são movidos para a seção 6.5 (critério de aceite da 1C).
-Versão instalada no PC de casa: **DaVinci Resolve 21.2.1.0006** (2026-11-16). Nada deste roteiro foi executado ainda.
+Versão instalada no PC de casa: **DaVinci Resolve 21.2.1.0006** (2026-11-16), interface em português.
+**Já respondido (ver plano 6.5, "Resultado do spike", e histórico §39):** A1, A2, A6 (todos menos `02f`), A9 a A11 em
+parte, A13/A14 em parte, B1 (não existe no menu), B3, C1 a C4. **Ainda a fazer:** A3 a A5, A7, A8, A12, A16, D1 a D7.
+Os caminhos de menu abaixo foram corrigidos com o que existe de fato nessa versão.
 
 ## Preparação
 
@@ -24,8 +27,9 @@ O kit tem três FCPXML separados de propósito: se um falhar, o item culpado fic
 | `01-basico.fcpxml` | dois cortes, volume -6 dB, marcador e marcador de capítulo, relink |
 | `02a` a `02f` (`titulo`, `velocidade`, `zoom-keyframes`, `transicao`, `overlay-alfa`, `hevc`) | um recurso por arquivo, para achar qual o Resolve recusa |
 | `03-audio.fcpxml` | faixas de áudio do MP4 por canal, canal desativado |
-| `marcadores.edl` | três marcadores coloridos (azul, vermelho, verde) |
-| `roteiro.srt` | três falas |
+| `01b-marcador-sequencia`, `01c-marcador-gap` | variantes de `01-basico` com o marcador em outros lugares do FCPXML (nenhuma importou marcador) |
+| `marcadores.edl` | três marcadores coloridos; **o Resolve gratuito 21.2 não tem menu para importá-lo** |
+| `roteiro.srt`, `roteiro-marca-zero.srt` | três falas; a segunda tem uma fala vazia em 0 s (evita o deslocamento de 1 s) |
 | `teste.cube` | LUT que esquenta a imagem |
 | `clips/` | `A_h264` (3 faixas: 440, 660 e 880 Hz), `B_h264`, `C_hevc`, `overlay_alfa.mov` |
 
@@ -54,17 +58,19 @@ O kit tem três FCPXML separados de propósito: se um falhar, o item culpado fic
 
 | # | Item | Como conferir | Resultado | Observação |
 |---|---|---|---|---|
-| B1 | `marcadores.edl` (Timeline → Import → Timeline Markers from EDL) | Três marcadores, cores azul/vermelha/verde, nome e duração | | |
-| B2 | Se o B1 falhar: o mesmo resultado pelo script interno (`AddMarker` com cor) | Ver `resultado-script.txt` | | |
-| B3 | `roteiro.srt` alinhado com a timeline | Legenda aos 1 s, 4 s e 8 s | | |
+| B1 | `marcadores.edl`: não há menu de importação nas versões vistas (Arquivo → Importar, Marcar, Linha de Tempo) | | **Falhou** (2026-11-16) | Sem caminho pelo menu |
+| B2 | O mesmo resultado pelo script interno (`AddMarker` com cor) | Console: `lidos=3` | **OK** (2026-11-16) | Marcadores só por script |
+| B3 | `roteiro-marca-zero.srt` pelo menu Arquivo → Importar → Legenda…, arrastado à timeline | Legenda aos 1 s, 4 s e 8 s | **OK** (2026-11-16) | `roteiro.srt` sem a fala em 0 s chega 1 s adiantado |
 | B4 | Cartela "Dia N": trocar o número no Resolve pelo FCPXML (A10) e pelo script interno | | | |
 
 ## C. Script interno (Workspace → Scripts)
 
-1. O script já está em `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\`; o Resolve só
-   lista scripts ao abrir, então reinicie-o se ele já estava aberto.
-2. Rodar por **Workspace → Scripts → cronista_kit_teste** com um projeto vazio aberto.
-3. Colar aqui o conteúdo de `data/prod/kit-resolve/resultado-script.txt`.
+1. O menu Scripts do gratuito 21.2 **não lista** scripts da pasta `Utility` (testado, inclusive após reiniciar). O
+   Console só aceita Lua e não tem `io`/`dofile`: use a versão de uma linha. Gere com
+   `uv run integrations/resolve/gerar_linha_unica.py` (grava `data/prod/kit-resolve/teste-linha-unica.lua`).
+2. No Resolve, crie um **projeto novo** (1920×1080, 60 fps), abra o Console (**Área de Trabalho → Console** ou `F6`),
+   cole o conteúdo do arquivo de uma linha no campo de baixo e aperte Enter.
+3. Colar aqui as linhas OK/FALHOU que aparecem no Console.
 
 | # | Item | Resultado | Observação |
 |---|---|---|---|

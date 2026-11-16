@@ -892,9 +892,11 @@ O PC de casa (`prod`: RTX 3060, driver 610.88, OBS 33.0.1, FFmpeg 9.0.2) foi usa
   RNNoise e em dispositivo diferente do `MIC_RAW`. Registrado em `integrations/obs/GUIA.md`.
 - **FIFINE SC3** (VID 3142, PID 0C33): o Windows a mostra com duas interfaces HID (controle de mídia e uma de fabricante,
   `0xff00`) e nenhuma entrada MIDI. 90 s de escuta sem eventos: **inconclusivo** (não se sabe se os botões foram apertados);
-  repetir com o criador apertando botão por botão.
+  repetir com o criador apertando botão por botão. **Decisão posterior (2026-11-16): o criador descartou a FIFINE SC3
+  como dispositivo de marcação** ("não funcionam para o que precisamos"); vale o caminho 3 do plano (teclas F13–F24
+  por macro, mouse ou macropad). O spike fica em `integrations/fifine/` só como registro.
 
-**Pendente (precisa do criador):** instalar o Resolve e preencher o roteiro; teste físico da FIFINE; ajustes do OBS acima;
+**Pendente (precisa do criador):** instalar o Resolve e preencher o roteiro; ajustes do OBS acima;
 gravação com `MIC_RAW` ativo; anotação do gabarito.
 
 ---

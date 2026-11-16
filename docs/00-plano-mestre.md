@@ -267,6 +267,11 @@ sabe se os botões dela enviam algum evento ao PC. Teste na Fase 1 com um script
    específico na gravação como marcador (marcador por áudio). Funciona só se o som cair numa faixa gravada.
 3. Se nada funcionar → teclas F13–F24 via software de macro, botões extras do mouse ou um macropad USB barato.
 
+**Decidido em 2026-11-16 (histórico §39): a FIFINE SC3 está descartada como dispositivo de marcação.** O criador
+confirmou que ela não serve ao que o projeto precisa; vale o caminho 3. As hotkeys do gravador seguem as teclas
+configuráveis (`marker_hotkeys`, padrão F13–F20); o dispositivo que as dispara (macro de teclado, botões do mouse ou
+macropad) é escolha do criador e não muda o código. A FIFINE continua só como interface de áudio (microfone).
+
 ## 4.1 Processamento por sessão e painel da série
 
 Cada sessão (de duração variável: 3 h, 6 h, 10 h…) é processada assim que a gravação termina (ingestão → análise →

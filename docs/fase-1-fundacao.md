@@ -110,7 +110,7 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 ### Critérios de aceite (1C)
 
 - [ ] Roteiro de checagem do Resolve preenchido (itens que o plano marca como ⚠️ ganham resposta e são movidos para a seção 6.5).
-- [ ] Resultado da FIFINE registrado (qual dos três caminhos vale).
+- [x] Resultado da FIFINE registrado: **descartada** pelo criador em 2026-11-16 (histórico §39); vale o caminho 3 (F13–F24, mouse ou macropad).
 - [ ] Guia do OBS seguido do zero produz uma gravação que passa na validação da ingestão.
 - [x] Teste de instalação CUDA (item 4) registrado (histórico §39: torch + CTranslate2 convivem); alimenta o benchmark da Fase 2.
 - [x] Formato do gabarito e script de validação prontos (`docs/gabarito.md`, `cronista gabarito`); a anotação é do criador.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -61,11 +61,12 @@ class Job(Base):
     """Um job por (arquivo, etapa), atualizado no lugar. Estados: pending, running, done, failed."""
 
     __tablename__ = "job"
-    __table_args__ = (UniqueConstraint("media_file_id", "stage"),)
+    __table_args__ = (UniqueConstraint("media_file_id", "stage", "variant"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     media_file_id: Mapped[int] = mapped_column(ForeignKey("media_file.id"))
     stage: Mapped[str] = mapped_column(String(100))
+    variant: Mapped[str] = mapped_column(String(100), default="", server_default="")
     status: Mapped[str] = mapped_column(String(20), default="pending")
     cache_key: Mapped[str | None] = mapped_column(String(64), default=None)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
@@ -78,13 +79,45 @@ class Artifact(Base):
     """Saída de uma etapa, identificada pela chave de cache (hash de entrada + parâmetros + versão)."""
 
     __tablename__ = "artifact"
-    __table_args__ = (UniqueConstraint("media_file_id", "stage"),)
+    __table_args__ = (UniqueConstraint("media_file_id", "stage", "variant"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     media_file_id: Mapped[int] = mapped_column(ForeignKey("media_file.id"))
     stage: Mapped[str] = mapped_column(String(100))
+    variant: Mapped[str] = mapped_column(String(100), default="", server_default="")
+    """Vazia na maioria das etapas; distingue duas execuções da mesma etapa (dois modelos, por exemplo)."""
     cache_key: Mapped[str] = mapped_column(String(64))
     result_path: Mapped[str] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Event(Base):
+    """Evento de análise (fala, risada, grito…) com a evidência embutida (plano da Fase 2, lacuna 2).
+
+    Tempo em quadros inteiros a 60 fps dentro do arquivo. Pertence à execução que o produziu
+    (`media_file_id + stage + variant`): reexecutar a etapa substitui as linhas dela, nunca duplica.
+    """
+
+    __tablename__ = "event"
+    __table_args__ = (
+        Index("ix_event_media_frame", "media_file_id", "start_frame"),
+        Index("ix_event_producer", "media_file_id", "stage", "variant"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    media_file_id: Mapped[int] = mapped_column(ForeignKey("media_file.id"))
+    stage: Mapped[str] = mapped_column(String(100))
+    variant: Mapped[str] = mapped_column(String(100), default="", server_default="")
+    kind: Mapped[str] = mapped_column(String(40))
+    start_frame: Mapped[int] = mapped_column(Integer)
+    end_frame: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(20))  # EvidenceSource
+    confidence: Mapped[float] = mapped_column(Float)
+    model: Mapped[str] = mapped_column(String(100))
+    model_version: Mapped[str] = mapped_column(String(100))
+    params_hash: Mapped[str] = mapped_column(String(64))
+    quote: Mapped[str | None] = mapped_column(Text, default=None)
+    payload: Mapped[str] = mapped_column(Text, default="{}", server_default="{}")  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

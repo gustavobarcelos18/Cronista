@@ -19,7 +19,7 @@ from cronista.domain.models import StageResult
 from cronista.logging_setup import log_event
 from cronista.pipeline.cache import compute_key, fingerprint_file
 from cronista.pipeline.gpu import GpuGate, wait_until_free
-from cronista.pipeline.stage import Stage, StageContext
+from cronista.pipeline.stage import Stage, StageContext, stage_key, stage_variant
 
 RESULT_FILE = "result.json"
 
@@ -75,31 +75,36 @@ def run_pipeline(
     root_fp = fingerprint_file(media_path)
 
     for stage in stages:
+        name, variant = stage_key(stage), stage_variant(stage)
         key = compute_key(
-            stage.name, stage.version, stage.params(settings), root_fp, [keys[n] for n in stage.needs]
+            name, stage.version, stage.params(settings), root_fp, [keys[n] for n in stage.needs]
         )
-        keys[stage.name] = key
+        keys[name] = key
 
         artifact = db.scalar(
-            select(Artifact).where(Artifact.media_file_id == media.id, Artifact.stage == stage.name)
+            select(Artifact).where(
+                Artifact.media_file_id == media.id, Artifact.stage == stage.name, Artifact.variant == variant
+            )
         )
         cached = _load_cached(artifact, key)
         if cached is not None:
-            report.results[stage.name] = cached
-            report.cached.append(stage.name)
-            log_event("etapa_em_cache", media_file_id=media.id, stage=stage.name, cache_key=key[:12])
+            report.results[name] = cached
+            report.cached.append(name)
+            log_event("etapa_em_cache", media_file_id=media.id, stage=name, cache_key=key[:12])
             continue
 
-        job = db.scalar(select(Job).where(Job.media_file_id == media.id, Job.stage == stage.name))
+        job = db.scalar(
+            select(Job).where(Job.media_file_id == media.id, Job.stage == stage.name, Job.variant == variant)
+        )
         if job is None:
-            job = Job(media_file_id=media.id, stage=stage.name, attempts=0)
+            job = Job(media_file_id=media.id, stage=stage.name, variant=variant, attempts=0)
             db.add(job)
         job.status, job.cache_key, job.error = "running", key, None
         job.attempts += 1
         job.started_at, job.finished_at = _now(), None
         db.commit()
 
-        def wait_for_gpu(working: bool = True, stage_name: str = stage.name) -> None:
+        def wait_for_gpu(working: bool = True, stage_name: str = name) -> None:
             wait_until_free(
                 gate,
                 settings.gpu_poll_seconds,
@@ -111,7 +116,10 @@ def run_pipeline(
 
         wait_for_gpu(working=False)  # todo processamento pausa com o OBS gravando ou jogo em tela cheia
 
-        out_dir = settings.cache_dir / str(media.id) / stage.name / key[:12]
+        out_dir = settings.cache_dir / str(media.id) / stage.name
+        if variant:
+            out_dir = out_dir / variant
+        out_dir = out_dir / key[:12]
         if out_dir.exists():
             shutil.rmtree(out_dir)  # sobra de uma execução interrompida
         out_dir.mkdir(parents=True)
@@ -123,21 +131,21 @@ def run_pipeline(
             inputs={n: report.results[n] for n in stage.needs},
             wait_for_gpu=wait_for_gpu,
         )
-        log_event("etapa_iniciada", media_file_id=media.id, stage=stage.name, job_id=job.id)
+        log_event("etapa_iniciada", media_file_id=media.id, stage=name, job_id=job.id)
         try:
             result = stage.run(ctx)
         except Exception as exc:
             job.status, job.error, job.finished_at = "failed", str(exc), _now()
             db.commit()
-            log_event(
-                "etapa_falhou", level=logging.ERROR, media_file_id=media.id, stage=stage.name, error=str(exc)
-            )
-            raise StageFailedError(stage.name, str(exc)) from exc
+            log_event("etapa_falhou", level=logging.ERROR, media_file_id=media.id, stage=name, error=str(exc))
+            raise StageFailedError(name, str(exc)) from exc
 
         result_path = out_dir / RESULT_FILE
         result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
         if artifact is None:
-            artifact = Artifact(media_file_id=media.id, stage=stage.name, cache_key=key, result_path="")
+            artifact = Artifact(
+                media_file_id=media.id, stage=stage.name, variant=variant, cache_key=key, result_path=""
+            )
             db.add(artifact)
         else:  # troca de versão do cache: apaga a saída antiga
             old_dir = Path(artifact.result_path).parent
@@ -147,8 +155,8 @@ def run_pipeline(
         job.status, job.finished_at = "done", _now()
         db.commit()
 
-        report.results[stage.name] = result
-        report.executed.append(stage.name)
-        log_event("etapa_concluida", media_file_id=media.id, stage=stage.name, warnings=result.warnings)
+        report.results[name] = result
+        report.executed.append(name)
+        log_event("etapa_concluida", media_file_id=media.id, stage=name, warnings=result.warnings)
 
     return report

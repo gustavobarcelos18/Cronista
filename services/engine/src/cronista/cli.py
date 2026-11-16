@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -29,6 +30,17 @@ from cronista.recorder.hotkeys import HotkeyConfigError
 from cronista.recorder.run import run_forever
 from cronista.watch import Processed
 from cronista.watch import serve as watch_serve
+
+
+def _force_utf8_output() -> None:
+    """Força UTF-8 na saída: o console do Windows (cp1252) quebra com `→` e caminhos acentuados raros."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
+_force_utf8_output()
 
 app = typer.Typer(help="Cronista: gameplay do OBS → timeline do Resolve.", no_args_is_help=True)
 

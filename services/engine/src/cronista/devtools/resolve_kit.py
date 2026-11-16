@@ -56,7 +56,7 @@ def make_media(settings: Settings, out: Path) -> dict[str, Path]:
     overlay = media / "overlay_alfa.mov"
     source = (
         f"color=c=black@0.0:s=1920x1080:r={FPS}:d=5,format=yuva444p10le,"
-        "drawbox=x=100:y=100:w=500:h=200:color=red@0.8:t=fill"
+        "drawbox=x=100:y=100:w=500:h=200:color=red@0.8:t=fill:replace=1"  # sem replace o alfa não é escrito
     )
     run_ffmpeg(
         settings,

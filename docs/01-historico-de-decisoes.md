@@ -478,6 +478,24 @@ em 0 s. O primeiro capítulo em 0 s, que eu tinha tomado por artefato do muxer d
 capítulo inicial do próprio OBS; os tempos dos toques reais não sofrem esse deslocamento. **Ainda por verificar:**
 nome com `tipo|id` via `CreateRecordChapter`, e se os capítulos sobrevivem a uma gravação interrompida/ao remux.
 
+## 29. 1B: prévia MP4 (`cronista preview`)
+
+Segundo item da ordem da 1B (§28). Decisões de implementação, todas dentro do que o plano da fase já previa:
+
+- `cronista preview <sessão>` (número da sessão, como em `cronista status`) gera `data/previews/sessao-N.mp4`
+  (ou `--out`). Um trecho por marcador, na ordem (arquivo, tempo): 20 s antes e 10 s depois (`preview_pre_s`,
+  `preview_post_s` na config), recortado aos limites do arquivo. Marcador fora do arquivo ou com trecho < 0,5 s
+  fica de fora com aviso.
+- Janelas que se sobrepõem **não são fundidas**: o critério de aceite pede N trechos para N marcadores. Se isso
+  cansar na revisão (marcadores colados repetem imagem), fundir é uma mudança pequena em `domain/preview.py`.
+- Saída em 1080p60 H.264 yuv420p, áudio só do mix (faixa 1). Encoder por config: `libx264` em `dev` (CPU),
+  `h264_nvenc` em `prod`; só o NVENC espera a `GpuGate`. Os parâmetros do NVENC (`-preset p5 -rc vbr -cq`)
+  ⚠️ vêm de memória, não foram testados sem GPU: conferir na 1C.
+- Corte por trecho (`-ss` antes do `-i`, recodificando) e concatenação sem recodificar (`concat` + `-c copy`).
+  Lê o master já normalizado (remuxado/8-bit) pelo artefato da etapa `normalize`; sessão não ingerida dá erro claro.
+- Não é etapa do orquestrador (sem cache): é barato de refazer e depende do conjunto de marcadores da sessão, que
+  muda a cada ingestão. A pasta de trabalho é apagada ao fim.
+
 ---
 
 ## Decisões em aberto

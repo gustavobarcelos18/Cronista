@@ -7,5 +7,8 @@ expected_fps: "60/1"
 proxy_height: 360
 proxy_crf: 28
 video_extensions: [".mp4", ".mkv"]
+preview_encoder: h264_nvenc   # RTX 3060
+preview_pre_s: 20
+preview_post_s: 10
 gpu_poll_seconds: 5
 log_level: INFO

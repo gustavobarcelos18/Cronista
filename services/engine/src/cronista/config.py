@@ -21,6 +21,10 @@ class Settings(BaseModel):
     proxy_height: int = 360
     proxy_crf: int = 28
     video_extensions: list[str] = [".mp4", ".mkv"]
+    preview_encoder: str = "libx264"  # `h264_nvenc` em prod (GPU)
+    preview_crf: int = 20
+    preview_pre_s: float = 20.0
+    preview_post_s: float = 10.0
     gpu_poll_seconds: float = 5.0
     log_level: str = "INFO"
 

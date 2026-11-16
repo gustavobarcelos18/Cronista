@@ -1,4 +1,4 @@
-"""CLI: `cronista ingest <pasta>`, `cronista status`, `cronista fixtures`."""
+"""CLI: `cronista ingest <pasta>`, `status`, `preview <sessão>`, `fixtures`."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from cronista.devtools.fixtures import make_fixtures
 from cronista.ingest.service import ingest_folder
 from cronista.logging_setup import setup_logging
 from cronista.pipeline import AlwaysFreeGate, recover_orphans
+from cronista.preview import PreviewError, build_preview
 
 app = typer.Typer(help="Cronista: gameplay do OBS → timeline do Resolve.", no_args_is_help=True)
 
@@ -61,6 +62,28 @@ def status() -> None:
                         typer.echo(f"      {job.stage}: {job.status}{extra}")
         if db.scalar(select(RecordingSession.id)) is None and db.scalar(select(MediaFile.id)) is None:
             typer.echo("Nada ingerido ainda.")
+
+
+@app.command()
+def preview(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    out: Annotated[
+        Path | None, typer.Option(help="MP4 de saída (padrão: data/previews/sessao-N.mp4)")
+    ] = None,
+) -> None:
+    """Gera o MP4 de prévia: uma janela (20 s antes, 10 s depois) por marcador, com o áudio do mix."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            report = build_preview(db, session, settings, AlwaysFreeGate(), out)
+        except PreviewError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    actual = f"{report.actual_s:.1f}s" if report.actual_s is not None else "?"
+    typer.echo(f"{report.path}: {report.clips} trecho(s), esperado {report.expected_s:.1f}s, gerado {actual}")
+    for warning in report.warnings:
+        typer.echo(f"  aviso: {warning}")
 
 
 @app.command()

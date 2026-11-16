@@ -13,6 +13,7 @@ from cronista.config import load_settings
 from cronista.db.models import Job, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
+from cronista.devtools.resolve_kit import make_resolve_kit
 from cronista.domain.frames import frame_to_seconds
 from cronista.export.service import export_session
 from cronista.gabarito import validate_gabarito
@@ -217,6 +218,16 @@ def gabarito(
             )  # fmt: skip
         typer.echo(f"prévia: {len(report.annotations)} arquivo(s) em {previa}")
     raise typer.Exit(0 if report.ok else 1)
+
+
+@app.command("resolve-kit")
+def resolve_kit(
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/kit-resolve)")] = None,
+) -> None:
+    """Gera o kit de teste do Resolve gratuito (clipes, FCPXML, EDL, SRT, LUT)."""
+    settings = load_settings()
+    for name, path in make_resolve_kit(settings, out or settings.data_dir / "kit-resolve").items():
+        typer.echo(f"{name}: {path}")
 
 
 @app.command()

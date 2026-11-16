@@ -917,7 +917,10 @@ pronto); foi instalado depois, no mesmo dia (ver "Segunda passada" abaixo).
   'library'"); com `library/event` por cima o Resolve abriu a janela "Carregar XML" e **travou** depois do Ok (mais de
   uma hora). **Decisão:** o app escreve o FCPXML 1.9 à mão (`export/fcpxml.py`), no desenho dos arquivos do kit que
   importam: `asset-clip` por trecho na V1, áudio do jogo e do microfone (WAVs) como `asset-clip` nas lanes -1 e -2. O
-  `.otio` continua sendo gravado. Resultado da importação desse novo arquivo: pendente. Isso substitui a escolha da 1B
+  `.otio` continua sendo gravado. **Resultado (mesmo dia): importou sem erro nem travada**: `sessao-1` com 5 clipes na V1
+  (10 s, 30 s, 23:32, 30 s, 23:34), `game.wav` na A1 e `mic.wav` na A2, 1:57:06 no total (7026 quadros a 60 fps, como
+  o esperado); o áudio do mestre não entra, então não há áudio duplicado; painel Marcadores vazio (esperado, marcadores
+  só por script). Sincronia de áudio e vídeo, reprodução e uso da GPU ainda não conferidos. Isso substitui a escolha da 1B
   (histórico §30) de usar o adaptador com correções mínimas.
 - O criador perguntou se dava para trocar o editor, se necessário: avaliado, **não é necessário**; Kdenlive fica como
   plano B (de memória, não verificado).

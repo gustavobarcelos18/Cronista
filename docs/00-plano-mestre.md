@@ -701,6 +701,9 @@ As fontes são a documentação oficial e o teste prático:
   overlay e áudio entram a 60 fps. Conteúdo fino (velocidade 2x, keyframes, transição) ainda **não foi inspecionado**
   no Resolve. ❌ HEVC (`02f`) é recusado; sem impacto, o OBS grava H.264. Um recurso ruim derruba o arquivo inteiro
   (o `02-recursos` combinado foi recusado): o app deve importar só o que o Resolve aceita.
+- ✅ **FCPXML do próprio app** (`cronista export`): o do adaptador OTIO foi recusado (sem `library`) e depois travou o
+  Resolve; o app agora escreve o FCPXML 1.9 à mão no desenho do kit, e esse importou (5 clipes na V1, jogo na A1 e
+  microfone na A2, 1:57:06). Nesta janela de importação o código de tempo inicial vem `01:00:00:00` por padrão.
 - ✅ **Overlay com alfa** (ProRes 4444): fica na trilha acima, transparente, sem fundo preto.
 - ✅ **Áudio:** o FCPXML do kit cria 3 trilhas (A1–A3); o canal `enabled="0"` chega como clipe desativado (A1 cinza com
   "M"). ⚠️ Qual faixa do MP4 caiu em cada trilha ainda não foi conferido de ouvido.

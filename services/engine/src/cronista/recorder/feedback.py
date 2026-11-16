@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -25,14 +26,13 @@ WARN_TONE = (200, 350)
 
 
 def _default_beep(frequency: int, duration_ms: int) -> None:
-    try:
-        import winsound  # só existe no Windows
-
-        winsound.Beep(frequency, duration_ms)
-    except ImportError:
+    if sys.platform != "win32":  # o mypy entende esta guarda: `winsound.Beep` não existe fora do Windows
         sys.stderr.write("\a")
-    except RuntimeError:
-        pass  # sem dispositivo de áudio: a mensagem no console continua valendo
+        return
+    import winsound
+
+    with contextlib.suppress(RuntimeError):  # sem dispositivo de áudio: a mensagem no console basta
+        winsound.Beep(frequency, duration_ms)
 
 
 class ConsoleFeedback:

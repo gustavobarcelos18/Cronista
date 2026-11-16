@@ -281,7 +281,7 @@ def srt(marca_zero: bool = False) -> str:
     cues = [(1, 2, "Primeira fala do roteiro."), (4, 6, "Segunda fala, com duas linhas\nno mesmo bloco."),
             (8, 9, "Terceira.")]  # fmt: skip
     if marca_zero:
-        cues = [(0, 1, ".")] + cues
+        cues = [(0, 1, "."), *cues]
     out = []
     for n, (start, end, text) in enumerate(cues, start=1):
         out.append(f"{n}\n00:00:{start:02d},000 --> 00:00:{end:02d},000\n{text}\n")

@@ -937,6 +937,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **D4:** sem Fase 1.5; a prévia MP4 da 1B cumpre o papel do rough cut só de marcadores.
 - Marcador que existe só no arquivo (e não no diário): tratado como `Momento`, com aviso no relatório da sessão.
 - Primeira sessão do projeto sem `Novo dia`: abre um dia implícito no início, sem número.
+- Marcadores na ingestão: passo idempotente da sessão (não etapa com cache por arquivo); `Construção ▶/■` pareada pela ordem dos toques, com `■` sintético se ficar aberta; dia implícito como marcador sintético (histórico §28).
 
 **Em aberto:**
 1. Verificar na prática os itens ☑️/⚠️ da seção 6.5 (FCPXML, scripts, decodificação por GPU, HEVC e tempo de render),

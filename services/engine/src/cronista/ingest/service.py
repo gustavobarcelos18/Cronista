@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from cronista.config import Settings
 from cronista.db.models import MediaFile, Project, RecordingSession
+from cronista.ingest.markers import IngestedFile, MarkerReport, ingest_markers
 from cronista.ingest.stages import ingest_stages
 from cronista.logging_setup import log_event
 from cronista.pipeline import GpuGate, StageFailedError, run_pipeline
@@ -21,6 +22,7 @@ class IngestReport:
     session_id: int
     files: dict[str, PipelineReport] = field(default_factory=dict)
     failures: dict[str, str] = field(default_factory=dict)
+    markers: MarkerReport = field(default_factory=MarkerReport)
 
     @property
     def ok(self) -> bool:
@@ -53,6 +55,7 @@ def ingest_folder(
         db.flush()
 
     report = IngestReport(session_id=session.id)
+    ingested: list[IngestedFile] = []
     for ordinal, path in enumerate(files):
         media = db.scalar(select(MediaFile).where(MediaFile.path == str(path)))
         if media is None:
@@ -63,7 +66,14 @@ def ingest_folder(
         db.commit()
         log_event("ingestao_iniciada", session_id=session.id, media_file_id=media.id, path=str(path))
         try:
-            report.files[str(path)] = run_pipeline(db, media, ingest_stages(), settings, gate)
+            result = run_pipeline(db, media, ingest_stages(), settings, gate)
         except StageFailedError as exc:
             report.failures[str(path)] = str(exc)
+            continue
+        report.files[str(path)] = result
+        normalized = result.results["normalize"].data
+        duration = normalized["probe"].get("duration_s")
+        ingested.append(IngestedFile(media, Path(str(normalized["media"])), duration))
+
+    report.markers = ingest_markers(db, session, ingested, settings)
     return report

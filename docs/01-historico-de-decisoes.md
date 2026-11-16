@@ -448,6 +448,31 @@ disso com ~6,2 h de gravação, e as sessões podem ter 10 h. Verificado com FFm
 e microfone numa leitura só do master. A versão da etapa subiu para 2, o que invalida o cache dos WAVs já gerados
 (seção 2).
 
+## 28. Início da 1B: marcadores como passo da sessão
+
+**Contexto:** a 1B começou pelo diário `.markers.jsonl`, a reconstrução do tempo de mídia, a reconciliação e a
+ingestão de marcadores (tarefas 1, 2 e 4 do plano da 1B). Ficam para as próximas partes: gravador (opção A), prévia
+MP4, FCPXML mínimo e o `GpuGate` real.
+
+**Decisões de implementação:**
+- A ingestão de marcadores **não é uma etapa com cache por arquivo**, e sim um passo idempotente da sessão
+  (`ingest/markers.py`). O diário pertence à sessão e cresce entre ingestões, e a chave de cache do orquestrador só
+  enxerga o arquivo de mídia; ler capítulos é barato. Cada ingestão refaz as linhas `marker` da sessão (reingerir
+  não duplica).
+- `Construção ▶/■` é pareada pela ordem dos toques (ímpar abre, par fecha), atravessando arquivos da mesma sessão;
+  coluna nova `marker.phase` (`start`/`end`, migração 0002). Aberta no fim da sessão: cria um `■` sintético
+  (`<id>-fim`, `source=synthetic`) no fim do último arquivo, com aviso.
+- O dia implícito é um marcador `novo_dia` sintético (`dia-implicito`, tempo 0) criado só se nem esta sessão nem
+  uma sessão anterior do projeto tem `Novo dia`.
+- Marcador só no arquivo vira `Momento` mesmo que o título seja `tipo|id` válido (decisão do §26 mantida); o título
+  original vai no aviso.
+- Toque durante pausa fica no ponto onde a gravação parou, com aviso.
+- O diário é reaberto sem corromper: se a última linha ficou cortada, o escritor começa com uma quebra de linha.
+
+**Risco para a 1C:** o muxer MP4 do FFmpeg força o primeiro capítulo para 0 s. Se o Hybrid MP4 do OBS tiver o mesmo
+comportamento, o primeiro marcador do arquivo viria com tempo errado; conferir com uma gravação real (o diário
+cobre, pois a divergência vira aviso).
+
 ---
 
 ## Decisões em aberto

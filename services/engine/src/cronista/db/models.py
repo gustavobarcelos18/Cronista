@@ -97,5 +97,6 @@ class Marker(Base):
     marker_id: Mapped[str] = mapped_column(String(64))  # o `id` de `tipo|id`
     kind: Mapped[str] = mapped_column(String(40))
     media_time_s: Mapped[float] = mapped_column(Float)
-    source: Mapped[str] = mapped_column(String(20), default="journal")  # journal | file
+    source: Mapped[str] = mapped_column(String(20), default="journal")  # journal | file | synthetic
+    phase: Mapped[str | None] = mapped_column(String(10), default=None)  # construção: start | end
     warning: Mapped[str | None] = mapped_column(Text, default=None)

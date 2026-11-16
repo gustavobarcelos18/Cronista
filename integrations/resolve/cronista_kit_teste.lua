@@ -42,6 +42,15 @@ local function count(t)
   return n
 end
 
+-- Marcadores de clipe do primeiro clipe de vídeo (o FCPXML põe o marcador dentro do clipe).
+local function clipMarkers(tl)
+  local ok, n = pcall(function()
+    local clip = tl:GetItemListInTrack("video", 1)[1]
+    return clip and count(clip:GetMarkers()) or -1
+  end)
+  return ok and n or "erro"
+end
+
 local function main()
   if not step("variável resolve disponível (script interno)", function()
     if resolve == nil then error("resolve é nil") end
@@ -113,7 +122,7 @@ local function main()
       if name == "01-basico" then state.timeline_basico = tl end
       return "timeline=" .. tostring(tl:GetName()) .. " video=" .. tl:GetTrackCount("video") ..
         " audio=" .. tl:GetTrackCount("audio") .. " fps=" .. tostring(tl:GetSetting("timelineFrameRate")) ..
-        " marcadores=" .. count(tl:GetMarkers())
+        " marcadores=" .. count(tl:GetMarkers()) .. " marcadores_do_clipe=" .. clipMarkers(tl)
     end)
   end
 
@@ -124,8 +133,13 @@ local function main()
     local clip = tl:GetItemListInTrack("video", 1)[1]
     if not clip then error("sem clipe de vídeo na V1") end
     local ok = clip:SetLUT(1, KIT .. "\\teste.cube")
-    if not ok then error("SetLUT devolveu false (a LUT precisa estar na pasta de LUTs do Resolve)") end
-    return "SetLUT=true"
+    local how = "caminho completo"
+    if not ok then -- a LUT precisa estar na pasta de LUTs do Resolve: tenta pelo nome relativo
+      ok = clip:SetLUT(1, "teste.cube")
+      how = "nome relativo (teste.cube copiada para a pasta de LUTs)"
+    end
+    if not ok then error("SetLUT devolveu false nas duas formas") end
+    return "SetLUT=true via " .. how
   end)
 
   finish()

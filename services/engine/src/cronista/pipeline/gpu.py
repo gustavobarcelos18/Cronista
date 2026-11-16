@@ -1,8 +1,12 @@
-"""Política de GPU como porta. A implementação real (OBS gravando / jogo em tela cheia) vem na 1B/1C."""
+"""Política de GPU como porta (plano mestre, seção 4.1). As implementações reais estão em `cronista.gates`."""
 
 from __future__ import annotations
 
-from typing import Protocol
+import time
+from collections.abc import Callable
+from typing import Any, Protocol
+
+from cronista.logging_setup import log_event
 
 
 class GpuGate(Protocol):
@@ -16,3 +20,24 @@ class AlwaysFreeGate:
 
     def is_free(self) -> bool:
         return True
+
+
+def gate_reason(gate: GpuGate) -> str | None:
+    """Por que a GPU está ocupada, se o gate souber dizer (`reason()` é opcional)."""
+    reason = getattr(gate, "reason", None)
+    return reason() if callable(reason) else None
+
+
+def wait_until_free(
+    gate: GpuGate,
+    poll_seconds: float,
+    sleep: Callable[[float], None] = time.sleep,
+    **log_fields: Any,
+) -> int:
+    """Bloqueia até a GPU ficar livre; devolve quantas vezes esperou. Registra o motivo a cada espera."""
+    waits = 0
+    while not gate.is_free():
+        waits += 1
+        log_event("gpu_ocupada_aguardando", motivo=gate_reason(gate), **log_fields)
+        sleep(poll_seconds)
+    return waits

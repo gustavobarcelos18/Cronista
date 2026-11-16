@@ -616,6 +616,40 @@ outro consome). Fumaça pela CLI: `serve --once` → `status` → `preview`.
 **Não coberto (1C):** o tempo real que o OBS leva para finalizar o arquivo depois do `STOPPED`; pasta de rede;
 comportamento com o OBS gravando em subpastas (o gravador e o serviço olham só o nível superior da pasta).
 
+## 33. 1B: `GpuGate` real
+
+Sexto item da ordem da 1B: a política de GPU da seção 4.1 (pausar com o OBS gravando ou jogo em tela cheia).
+
+**Gates (`gates.py`), compostos por `CompositeGate` (livre só se todos estão livres, motivo = o do primeiro que recusou):**
+- `ObsRecordingGate`: `GetRecordStatus` pelo obs-websocket, uma conexão curta por consulta, em thread própria (o
+  gate é síncrono e pode ser chamado de dentro de um laço asyncio). Antes, uma checagem rápida de porta
+  (0,5 s): **medido neste PC que o Windows leva ~2 s por endereço para recusar uma conexão em `localhost`** (4 s
+  no total); com a checagem, OBS fechado responde em ~1 s. Exige o servidor WebSocket do OBS ligado (já exigido
+  pelo gravador).
+- `FullscreenGate`: `SHQueryUserNotificationState` (shell32, via ctypes), ocupada nos estados 2 (aplicativo em tela
+  cheia), 3 (Direct3D em tela cheia exclusiva) e 4 (modo de apresentação). Chamada real testada neste PC (devolveu
+  5, "aceita notificações"). ⚠️ Valores dos estados de memória; ⚠️ jogo em janela sem borda pode não ser detectado.
+- `GpuLoadGate` (opcional, `gpu_busy_percent`): `nvidia-smi --query-gpu=utilization.gpu`, ocupada com uso >= o limite.
+  Cobre o janela-sem-borda, mas mede a GPU inteira (a consulta é só *antes* de cada etapa, então o próprio
+  processamento não se auto-bloqueia). Neste PC o `nvidia-smi` existe e respondeu 5%.
+- Regra comum: sinal ilegível (OBS fechado, sem `nvidia-smi`, sem Windows) conta como "não ocupado"; só se adia por
+  um sinal real. Consequência: se o WebSocket do OBS estiver desligado ou com senha errada, o gate não enxerga a
+  gravação. Mitigação: se a porta do OBS responde mas a conexão falha (senha errada), o gate registra um aviso
+  (`gate_obs_recusou_conexao`) no log, para não ficar cego em silêncio.
+- `build_gate(settings)`: `gpu_gate: false` em `dev` (sem GPU nem OBS), `true` em `prod`. `cronista ingest`,
+  `serve` e `preview` passaram a usar o gate do ambiente.
+
+**Pausa no meio da etapa:** o plano diz "retoma de onde parou", mas o executor só consultava o gate *antes* de cada
+etapa; uma etapa de 10 h de Whisper não pararia quando o jogo abre. `StageContext.wait_for_gpu()` (no-op para etapa
+de CPU) deixa a etapa pausar **entre blocos**; é o contrato para as etapas de GPU da Fase 2 (processar em blocos e
+chamar entre eles; o resultado parcial de cada bloco fica no cache). A prévia com NVENC também consulta entre
+trechos. O auxiliar `wait_until_free` registra o motivo no log a cada espera.
+
+**Testes (20 novos, 134 no total):** estados da tela cheia e limiar de carga; composição e motivo; `build_gate` por
+ambiente; contagem de esperas; gate do OBS contra o servidor falso (grava, para, OBS fechado, senha); etapa de GPU
+que pausa entre blocos quando um "jogo abre" no meio; etapa de CPU que nem consulta o gate. **Não testado:** gate de
+tela cheia com um jogo de verdade, NVENC, e a pausa entre trechos da prévia (precisa de GPU).
+
 ---
 
 ## Decisões em aberto

@@ -19,7 +19,7 @@ from cronista.domain.preview import ClipWindow, expected_duration_s
 from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
 from cronista.logging_setup import log_event
 from cronista.montage import SessionPlanError, plan_session
-from cronista.pipeline import GpuGate, StageError
+from cronista.pipeline import GpuGate, StageError, wait_until_free
 
 PREVIEW_FPS = "60"
 PREVIEW_SIZE = "1920:1080"
@@ -71,10 +71,13 @@ def build_preview(
     plan = plan_session(db, session_id, settings)
     windows, warnings = plan.windows, plan.warnings
 
-    if settings.preview_encoder.endswith("_nvenc"):
-        while not gate.is_free():
-            log_event("gpu_ocupada_aguardando", session_id=session_id, stage="preview")
-            sleep(settings.gpu_poll_seconds)
+    uses_gpu = settings.preview_encoder.endswith("_nvenc")
+
+    def wait_for_gpu() -> None:
+        if uses_gpu:
+            wait_until_free(gate, settings.gpu_poll_seconds, sleep, session_id=session_id, stage="preview")
+
+    wait_for_gpu()
 
     target = out or settings.data_dir / "previews" / f"sessao-{session_id}.mp4"
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -85,6 +88,7 @@ def build_preview(
     try:
         clips: list[Path] = []
         for index, window in enumerate(windows):
+            wait_for_gpu()  # um jogo pode abrir no meio: pausa entre os trechos
             clip = work / f"{index:04d}.mp4"
             try:
                 _cut(settings, plan.sources[window.file_id].master, window, clip)

@@ -45,6 +45,8 @@ class Settings(BaseModel):
     watch_poll_seconds: float = 5.0
     settle_seconds: float = 10.0  # arquivo parado há tanto tempo = o OBS terminou de escrever
     abandoned_after_hours: float = 4.0  # diário aberto e arquivo parado há tanto = gravação interrompida
+    gpu_gate: bool = False  # `dev` não tem GPU nem OBS; `prod` liga
+    gpu_busy_percent: int | None = None  # opcional: GPU >= isso por outro programa = ocupada (nvidia-smi)
     gpu_poll_seconds: float = 5.0
     log_level: str = "INFO"
 

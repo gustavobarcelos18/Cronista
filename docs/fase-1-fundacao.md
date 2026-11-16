@@ -3,7 +3,7 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 1).
 Decisão de dividir a fase: [histórico §25](01-historico-de-decisoes.md).
 
-Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador e serviço do engine prontos, histórico §29–32; faltam GpuGate real e fixture com pausa) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
+Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine e GpuGate real prontos, histórico §29–33; falta a fixture com pausa) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
 
 ## Divisão
 

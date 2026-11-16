@@ -14,10 +14,11 @@ from cronista.db.models import Job, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
 from cronista.export.service import export_session
+from cronista.gates import build_gate
 from cronista.ingest.service import ingest_folder
 from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
-from cronista.pipeline import AlwaysFreeGate, recover_orphans
+from cronista.pipeline import recover_orphans
 from cronista.preview import PreviewError, build_preview
 from cronista.recorder.feedback import ConsoleFeedback
 from cronista.recorder.hotkeys import HotkeyConfigError
@@ -40,7 +41,7 @@ def ingest(
         recovered = recover_orphans(db)
         if recovered:
             typer.echo(f"{recovered} job(s) interrompido(s) voltaram para a fila.")
-        report = ingest_folder(db, folder, settings, AlwaysFreeGate(), project)
+        report = ingest_folder(db, folder, settings, build_gate(settings), project)
     for path, result in report.files.items():
         typer.echo(f"{path}: executadas={result.executed} em_cache={result.cached}")
         for stage in result.results.values():
@@ -84,7 +85,7 @@ def preview(
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
         try:
-            report = build_preview(db, session, settings, AlwaysFreeGate(), out)
+            report = build_preview(db, session, settings, build_gate(settings), out)
         except PreviewError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
@@ -146,7 +147,7 @@ def serve(
             typer.echo(f"{recovered} job(s) interrompido(s) voltaram para a fila.")
         try:
             watch_serve(
-                db, settings, AlwaysFreeGate(), watch_dir, project, show, max_scans=1 if once else None
+                db, settings, build_gate(settings), watch_dir, project, show, max_scans=1 if once else None
             )
         except KeyboardInterrupt:
             typer.echo("Serviço encerrado.")

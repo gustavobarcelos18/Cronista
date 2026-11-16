@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from cronista.config import Settings
+from cronista.domain.frames import seconds_to_frame
 from cronista.domain.models import MediaProbe
 from cronista.domain.timeline import FileChapter
 from cronista.pipeline.stage import StageError
@@ -101,5 +102,7 @@ def probe_chapters(settings: Settings, path: Path) -> list[FileChapter]:
     chapters: list[FileChapter] = []
     for raw in info.get("chapters", []):
         title = str(raw.get("tags", {}).get("title", ""))
-        chapters.append(FileChapter(title=title, media_time_s=float(raw.get("start_time", 0.0))))
+        chapters.append(
+            FileChapter(title=title, media_frame=seconds_to_frame(float(raw.get("start_time", 0.0))))
+        )
     return chapters

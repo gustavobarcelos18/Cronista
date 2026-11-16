@@ -34,7 +34,7 @@ def _split_session(db: Session, settings: Settings, fixture_folders: dict[str, P
     assert report.ok
     files = db.query(MediaFile).order_by(MediaFile.ordinal).all()
     _put_markers(
-        db, report.session_id, [(files[0].id, "a", 1.0), (files[1].id, "b", 0.5), (files[1].id, "c", 1.5)]
+        db, report.session_id, [(files[0].id, "a", 60), (files[1].id, "b", 30), (files[1].id, "c", 90)]
     )
     return report.session_id
 

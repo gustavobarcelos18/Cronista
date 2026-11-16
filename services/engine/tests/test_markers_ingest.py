@@ -5,7 +5,6 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -48,7 +47,7 @@ def _session_folder(tmp_path: Path, settings: Settings, base: Path, name: str) -
 
 
 def _markers(db: Session) -> list[Marker]:
-    return list(db.scalars(select(Marker).order_by(Marker.media_time_s)))
+    return list(db.scalars(select(Marker).order_by(Marker.media_frame)))
 
 
 def _base(fixture_folders: dict[str, Path]) -> Path:
@@ -66,7 +65,7 @@ def test_probe_chapters_reads_titles_and_times(
     _with_chapters(settings, _base(fixture_folders), out, [("momento|a1", 0.0), ("Chapter 2", 1.25)])
     # O muxer MP4 do FFmpeg força o 1º capítulo para 0 s (risco a conferir com o OBS real, 1C).
     chapters = probe_chapters(settings, out)
-    assert [(c.title, c.media_time_s) for c in chapters] == [("momento|a1", 0.0), ("Chapter 2", 1.25)]
+    assert [(c.title, c.media_frame) for c in chapters] == [("momento|a1", 0), ("Chapter 2", 75)]
 
 
 def test_journal_and_file_agree_uses_file_time(
@@ -91,7 +90,7 @@ def test_journal_and_file_agree_uses_file_time(
         ("novo_dia", "d1", "file"),
         ("morte_falha", "m1", "file"),
     ]
-    assert [r.media_time_s for r in rows] == pytest.approx([0.0, 1.0], abs=0.01)
+    assert [r.media_frame for r in rows] == [0, 60]
     assert report.markers.warnings == []  # diário 1,3 s contra arquivo 1,0 s: diverge só 0,3 s (< 1 s)
 
 
@@ -106,8 +105,8 @@ def test_journal_only_when_file_has_no_chapters_and_reingest_is_idempotent(
         w.marker(MarkerKind.ENGRACADO, "e1")
 
     _ingest(db, folder, settings)
-    first = [(r.kind, r.source, round(r.media_time_s, 1)) for r in _markers(db)]
-    assert first == [("novo_dia", "journal", 0.5), ("engracado", "journal", 1.5)]
+    first = [(r.kind, r.source, r.media_frame) for r in _markers(db)]
+    assert first == [("novo_dia", "journal", 30), ("engracado", "journal", 90)]
 
     _ingest(db, folder, settings)
     assert len(_markers(db)) == 2  # reingerir não duplica
@@ -130,9 +129,7 @@ def test_divergence_and_file_only_marker_produce_warnings(
 
     report = _ingest(db, folder, settings)
     by_id = {r.marker_id: r for r in _markers(db)}
-    assert by_id["m1"].media_time_s == pytest.approx(1.9, abs=0.01) and "divergem" in (
-        by_id["m1"].warning or ""
-    )
+    assert by_id["m1"].media_frame == 114 and "divergem" in (by_id["m1"].warning or "")
     orphan = by_id["arquivo-1"]
     assert orphan.kind == "momento" and "só no arquivo" in (orphan.warning or "")
     assert len(report.markers.warnings) == 2
@@ -171,7 +168,7 @@ def test_implicit_day_only_on_first_session_without_novo_dia(
     first = _session_folder(tmp_path, settings, base, "s1")
     _ingest(db, first, settings)
     days = [r for r in _markers(db) if r.kind == "novo_dia"]
-    assert len(days) == 1 and days[0].source == "synthetic" and days[0].media_time_s == 0.0
+    assert len(days) == 1 and days[0].source == "synthetic" and days[0].media_frame == 0
 
     second = _session_folder(tmp_path, settings, base, "s2")  # continua o dia anterior
     (second / "gravacao.mp4").write_bytes((second / "gravacao.mp4").read_bytes() + b"\0")  # hash diferente

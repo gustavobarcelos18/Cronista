@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from cronista.config import Settings
 from cronista.db.models import Marker, MediaFile
 from cronista.devtools.timecoded import make_timecoded, wall_time_at
+from cronista.domain.frames import frame_to_seconds
 from cronista.domain.models import MarkerKind
 from cronista.ingest.journal import JournalWriter, Stamp
 from cronista.ingest.service import IngestReport, ingest_folder
@@ -57,11 +58,11 @@ def check_presses(
         media = db.get(MediaFile, marker.media_file_id)
         assert media is not None
         assert Path(media.path).name == press.file, f"{press.marker_id}: caiu em {Path(media.path).name}"
-        shown = wall_time_at(settings, _load_source(db, media).master, marker.media_time_s)
+        shown = wall_time_at(settings, _load_source(db, media).master, frame_to_seconds(marker.media_frame))
         errors[press.marker_id] = abs(shown - press.wall)
         assert errors[press.marker_id] < TOLERANCE_S, (
             f"{press.marker_id}: toque às {press.wall:.2f}s, quadro mostra {shown:.3f}s "
-            f"(tempo de mídia {marker.media_time_s:.3f}s)"
+            f"(quadro de mídia {marker.media_frame})"
         )
     return errors
 
@@ -107,9 +108,9 @@ def test_pause_is_cut_out_of_the_file_and_discounted(db: Session, settings: Sett
          Press(MarkerKind.CONQUISTA, "depois", 11.4, "jogo.mp4")],
     )  # fmt: skip
     media_times = {
-        m.marker_id: m.media_time_s for m in db.scalars(select(Marker).where(Marker.marker_id == "depois"))
+        m.marker_id: m.media_frame for m in db.scalars(select(Marker).where(Marker.marker_id == "depois"))
     }
-    assert media_times["depois"] == pytest.approx(6.4, abs=0.01)  # e não 11,4, que passa do fim do arquivo
+    assert media_times["depois"] == pytest.approx(384, abs=1)  # e não 11,4, que passa do fim do arquivo
     assert max(errors.values()) < TOLERANCE_S
 
 

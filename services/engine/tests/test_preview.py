@@ -71,17 +71,17 @@ def _stream_info(settings: Settings, path: Path) -> dict[str, object]:
     return info
 
 
-def _put_markers(db: Session, session_id: int, rows: list[tuple[int, str, float]]) -> None:
-    """Troca os marcadores da sessão por (id do arquivo, marker_id, tempo) para controlar o teste."""
+def _put_markers(db: Session, session_id: int, rows: list[tuple[int, str, int]]) -> None:
+    """Troca os marcadores da sessão por (id do arquivo, marker_id, quadro a 60 fps)."""
     db.execute(delete(Marker).where(Marker.session_id == session_id))
-    for media_id, marker_id, time_s in rows:
+    for media_id, marker_id, frame in rows:
         db.add(
             Marker(
                 session_id=session_id,
                 media_file_id=media_id,
                 marker_id=marker_id,
                 kind="momento",
-                media_time_s=time_s,
+                media_frame=frame,
             )
         )
     db.commit()
@@ -95,7 +95,7 @@ def test_preview_has_one_clip_per_marker_and_expected_duration(
     assert report.ok
     files = db.query(MediaFile).order_by(MediaFile.ordinal).all()
     _put_markers(
-        db, report.session_id, [(files[0].id, "a", 1.0), (files[1].id, "b", 0.5), (files[1].id, "c", 1.5)]
+        db, report.session_id, [(files[0].id, "a", 60), (files[1].id, "b", 30), (files[1].id, "c", 90)]
     )
 
     out = tmp_path / "previa.mp4"
@@ -183,6 +183,6 @@ def test_preview_requires_ingested_files(db: Session, settings: Settings, tmp_pa
     media = MediaFile(session_id=session.id, path=str(tmp_path / "x.mp4"), ordinal=0)
     db.add(media)
     db.commit()
-    _put_markers(db, session.id, [(media.id, "a", 1.0)])
+    _put_markers(db, session.id, [(media.id, "a", 60)])
     with pytest.raises(PreviewError, match="não foi ingerido"):
         build_preview(db, session.id, settings, AlwaysFreeGate())

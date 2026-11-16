@@ -469,9 +469,14 @@ MP4, FCPXML mínimo e o `GpuGate` real.
 - Toque durante pausa fica no ponto onde a gravação parou, com aviso.
 - O diário é reaberto sem corromper: se a última linha ficou cortada, o escritor começa com uma quebra de linha.
 
-**Risco para a 1C:** o muxer MP4 do FFmpeg força o primeiro capítulo para 0 s. Se o Hybrid MP4 do OBS tiver o mesmo
-comportamento, o primeiro marcador do arquivo viria com tempo errado; conferir com uma gravação real (o diário
-cobre, pois a divergência vira aviso).
+**Verificado com o OBS real (2026-11-16, OBS em pt-BR, arquivo finalizado):** `ffprobe -show_chapters` traz um capítulo
+inicial em 0 s ("Iniciar", título traduzido), os toques da hotkey nativa ("Sem nome 1", "Sem nome 2") nos tempos
+corretos e um capítulo final "Dummy" que só fecha o último intervalo. Os capítulos do OBS são contíguos (fim de um =
+início do próximo). A ingestão descarta o inicial (reconhecido pela posição: primeiro, em 0 s, sem `tipo|id`, já que
+o título muda com o idioma) e o "Dummy" (`drop_obs_bookends`); sem isso todo arquivo ganharia um `Momento` falso
+em 0 s. O primeiro capítulo em 0 s, que eu tinha tomado por artefato do muxer do FFmpeg, é na verdade o
+capítulo inicial do próprio OBS; os tempos dos toques reais não sofrem esse deslocamento. **Ainda por verificar:**
+nome com `tipo|id` via `CreateRecordChapter`, e se os capítulos sobrevivem a uma gravação interrompida/ao remux.
 
 ---
 

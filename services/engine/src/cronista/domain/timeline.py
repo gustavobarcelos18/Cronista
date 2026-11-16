@@ -125,6 +125,26 @@ def reconstruct_media_times(events: Sequence[JournalEvent]) -> Reconstruction:
     return out
 
 
+OBS_END_TITLE = "Dummy"
+OBS_START_EPSILON_S = 0.01
+
+
+def drop_obs_bookends(chapters: Sequence[FileChapter]) -> list[FileChapter]:
+    """Remove os dois capítulos que o próprio OBS cria no Hybrid MP4, que não são toques de ninguém.
+
+    Verificado numa gravação real do OBS em pt-BR (2026-11-16): o arquivo traz um capítulo inicial em 0 s
+    ("Iniciar", título traduzido conforme o idioma) e um capítulo final "Dummy" que só fecha o último
+    intervalo. Os capítulos do OBS são contíguos (o fim de um é o início do próximo). Como o título inicial
+    muda com o idioma, ele é reconhecido pela posição: o primeiro, em 0 s, sem o formato `tipo|id`.
+    """
+    kept = list(chapters)
+    if kept and kept[-1].title == OBS_END_TITLE:
+        kept.pop()
+    if kept and kept[0].media_time_s < OBS_START_EPSILON_S and parse_chapter_title(kept[0].title) is None:
+        kept.pop(0)
+    return kept
+
+
 def reconcile_file(
     file_name: str,
     journal: Sequence[JournalMarker],
@@ -135,7 +155,7 @@ def reconcile_file(
     resolved: list[ResolvedMarker] = []
     by_id: dict[str, tuple[MarkerKind, FileChapter]] = {}
     orphans: list[tuple[int, FileChapter]] = []
-    for index, chapter in enumerate(chapters):
+    for index, chapter in enumerate(drop_obs_bookends(chapters)):
         parsed = parse_chapter_title(chapter.title)
         if parsed is None:
             orphans.append((index, chapter))

@@ -22,6 +22,7 @@ from cronista.domain.timeline import (
     FileChapter,
     JournalMarker,
     MarkerSource,
+    drop_obs_bookends,
     reconcile_file,
     reconstruct_media_times,
 )
@@ -146,3 +147,27 @@ def test_chapter_title_round_trip() -> None:
     assert parse_chapter_title(chapter_title(MarkerKind.NOVO_DIA, "abc")) == (MarkerKind.NOVO_DIA, "abc")
     for bad in ("Chapter 1", "inexistente|x", "momento|", ""):
         assert parse_chapter_title(bad) is None
+
+
+def test_real_obs_chapters_ignore_start_and_dummy_bookends() -> None:
+    """Saída real de `ffprobe -show_chapters` de uma gravação do OBS (2 toques da hotkey nativa)."""
+    chapters = [
+        FileChapter("Iniciar", 0.0),
+        FileChapter("Sem nome 1", 403.233),
+        FileChapter("Sem nome 2", 421.733),
+        FileChapter("Dummy", 425.301),
+    ]
+    resolved = reconcile_file("testeia.mp4", [], chapters)
+    assert [(r.kind, r.media_time_s) for r in resolved] == [
+        (MarkerKind.MOMENTO, 403.233),
+        (MarkerKind.MOMENTO, 421.733),
+    ]
+
+
+def test_recording_without_any_marker_has_no_markers() -> None:
+    assert reconcile_file("a.mp4", [], [FileChapter("Iniciar", 0.0), FileChapter("Dummy", 60.0)]) == []
+
+
+def test_drop_obs_bookends_keeps_a_typed_marker_at_zero_and_real_last_chapters() -> None:
+    kept = drop_obs_bookends([FileChapter("novo_dia|d1", 0.0), FileChapter("Sem nome 1", 30.0)])
+    assert [c.title for c in kept] == ["novo_dia|d1", "Sem nome 1"]

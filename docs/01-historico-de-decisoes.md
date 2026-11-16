@@ -650,6 +650,34 @@ ambiente; contagem de esperas; gate do OBS contra o servidor falso (grava, para,
 que pausa entre blocos quando um "jogo abre" no meio; etapa de CPU que nem consulta o gate. **Não testado:** gate de
 tela cheia com um jogo de verdade, NVENC, e a pausa entre trechos da prévia (precisa de GPU).
 
+## 34. 1B: fixture "com pausa" e verdade-terreno do tempo dos marcadores
+
+Último item da ordem da 1B. A fixture de vídeo "com pausa" estava prevista na 1A (tarefa 7) e não havia sido feita,
+e os testes de tempo (`test_timeline.py`) só conferiam a **aritmética** sobre eventos sintéticos, sem nenhum vídeo.
+O critério da 1B ("erro < 100 ms nos sintéticos") pede mais: provar que o tempo reconstruído cai no **quadro** certo.
+
+**Desenho (`devtools/timecoded.py`):** vídeo 320x180, 60 fps exatos, três faixas de áudio, com o **relógio de parede
+escrito nos quadros**: metade esquerda = rampa lenta (0 a 20 s, resolução ~80 ms), metade direita = dente de serra de
+1 s (resolução ~4 ms, ambígua módulo 1 s); juntas dão o relógio com erro de poucos ms. Uma gravação com pausa é montada
+**recortando** o trecho pausado (`[(0, 4), (9, 14)]` = gravou 0-4 s, pausou até 9 s, gravou até 14 s; o arquivo tem 9 s),
+como o OBS faz. `wall_time_at(arquivo, t_mídia)` é o oráculo: decodifica o quadro nesse instante e devolve o relógio.
+Os valores de brilho ficam em [16, 235] (faixa limitada do H.264), senão o decodificador comprimiria o sinal.
+Medido: erro do oráculo ~18 ms (um quadro de 1/60 s); gerar um vídeo leva < 1 s.
+
+**Testes (`test_timecoded.py`, 6 novos, 140 no total):** o diário diz a que relógio de parede cada toque ocorreu; o tempo
+de mídia que a ingestão reconstrói precisa cair no quadro que mostra esse relógio (< 100 ms) e no arquivo certo.
+Cenários: gravação simples; pausa recortada do arquivo; divisão de arquivo (relógio reinicia no novo); pausa no
+primeiro arquivo que não pode vazar para o segundo; gravação interrompida (MP4 fragmentado e cortado, diário sem
+`recording_stopped`, depois do remux); e um controle negativo do oráculo.
+
+**Teste de mutação (feito uma vez, à mão):** quebrei de propósito `reconstruct_media_times` de três jeitos e confirmei
+que os testes falham: pausa não descontada (2 testes), divisão que não reinicia o relógio (2), pausa que vaza para o
+arquivo novo (1, só o teste combinado pausa+divisão pega, então ele é necessário). O arquivo foi restaurado.
+
+**Limite honesto:** o vídeo é gerado pelo FFmpeg e a pausa é recortada por nós, então prova que a **conta** do diário
+bate com o conteúdo sob a premissa de que o OBS recorta a pausa do arquivo e restaura o relógio na divisão. Essa
+premissa vem do plano e da documentação do OBS; verificá-la com uma gravação real com pausa é item da 1C.
+
 ---
 
 ## Decisões em aberto

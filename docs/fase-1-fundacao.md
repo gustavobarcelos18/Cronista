@@ -3,7 +3,7 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 1).
 Decisão de dividir a fase: [histórico §25](01-historico-de-decisoes.md).
 
-Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine e GpuGate real prontos, histórico §29–33; falta a fixture com pausa) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
+Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine, GpuGate real e fixture com pausa prontos, histórico §29–34; falta a CI verde com a 1B inteira e o `/code-review` antes do PR) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
 
 ## Divisão
 
@@ -86,11 +86,11 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 
 ### Critérios de aceite (1B)
 
-- [ ] Fixtures de diário (simples, com pausas, com divisão de arquivo, com queda) produzem o tempo de mídia esperado (erro < 100 ms nos sintéticos).
-- [ ] Reconciliação cobre os quatro casos da seção 4, cada um com teste e aviso no relatório.
-- [ ] O gravador, contra o servidor falso, cria o marcador com nome `tipo|id` e escreve o diário; reabrir após queda não corrompe o diário.
-- [ ] `cronista preview` gera um MP4 reproduzível, com N trechos para N marcadores, duração dentro de ±1 s do esperado.
-- [ ] O FCPXML mínimo é gerado e passa em validação estrutural (esquema/DTD, se disponível); a importação real é item da 1C.
+- [x] Fixtures de diário (simples, com pausas, com divisão de arquivo, com queda) produzem o tempo de mídia esperado (erro < 100 ms nos sintéticos).
+- [x] Reconciliação cobre os quatro casos da seção 4, cada um com teste e aviso no relatório.
+- [x] O gravador, contra o servidor falso, cria o marcador com nome `tipo|id` e escreve o diário; reabrir após queda não corrompe o diário.
+- [x] `cronista preview` gera um MP4 reproduzível, com N trechos para N marcadores, duração dentro de ±1 s do esperado.
+- [x] O FCPXML mínimo é gerado e passa em validação estrutural (esquema/DTD, se disponível); a importação real é item da 1C.
 - [ ] CI verde.
 
 ## 1C — Itens do PC de casa

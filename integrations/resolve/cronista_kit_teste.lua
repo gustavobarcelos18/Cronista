@@ -10,7 +10,8 @@
 -- Cada passo imprime OK/FALHOU no Console (e grava resultado-script.txt só se o Lua tiver `io`).
 
 local KIT = "D:\\EditorVideo\\data\\prod\\kit-resolve"
-local PROJECT = "Cronista-kit-teste"
+-- Projeto novo a cada rodada: reabrir o da rodada anterior recusa timelines de mesmo nome e mascara os resultados.
+local PROJECT = "Cronista-kit-" .. os.date("%H%M%S")
 local results = {}
 local state = {}
 
@@ -69,9 +70,10 @@ local function main()
   for _, n in ipairs({ "A_h264.mp4", "B_h264.mp4", "C_hevc.mp4", "overlay_alfa.mov" }) do
     step("importar mídia " .. n, function()
       local got = pool:ImportMedia({ { FilePath = KIT .. "\\clips\\" .. n } })
-      if not got or #got == 0 then error("ImportMedia não devolveu item") end
+      local noPool = count(pool:GetRootFolder():GetClipList())
+      if not got or #got == 0 then error("ImportMedia não devolveu item (clipes no pool agora: " .. noPool .. ")") end
       state.items[#state.items + 1] = got[1]
-      return "ok"
+      return "ok (clipes no pool: " .. noPool .. ")"
     end)
   end
 

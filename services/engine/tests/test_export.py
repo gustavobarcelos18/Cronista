@@ -113,7 +113,7 @@ GOOD = """<?xml version="1.0" encoding="UTF-8"?>
     <format id="r1" frameDuration="1/60s"/>
     <asset id="r2" format="r1" duration="2/1s" start="0s"/>
   </resources>
-  <project name="p">
+  <library><event name="e"><project name="p">
     <sequence duration="2/1s" format="r1">
       <spine>
         <clip name="c" offset="0s" duration="2/1s" start="1/2s">
@@ -123,7 +123,7 @@ GOOD = """<?xml version="1.0" encoding="UTF-8"?>
         </clip>
       </spine>
     </sequence>
-  </project>
+  </project></event></library>
 </fcpxml>
 """
 

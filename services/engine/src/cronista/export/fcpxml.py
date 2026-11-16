@@ -35,6 +35,14 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
     for project in root.iter("project"):
         if project.get("uid") == "":
             del project.attrib["uid"]
+    # O Resolve recusa `<project>` solto na raiz (erro "inherited value for key 'library'", 2026-11-16):
+    # o esquema exige <library><event><project>, como nos arquivos do kit que importam.
+    project = root.find("project")
+    if project is not None:
+        root.remove(project)
+        library = ET.SubElement(root, "library")
+        event = ET.SubElement(library, "event", {"name": "Cronista"})
+        event.append(project)
 
     ET.indent(root, space="  ")
     return _XML_HEAD + ET.tostring(root, encoding="unicode") + "\n"
@@ -91,6 +99,10 @@ def check_fcpxml(xml: str) -> list[str]:
 
     if any(child.tag == "asset-clip" for child in root):
         problems.append("<asset-clip> solto na raiz do <fcpxml>")
+    if root.find("library/event/project/sequence") is None:
+        problems.append(
+            "a sequência precisa estar em <library><event><project> (o Resolve recusa sem <library>)"
+        )
 
     sequences = list(root.iter("sequence"))
     if not sequences:

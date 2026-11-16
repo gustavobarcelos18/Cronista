@@ -2,13 +2,13 @@
 
 Origem: checklist do plano mestre, seção 6.5. Preencha **Resultado** (OK / parcial / falhou) e **Observação** de
 cada item. Os itens com ⚠️ no plano ganham resposta aqui e depois são movidos para a seção 6.5 (critério de aceite da 1C).
-Nada deste roteiro foi executado ainda: o Resolve não está instalado no PC de casa em 2026-11-16.
+Versão instalada no PC de casa: **DaVinci Resolve 21.2.1.0006** (2026-11-16). Nada deste roteiro foi executado ainda.
 
 ## Preparação
 
-1. Instalar o DaVinci Resolve **gratuito** (anotar a versão exata: ________).
-2. Copiar `C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting\README.txt` para
-   `docs/referencias/resolve-scripting-README.txt` (consulta em qualquer PC).
+1. Resolve gratuito instalado: versão 21.2.1.0006. Abrir uma vez e concluir a configuração inicial.
+2. README de scripting já copiado para `docs/referencias/resolve-scripting-README.md` (no 21.2 é `.md`). O script do kit
+   usa a API atual dele (`ImportMedia` com dicionários, `SetSettings`).
 3. Gerar o kit (cria `data/prod/kit-resolve/`, não versionado):
    ```bash
    cd services/engine
@@ -61,8 +61,8 @@ O kit tem três FCPXML separados de propósito: se um falhar, o item culpado fic
 
 ## C. Script interno (Workspace → Scripts)
 
-1. Copiar `integrations/resolve/cronista_kit_teste.py` para
-   `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\`.
+1. O script já está em `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\`; o Resolve só
+   lista scripts ao abrir, então reinicie-o se ele já estava aberto.
 2. Rodar por **Workspace → Scripts → cronista_kit_teste** com um projeto vazio aberto.
 3. Colar aqui o conteúdo de `data/prod/kit-resolve/resultado-script.txt`.
 

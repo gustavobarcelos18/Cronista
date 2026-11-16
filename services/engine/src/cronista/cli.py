@@ -13,8 +13,11 @@ from cronista.config import load_settings
 from cronista.db.models import Job, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
+from cronista.domain.frames import frame_to_seconds
 from cronista.export.service import export_session
+from cronista.gabarito import validate_gabarito
 from cronista.gates import build_gate
+from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
 from cronista.ingest.service import SessionConflictError, ingest_folder
 from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
@@ -174,6 +177,46 @@ def record(
         typer.echo("Gravador encerrado.")
     finally:
         feedback.close()
+
+
+@app.command()
+def gabarito(
+    csv_path: Annotated[Path, typer.Argument(help="CSV com inicio,fim,classe,nota")],
+    video: Annotated[
+        Path | None, typer.Option(help="Vídeo anotado: confere a duração e serve à prévia")
+    ] = None,
+    previa: Annotated[
+        Path | None, typer.Option(help="Pasta onde gravar um MP4 curto por anotação, para conferir de ouvido")
+    ] = None,
+) -> None:
+    """Valida o gabarito anotado à mão e resume o que há em cada classe (decisão D3)."""
+    settings = load_settings()
+    duration = None
+    if video is not None:
+        duration = probe_media(settings, video).duration_s
+    report = validate_gabarito(csv_path, duration)
+    for error in report.errors:
+        typer.echo(f"erro: {error}", err=True)
+    for warning in report.warnings:
+        typer.echo(f"aviso: {warning}")
+    for cls, (count, seconds) in report.totals().items():
+        typer.echo(f"{cls:<12} {count:>4} trecho(s)  {seconds:>8.1f}s")
+    if report.ok and previa is not None:
+        if video is None:
+            typer.echo("erro: --previa precisa de --video", err=True)
+            raise typer.Exit(1)
+        previa.mkdir(parents=True, exist_ok=True)
+        for a in report.annotations:
+            out = previa / f"{a.line:03d}-{a.cls}.mp4"
+            run_ffmpeg(
+                settings,
+                ["-ss", f"{frame_to_seconds(a.start_frame):.3f}",
+                 "-t", f"{frame_to_seconds(a.end_frame - a.start_frame):.3f}", "-i", str(video),
+                 "-map", "0:v:0", "-map", "0:a:0", "-vf", "scale=640:-2,fps=30,format=yuv420p",
+                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-c:a", "aac", str(out)],
+            )  # fmt: skip
+        typer.echo(f"prévia: {len(report.annotations)} arquivo(s) em {previa}")
+    raise typer.Exit(0 if report.ok else 1)
 
 
 @app.command()

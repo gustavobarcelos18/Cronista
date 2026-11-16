@@ -1,9 +1,11 @@
 # Cronista
 
 App pessoal que transforma horas de gameplay gravada no OBS em uma timeline pré-montada no DaVinci Resolve
-gratuito + roteiro de narração, para vídeos de "100 dias". O produto é **um único vídeo de 30–50 min** por série,
-montado a partir de várias sessões de gravação de duração variável (3 h, 6 h, 10 h…). Usuário único (o criador),
-mas estruturado para escalar.
+gratuito + roteiro de narração, para vídeos de "100 dias" (e outros formatos narrativos). O produto é **um único vídeo
+por série, com duração-alvo de 30–50 min**, montado a partir de várias sessões de gravação de duração variável
+(3 h, 6 h, 10 h…). A duração é referência, não obrigação: um vídeo mais curto (ex.: 25 min) com arco narrativo completo
+(começo, meio, fim e clímax) está pronto para postar; qualidade vem antes de minutagem (histórico §40). Usuário único
+(o criador), mas estruturado para escalar.
 
 ## Fonte de verdade
 
@@ -25,10 +27,12 @@ mas estruturado para escalar.
 - **Fala ao vivo tem prioridade:** o roteiro só complementa (explica decisões, o porquê, o que vem a seguir) nos
   espaços sem fala ao vivo. Sem voz sintética. Texto sem "cara de IA" (skill `/humanizar`, adaptada do Humanizer, MIT; ver seção 6 do plano).
 - **Custo zero:** tudo local (RTX 3060 12 GB). Claude só via Claude Code no plano Pro (sem API); entradas compactas.
-- **LLM local só para tarefas curtas e fechadas**, com saída em JSON Schema validada por Pydantic.
+- **LLM local só para tarefas curtas e fechadas**, com saída em JSON Schema validada por Pydantic. Única exceção
+  aprovada, experimental: o `LocalScriptProvider` (roteiro local, por trecho curto, histórico §40), que só vale se passar no
+  benchmark de roteiro da Fase 2; o fallback padrão continua sendo o `NullProvider`.
 - **Caminho de mão única** app → Resolve; efeitos sempre reversíveis (trilha acima do original).
 - Gravação: OBS em Hybrid MP4, H.264 8-bit SDR (NV12, Rec. 709), **60 fps exatos** (timeline e renders também),
-  faixa 1 = mix, 2 = jogo, 3 = microfone (fonte de microfone sem filtro, separada da que tem RNNoise no mix).
+  faixa 1 = mix, 2 = jogo, 3 = microfone (fonte única `MIC` com RNNoise nas faixas 1 e 3; sem fonte crua, histórico §41).
   Nunca analisar o mix. Sem facecam.
 - **Resolve gratuito:** nunca gerar nada que dependa de recurso do Studio (Speed Warp, Magic Mask, Super Scale,
   redução de ruído de vídeo etc.), porque deixa marca d'água. Limites e estratégia de render na seção 6.5 do plano.

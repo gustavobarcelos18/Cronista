@@ -863,6 +863,216 @@ por ser decisão de renderização e não evidência.
 
 ---
 
+## 39. 1C: primeira passada no PC de casa (2026-11-16)
+
+O PC de casa (`prod`: RTX 3060, driver 610.88, OBS 33.0.1, FFmpeg 9.0.2) foi usado pela primeira vez. Branch
+`fase/1c-pc-de-casa`. **O DaVinci Resolve não estava instalado** neste PC na primeira passada (tudo que dependia dele ficou como kit
+pronto); foi instalado depois, no mesmo dia (ver "Segunda passada" abaixo).
+
+**Decisões:**
+- **Classes do gabarito** (proposta inicial, em `docs/gabarito.md` e `cronista/gabarito.py`): `fala`, `risada`, `grito`,
+  `teclado`, `respiracao`, `farm`, `momento`, `menu`, `loading`, `idle`, `cinematica`, `construcao`, `objetivo`,
+  `estado`. Sobreposição entre classes diferentes é permitida; o validador recusa classe fora da lista (crescer a lista é
+  decisão). Tempo anotado em segundos e guardado em quadros a 60 fps (§38). Comando `cronista gabarito` com
+  `--video` (confere duração) e `--previa` (um MP4 curto por anotação).
+- **Kit do Resolve em três FCPXML separados** (`cronista resolve-kit`): básico, recursos e áudio; um erro de importação
+  aponta o recurso culpado. FCPXML versão 1.9 com `asset src=`; UIDs de título/transição e EDL de marcadores de memória (⚠️).
+  Roteiro de checagem em `integrations/resolve/ROTEIRO.md`; script interno em `integrations/resolve/cronista_kit_teste.py`
+  (relata OK/FALHOU por passo).
+
+**Medido no `prod`:**
+- Gravações reais do OBS (`Cronista_Teste.mp4`, `testeia.mp4`): `cronista ingest` sem aviso de formato (H.264 High,
+  yuv420p, bt709, 60/1, 3 faixas); 5 marcadores (capítulos `Sem nome N` viram `Momento` com aviso, como previsto);
+  `cronista preview` com `h264_nvenc`: 5 trechos, 117,1 s esperados e 117,1 s gerados, em ~39 s; `cronista export` sem
+  problema estrutural. A interrupção/remux e a gravação com o gravador continuam por fazer (guia do OBS, seção 6).
+- **CUDA** (`integrations/cuda/check_cuda.py`, ambiente descartável): torch 2.11.0+cu128 e ctranslate2 4.9.0 convivem
+  nas duas ordens de importação; cuDNN 9.19; `faster-whisper tiny` em float16 rodou na GPU (~1,2 GB de VRAM).
+  Limite do teste: as duas ordens importam o torch antes de rodar o Whisper, então não prova o CTranslate2 sozinho.
+- **OBS (lido dos arquivos de configuração):** perfil conforme o plano (Hybrid MP4, NVENC H.264, 60 comum, NV12, 709,
+  trilhas 1–3). Falhas: servidor WebSocket **desligado**; `MIC_RAW` **mudo** (explica a faixa 3 vazia); `MIC_MIX` sem
+  RNNoise e em dispositivo diferente do `MIC_RAW`. Registrado em `integrations/obs/GUIA.md`.
+- **FIFINE SC3** (VID 3142, PID 0C33): o Windows a mostra com duas interfaces HID (controle de mídia e uma de fabricante,
+  `0xff00`) e nenhuma entrada MIDI. 90 s de escuta sem eventos: **inconclusivo** (não se sabe se os botões foram apertados);
+  repetir com o criador apertando botão por botão. **Decisão posterior (2026-11-16): o criador descartou a FIFINE SC3
+  como dispositivo de marcação** ("não funcionam para o que precisamos"); vale o caminho 3 do plano (teclas F13–F24
+  por macro, mouse ou macropad). O spike fica em `integrations/fifine/` só como registro.
+
+**Segunda passada: Resolve gratuito 21.2.1.0006 (PT-BR), mesmo dia.** Instalado e testado com o kit
+(`cronista resolve-kit`). Detalhes e ressalvas na seção 6.5 do plano; resumo:
+- Scripting externo **bloqueado**. O Console interno só aceita Lua, sem `io`/`dofile`/`loadfile`/`require`; scripts em
+  `Scripts\Utility` não aparecem no menu. O teste roda colando `teste-linha-unica.lua` (gerado por
+  `integrations/resolve/gerar_linha_unica.py`). Um projeto novo por rodada: reaproveitar o anterior fez o Resolve
+  recusar timelines de mesmo nome e mascarou resultados (a recusa do título na 2ª rodada era isso, não o UID).
+- FCPXML: entram `01`, `02a` a `02e` e `03-audio`; HEVC (`02f`) é recusado; o FCPXML com tudo junto foi recusado,
+  por isso o kit tem um arquivo por recurso. Título nativo, overlay com alfa e 3 trilhas de áudio (canal desativado
+  chega como clipe desativado) confirmados nos prints.
+- Bug nosso achado no teste: o `overlay_alfa.mov` saía 100% transparente (`drawbox` sem `replace=1`); corrigido, com
+  teste automático do pixel.
+- Marcadores: nenhuma das três posições no FCPXML (clipe, sequência, gap) vira marcador de timeline; o Resolve gratuito
+  não tem importação de marcadores por EDL nos menus; `AddMarker` pelo Console funciona. **Decisão:** marcadores só por script.
+- SRT: pelo menu Importar → Legenda; o clipe do Pool começa na 1ª fala e desloca 1 s se solto no início. **Decisão:**
+  o app gera o SRT com uma fala vazia em 0 s (conferido: falas em 1 s, 4 s e 8 s).
+- **FCPXML do app (A16): o adaptador OTIO `fcpx_xml` foi abandonado.** O arquivo que ele gerou (versão 1.8, `<project>`
+  solto, `<clip>` com `<video>` e `<gap>` aninhados) foi recusado pelo Resolve ("Unable to find inherited value for key
+  'library'"); com `library/event` por cima o Resolve abriu a janela "Carregar XML" e **travou** depois do Ok (mais de
+  uma hora). **Decisão:** o app escreve o FCPXML 1.9 à mão (`export/fcpxml.py`), no desenho dos arquivos do kit que
+  importam: `asset-clip` por trecho na V1, áudio do jogo e do microfone (WAVs) como `asset-clip` nas lanes -1 e -2. O
+  `.otio` continua sendo gravado. **Resultado (mesmo dia): importou sem erro nem travada**: `sessao-1` com 5 clipes na V1
+  (10 s, 30 s, 23:32, 30 s, 23:34), `game.wav` na A1 e `mic.wav` na A2, 1:57:06 no total (7026 quadros a 60 fps, como
+  o esperado); o áudio do mestre não entra, então não há áudio duplicado; painel Marcadores vazio (esperado, marcadores
+  só por script). Sincronia de áudio e vídeo, reprodução e uso da GPU ainda não conferidos. Isso substitui a escolha da 1B
+  (histórico §30) de usar o adaptador com correções mínimas.
+- O criador perguntou se dava para trocar o editor, se necessário: avaliado, **não é necessário**; Kdenlive fica como
+  plano B (de memória, não verificado).
+- Erros meus corrigidos no caminho: o roteiro apontava Linha de Tempo → Importar para o EDL de marcadores (o menu não
+  existe nessa versão) e dizia que o script aparecia em Área de Trabalho → Scripts.
+
+**Pendente (precisa do criador):** ajustes do OBS acima (a configuração no disco ainda não foi reverificada);
+gravação com `MIC_RAW` ativo; anotação do gabarito; no Resolve: relink, HEVC à mão, tons de áudio, desempenho e render
+(blocos A5, A16, D do roteiro). Resultado do `SetLUT` e dos marcadores de clipe da última rodada não chegou em texto.
+
+---
+
+## 40. Questionário de decisões editoriais v0.1 (2026-11-16)
+
+Documento `Cronista_Questionario_e_Decisoes_Editorias_v0_1.md`: 27 perguntas e as respostas do criador, mais o contexto
+aprovado antes delas. Avaliado contra o plano mestre, o histórico (§36–39) e o `fase-1-fundacao.md`. **Só documentação:
+nenhum código foi alterado, a ordem do roadmap não mudou e a 1B/1C não ganharam nada.** Registrado na branch
+`docs/questionario-editorial`. Os conflitos com decisões anteriores ficaram em aberto no primeiro commit e foram
+**decididos pelo criador na mesma conversa** (bloco "Decisões do criador", abaixo; seção 9 do plano).
+
+**Contexto aprovado (já compatível):** autonomia nível B, editor autônomo supervisionado (a "primeira edição completa" é lida
+como o rough cut rico da seção 6.3: o acabamento continua do criador no Resolve; confirmar se houver divergência);
+narração escrita pelo Cronista e gravada pelo criador; formatos gerais (§36); memória em SQLite (§37); montagem inteligente (§36);
+priorizar o Ollama local para o trabalho frequente e o Claude Pro só onde agrega valor, sem presumir API ilimitada (plano §1 e §6.1).
+
+**Respostas registradas como decisão (plano, seção 6.8 e fases):**
+
+| Q | Resposta | Efeito |
+|---|---|---|
+| 1 | A+B+C+D | Os quatro riscos (cortar o importante, partes monótonas, drama artificial, narrativa desconexa) viram critérios de revisão (6.8) |
+| 2 | B | Preservar o contexto essencial e condensar o lento (já em 6.3) |
+| 3 | C | Suspense por edição e narração, sem distorcer fatos (6.8) |
+| 4 | B | Montagem de tentativas mostrando evolução (6.8; Fases 4, 5A e 6; viabilidade não comprovada) |
+| 5 | C | Reação original e narração combinadas, sem repetir (já em 6) |
+| 6 | C | Acontecimento fora do objetivo: avalia o impacto e cria um pequeno arco se merecer (6.8) |
+| 7 | B+C | Abertura com cena forte e curiosidade sem inventar fatos; cinemática enquanto o criador narra o objetivo. Sem ângulos 3D novos (§6.2) |
+| 8 | A | Final direto; um fracasso real é preservado (6.8, beats) |
+| 11 | C com condição | Cronologia por padrão; antecipação só para gerar desejo ou ilustrar uma narração com cinemática; sempre marcada (6.8) |
+| 12 | C | Humor adaptado ao contexto, preservando a espontaneidade (6.8) |
+| 13 | C | Mantém as partes relevantes da fala longa e a narração complementa, incluindo a mudança de estratégia (6.8) |
+| 14 | A | Evento de mod não confirmado vai para revisão humana, nunca descartado nem afirmado (5A) |
+| 18 | C | Identidade híbrida: brand kit do canal mais estilo declarativo por série (6.4) |
+| 19 | B+C | Efeitos dinâmicos e adaptativos, sem poluição visual (já em 6.4) |
+| 20 | C | Referências, recursos próprios e feedback; só princípios e métricas de ritmo, nunca cópia (6) |
+| 21 | A | Roteiro completo, com estimativa de duração por fala (6.8) |
+| 22 | B+C+D | Tom natural, dinâmico e adaptativo (6.8) |
+| 23 | D | Ganchos combinados conforme a narrativa, sem exagero nem invenção (6.8) |
+| 24 | C | Ritmo dinâmico, respeitando o contexto da Q2 (6) |
+| 25 | D | Legendas só em falas e momentos importantes, com animações pontuais (Fase 8) |
+| 26 | C | Feedback escrito em linguagem natural, dentro do Studio (Fase 7); não é fine-tuning (Fase 7) |
+
+**Respostas que só entram como indício:**
+- **Q15 (resposta livre, sem letra):** "o roteiro é uma base para eu seguir, se ficar mais curto eu corto, se ficar maior eu estendo".
+  Não recebeu A, B ou C. Reforça a dúvida em aberto sobre o ducking pré-aplicado (seção 9, item 9 do plano; o stem cru A6
+  já permite desfazer), sem decidi-la.
+
+**Conflitos com decisões anteriores (propostas feitas ao criador; resolvidos no bloco "Decisões do criador", abaixo):**
+1. *Roteiro inteiramente local* (contexto) × §6.1 e §9 ("sem Claude, o fallback é o `NullProvider`"). Proposta: manter o
+   `NullProvider` e acrescentar um `LocalScriptProvider` experimental, só se passar no benchmark de roteiro.
+2. *Duração como referência, qualidade acima de duração* (Q9 A+B, Q10 A) × "um único vídeo de 30–50 min" (CLAUDE.md, plano
+   §0.1, §1 e §9). Proposta: 30–50 min fica como padrão do formato 100 dias; a duração vira parâmetro e teto do projeto; o
+   painel da série avisa "material insuficiente" sem forçar o preenchimento. Exige alterar o CLAUDE.md.
+3. *Aprendizado só por feedback em texto* (Q26 = C, sem o D) × §3.4, §5.3 e Fase 7 (aceitar/rejeitar recalibra os pesos
+   automaticamente). Falta saber se a recalibração automática continua.
+4. *Música e SFX escolhidos e posicionados pelo Cronista* (Q16 = B) × §6.4 (baixa confiança fica em `sugerir`; piada visual e
+   SFX de meme só como sugestão). Proposta: `aplicar editável` como padrão acima de um limiar, meme em `sugerir`.
+5. *Biblioteca pessoal de efeitos, transições e SFX* (Q17 = C) × §6.4 (só Biblioteca de Áudio do YouTube ou música de IA) e a
+   regra do Resolve gratuito (efeito do Studio ou plugin pago deixa marca d'água). Falta o formato dos arquivos do criador.
+6. *"Modelos gratuitos diferentes"* (contexto): só modelos abertos locais? Serviço gratuito hospedado quebra "custo zero e tudo
+   local" e a privacidade da gameplay e da voz.
+
+**Q27** (o feedback aplica a correção na edição atual ou só registra para as futuras): estava pendente; **decidida** no bloco abaixo.
+
+**Lacunas expostas (seção 9, item 11):**
+- **Revisão humana entre a 5A e a Fase 7.** A Q14 exige revisão, mas o Studio só chega na Fase 7. Proposta: fila de revisão em CSV ou
+  relatório HTML nas Fases 4 a 6, que o Studio absorve depois.
+- **"Tom" ou emoção da cena** não existe como sinal. A Q16 (música conforme a emoção) e a Q19 (efeitos adaptativos ao tom)
+  dependem dele. Viabilidade não comprovada.
+- **Legendas de fala no vídeo longo** (Q25): a trilha "Legendas" da seção 6.3 é o SRT do roteiro, e a legenda gravada só existe nos Shorts.
+
+**Decisões do criador sobre os conflitos e a Q27 (2026-11-16, mesma conversa):**
+1. **Roteiro local:** `LocalScriptProvider` **experimental**, ao lado do `NullProvider`, que continua como fallback. Só vale se
+   passar no benchmark de roteiro da Fase 2. Substitui "o roteiro não cai para o LLM local" (seções 6.1 e 9 do plano).
+2. **Duração:** resposta livre: um vídeo de 25 min, com contexto narrativo interessante e começo, meio e fim definidos, com
+   clímax, deve poder ser postado. O critério de "pronto" é o **arco narrativo completo**, não a minutagem. Registrado como:
+   30–50 min é a duração-alvo e referência do formato 100 dias, **não obrigação**; o painel da série avisa "material
+   insuficiente" sem forçar preenchimento (CLAUDE.md, seções 0.1, 1 e 9 do plano ajustados). Interpretação da resposta livre:
+   não houve decisão sobre se a faixa 30–50 continua como padrão do painel; foi mantida como referência.
+3. **Aprendizado:** os dois canais. Manter/tirar trecho no Studio (aceitar/rejeitar) continua recalibrando os pesos de nota
+   sozinho, e o feedback escrito em texto acrescenta regras explícitas. Mantém a seção 3.4, a 5.3 e a Fase 7 como estavam.
+4. **Música e SFX:** **tudo automático** (Q16 = B), inclusive SFX de meme e piada visual. Substitui "piadas visuais ficam como
+   sugestão" (6.3) e "baixa confiança fica só como sugerir" (6.4). Continuam valendo o orçamento de efeitos por minuto, a
+   intensidade ligada à nota do momento e a reversibilidade (efeito sempre em trilha acima do original). Sem item adequado na
+   biblioteca, nada é aplicado. Risco registrado: o próprio plano apontava a piada visual automática como o que mais denuncia
+   vídeo feito por IA; o orçamento por minuto e a revisão do primeiro corte são a mitigação.
+5. **Biblioteca pessoal:** os efeitos, transições e SFX do criador são **arquivos de áudio e vídeo**, que funcionam no Resolve
+   gratuito sem marca d'água. Passam a ser a fonte prioritária, com inventário e registro de origem e licença; a Biblioteca de
+   Áudio do YouTube e a música de IA ficam como complemento (6.4).
+6. **Modelos gratuitos:** só modelos abertos locais (RTX 3060). Serviços gratuitos hospedados estão fora.
+7. **Q27:** o feedback escrito **aplica a correção na edição atual e registra a preferência** para as próximas. A edição atual é
+   ajustada antes de exportar, com re-execução só das etapas afetadas (cache por hash); o Resolve continua de mão única.
+
+Continuam em aberto desta entrada: critérios de aceite qualitativos para os quatro riscos, o sinal de "tom" da cena e a fila
+de revisão (propostas, ainda sem fase de execução).
+
+**Nota de consistência (fora do escopo desta entrada):** o plano ainda cita a FIFINE como pendente em §0.1, na Fase 1 e no item 2
+de "Em aberto", apesar da decisão do §39. Não foi corrigido aqui.
+
+---
+
+## 41. Microfone sem a fonte crua (2026-11-16)
+
+Origem: no teste do Resolve com as gravações reais, o microfone não tocava (A2 muda). Medido: a faixa 3 do
+`Cronista_Teste.mp4` está a −91 dB, silêncio digital, porque o `MIC_RAW` estava mudo no OBS. O criador perguntou por que
+o `MIC_MIX` não foi usado, propôs dois arranjos (1 jogo+mic mix, 2 jogo, 3 mic mix, 4 mic raw; ou 1 jogo, 2 mic mix, 3 mic
+raw) e depois decidiu: **"vamos desconsiderar o mic raw"**.
+
+**Decisão:** uma fonte de microfone só (`MIC`), com RNNoise, nas faixas 1 (mix) e 3 (microfone). Faixas: 1 = mix, 2 = jogo,
+3 = microfone. Sem fonte crua. O código não muda: o app extrai as faixas de índice 1 (jogo) e 2 (microfone) (`AUDIO_TRACKS`).
+Resolve a dúvida em aberto da seção 9 do plano ("para que serve o mix com RNNoise?").
+
+**Custos assumidos (⚠️ a medir na Fase 2):**
+- Teclado e respiração ficam atenuados na faixa 3; as classes `teclado` e `respiracao` do gabarito podem não ser
+  detectáveis. Se o benchmark mostrar isso, reabrir com uma fonte crua na faixa 4 (ou tirar as classes).
+- O benchmark "WER com e sem DeepFilterNet" passa a testar limpeza sobre um sinal que já passou pelo RNNoise.
+- Sem cópia sem filtro, a limpeza do OBS não se refaz depois.
+
+**Efeitos práticos:** a configuração do OBS é mais simples (uma fonte, sem o problema de duas fontes no mesmo
+dispositivo). As gravações de teste atuais (faixa 3 vazia) continuam inúteis para fala; falta gravar com `MIC` ligado.
+Documentos ajustados: `CLAUDE.md`, plano (seções 2, 6.4, 9 e listas), `integrations/obs/GUIA.md`, fase 1.
+Os trechos de §39 que citam `MIC_RAW` descrevem o estado antes desta decisão.
+
+**Confirmado depois (mesmo dia):** o criador configurou o OBS no arranjo de 3 faixas (`AUDIO_GAME` em 1 e 2, `MIC` em 1 e 3)
+e a gravação de 10 s `2026-11-16 18-40-07.mp4` mediu: faixa 1 −26,1 dB, faixa 2 (jogo) −43,1 dB, faixa 3 (microfone)
+−26,2 dB (pico −8,5): a faixa 3 tem sinal. O jogo estava baixo; combinado subir o ganho dele em vez de abaixar a voz.
+
+**Ferramenta de supressão de ruído (2026-11-16):** o criador não usa RNNoise no OBS; a limpeza do microfone é o **ClearCast
+AI do SteelSeries Sonar** (dispositivo virtual de entrada), ajustado para ~50% (era ~75%; ⚠️ o limite de ~50% vem de uma guia
+de terceiros, não da SteelSeries), com gate e compressor do Sonar desligados e um **Limitador** no OBS (−6 dB, liberação 60 ms,
+de memória) para gritos. Onde esta decisão e o plano dizem "RNNoise", leia "supressão de ruído na origem" (ClearCast ou RNNoise,
+**um só, nunca os dois**). A configuração do Sonar fica fora do repositório: registrar os valores neste histórico se mudarem.
+
+**Marcação com teclado de 60% (2026-11-16):** o criador usa teclado 60%, sem F13–F24, e disse que programar e decorar
+vários comandos seria difícil. **Decisão para a gravação de teste de 30 min: só a tecla nativa do OBS** ("Adicionar marcador
+de capítulo", ligada à tecla Menu), sem o gravador do app. Resultado esperado: capítulos "Sem nome N" que o ingest já
+converte em `momento` com aviso; **sem `novo_dia` e sem tipos** (o dia fica implícito). Isso contradiz a regra de que
+`novo_dia` é obrigatória (`CLAUDE.md`, plano seção 4) e fica **em aberto** (plano, seção 9): como marcar o início do dia e os
+tipos de momento com poucas teclas, sem decorar atalhos (ex.: uma tecla só e o tipo decidido depois na revisão; uma
+tecla de dia; marcar por voz). O gravador do app e a conexão com o OBS (WebSocket) continuam funcionando e testados.
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

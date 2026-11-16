@@ -3,7 +3,7 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 1).
 Decisão de dividir a fase: [histórico §25](01-historico-de-decisoes.md).
 
-Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine, GpuGate real e fixture com pausa prontos, histórico §29–35, com o `/code-review` feito e os 10 achados corrigidos; tarefa 7 (tempo em quadros, histórico §38) feita na branch `fase/1b-quadros`, a ser integrada à `main`; PR #3 já integrado, com CI verde. 1C pendente (PC de casa)) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
+Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine, GpuGate real e fixture com pausa prontos, histórico §29–35, com o `/code-review` feito e os 10 achados corrigidos; tarefa 7 (tempo em quadros, histórico §38) feita na branch `fase/1b-quadros`, a ser integrada à `main`; PR #3 já integrado, com CI verde. tarefa 7 já integrada (PR #4). 1C em andamento na branch `fase/1c-pc-de-casa` (histórico §39): kit do Resolve, guia do OBS, teste de CUDA, formato do gabarito e validação de ingestão/prévia/exportação em `prod` prontos; faltam o Resolve (não instalado), o teste físico da FIFINE e a gravação com `MIC_RAW`) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
 
 ## Divisão
 
@@ -13,7 +13,7 @@ A Fase 1 original era grande demais. Ela fica em três sub-etapas, nesta ordem:
 |---|---|---|
 | **1A – Esqueleto e ingestão** | `dev` (PC do trabalho, sem GPU) | Monorepo, CI, config, banco, contratos, orquestrador com cache e retomada, ingestão completa sobre fixtures sintéticas |
 | **1B – Marcadores e prévia** | `dev` (testes com mocks); validação final em `prod` | Gravador de marcadores (opção A), diário `.markers.jsonl`, reconciliação, CLI `ingest/status/preview`, prévia MP4, FCPXML mínimo |
-| **1C – Itens do PC de casa** | `prod` (kit montado em `dev`) | Kit de teste do Resolve, spike da FIFINE, guia do OBS, testes físicos (GpuGate, hotkeys, gravação real com `MIC_RAW`), gabarito (formato). Benchmark de modelos fica na **Fase 2** |
+| **1C – Itens do PC de casa** | `prod` (kit montado em `dev`) | Kit de teste do Resolve, spike da FIFINE, guia do OBS, testes físicos (GpuGate, hotkeys, gravação real com o microfone ativo), gabarito (formato). Benchmark de modelos fica na **Fase 2** |
 
 1A não depende de nada em aberto. 1B depende das decisões D1–D3 abaixo. 1C depende de o criador estar no PC de casa.
 Cada sub-etapa só começa com os critérios da anterior cumpridos, exceto 1C, que pode ser executada em paralelo assim
@@ -105,14 +105,18 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 4. **Teste de instalação de CUDA** (RTX 3060): confere se cuBLAS/cuDNN do CTranslate2 convivem com o PyTorch no mesmo ambiente (⚠️ seção 5.2), sem medir desempenho de modelo. O benchmark de velocidade e VRAM é da **Fase 2** (decisão de 2026-11-16).
 5. **Gabarito**: formato (CSV, D3) + script de validação documentados. A anotação em si (2–3 h) é do criador, quando puder.
 6. **Validação em `prod`** do que a 1A/1B só testaram com mocks: gravação real com marcadores via gravador, ingestão, prévia e importação do FCPXML.
-7. **Gravação de teste com `MIC_RAW` ativo** (nova; o `Cronista_Teste.mp4` tem a faixa 3 silenciosa): necessária para testar fala e objetivos na Fase 2 e 5A.
+7. **Gravação de teste com o microfone (fonte `MIC`, faixa 3) ativo** (nova; o `MIC_RAW` foi descartado, histórico §41; o `Cronista_Teste.mp4` tem a faixa 3 silenciosa): necessária para testar fala e objetivos na Fase 2 e 5A.
 
 ### Critérios de aceite (1C)
 
 - [ ] Roteiro de checagem do Resolve preenchido (itens que o plano marca como ⚠️ ganham resposta e são movidos para a seção 6.5).
-- [ ] Resultado da FIFINE registrado (qual dos três caminhos vale).
+- [x] Resultado da FIFINE registrado: **descartada** pelo criador em 2026-11-16 (histórico §39); vale o caminho 3 (F13–F24, mouse ou macropad).
 - [ ] Guia do OBS seguido do zero produz uma gravação que passa na validação da ingestão.
-- [ ] Teste de instalação CUDA (item 4) registrado; o resultado alimenta o benchmark da Fase 2.
+- [x] Teste de instalação CUDA (item 4) registrado (histórico §39: torch + CTranslate2 convivem); alimenta o benchmark da Fase 2.
+- [x] Formato do gabarito e script de validação prontos (`docs/gabarito.md`, `cronista gabarito`); a anotação é do criador.
+- [x] Kit do Resolve e roteiro prontos (`integrations/resolve/`); Resolve 21.2.1.0006 instalado e testado em parte
+  (importação, título, overlay, áudio, legenda e marcadores respondidos; faltam relink, FCPXML do app, desempenho e
+  render). Resultados na seção 6.5 do plano e no histórico §39.
 
 ## Aceite da Fase 1 (do plano mestre)
 

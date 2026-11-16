@@ -48,7 +48,7 @@ Checklist do PC de casa:
 | Hardware | RTX 3060 12 GB, 32 GB RAM, HD 2,5 TB, SSD 450 GB |
 | Custo | Zero: modelos locais + Claude Code no plano Pro |
 | Saída | Timeline pré-montada no DaVinci Resolve gratuito + Shorts/Reels |
-| Produto | **Um único vídeo de 30–50 min** por série de 100 dias, montado a partir de várias sessões de gravação de duração variável (ex.: 3 h, 6 h, 10 h) |
+| Produto | **Um único vídeo, com duração-alvo de 30–50 min**, por série de 100 dias, montado a partir de várias sessões de gravação de duração variável (ex.: 3 h, 6 h, 10 h). A duração é referência, não obrigação (decisão de 2026-11-16, seção 9) |
 | Roteiro | Só roteiro (sem voz de IA), humanizado, no estilo de fala do criador |
 | Estilo | Storytelling: mortes e falhas (sofrimento + humor), conquistas, chefes, construções |
 | Referências | Baronismo, Xedou, Trousy, Promptz (estudar o ritmo, não o conteúdo) |
@@ -76,6 +76,8 @@ jornada e compactam com edição e storytelling.
 
 **Produto:** um único vídeo de 30–50 min por série de 100 dias. Ele sai de várias sessões de gravação de tamanhos
 diferentes (ex.: 3 h, 6 h, 10 h), processadas uma a uma e montadas juntas no fim (seção 4.1).
+Os 30–50 min são a duração-alvo, não obrigação: se só houver 25 min com contexto narrativo interessante e começo, meio, fim
+e clímax definidos, o vídeo de 25 min está apto a ser postado, e o Cronista não preenche tempo (seção 9; histórico §40).
 
 **Fora de escopo (por enquanto):** substituir o Resolve como editor (a edição final e o acabamento criativo são do
 criador, no Resolve), voz sintética, multiusuário/SaaS. O app **pode codificar vídeo** quando isso é só execução:
@@ -142,11 +144,14 @@ outra: a divisão continua de uma sessão para a seguinte, até o próximo `Novo
   um ponto de falha.
 - Faixa 1 = mix · Faixa 2 = **jogo** · Faixa 3 = **microfone**. (Faixa 4 para Discord/amigos não é necessária:
   só a voz do criador aparece nas gravações.)
-- **Microfone em duas fontes no OBS.** No OBS o filtro fica na fonte, não na faixa, e vale para todas as faixas que
-  a fonte alimenta. Por isso o mesmo microfone entra duas vezes: uma fonte com supressão de ruído (RNNoise) roteada
-  só para a faixa 1 (mix) e outra sem filtro roteada só para a faixa 3 (em Propriedades avançadas de áudio,
-  desmarcar as demais faixas de cada fonte). A faixa 3 fica crua, e o pipeline faz o próprio tratamento.
-  ⚠️ De memória: confirmar no PC de casa que o OBS aceita o mesmo dispositivo em duas fontes (guia da Fase 1).
+- **Microfone em uma fonte só no OBS (decisão de 2026-11-16, histórico §41; substitui a das duas fontes).** Uma fonte
+  `MIC` com supressão de ruído (RNNoise) roteada para as faixas 1 (mix) e 3 (microfone). **Não existe mais a fonte
+  `MIC_RAW`**: a faixa 3 sai com RNNoise do OBS. Custos assumidos: (a) teclado e respiração ficam atenuados na faixa
+  3, então a detecção dessas classes (seção 3, gabarito) depende de o RNNoise preservar sinal suficiente, o que só o
+  benchmark da Fase 2 mostra; (b) não há cópia sem filtro para refazer a limpeza depois. Ganho: uma fonte, sem o
+  risco de duas fontes no mesmo dispositivo nem de uma delas ficar muda (foi o que esvaziou a faixa 3 nos testes).
+  *Versão anterior (substituída):* duas fontes do mesmo microfone, uma com RNNoise só na faixa 1 e uma sem filtro só
+  na faixa 3, que ficava crua para o pipeline tratar.
 
 ---
 
@@ -267,6 +272,11 @@ sabe se os botões dela enviam algum evento ao PC. Teste na Fase 1 com um script
    específico na gravação como marcador (marcador por áudio). Funciona só se o som cair numa faixa gravada.
 3. Se nada funcionar → teclas F13–F24 via software de macro, botões extras do mouse ou um macropad USB barato.
 
+**Decidido em 2026-11-16 (histórico §39): a FIFINE SC3 está descartada como dispositivo de marcação.** O criador
+confirmou que ela não serve ao que o projeto precisa; vale o caminho 3. As hotkeys do gravador seguem as teclas
+configuráveis (`marker_hotkeys`, padrão F13–F20); o dispositivo que as dispara (macro de teclado, botões do mouse ou
+macropad) é escolha do criador e não muda o código. A FIFINE continua só como interface de áudio (microfone).
+
 ## 4.1 Processamento por sessão e painel da série
 
 Cada sessão (de duração variável: 3 h, 6 h, 10 h…) é processada assim que a gravação termina (ingestão → análise →
@@ -329,8 +339,8 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 > Frameworks de ML padronizados em **PyTorch + ONNX Runtime**, para evitar um segundo framework de GPU com CUDA
 > próprio no Windows. Por isso o OCR é RapidOCR (ONNX) e não PaddleOCR. O DeepFilterNet está sem atualização desde
 > 2023 e pode não instalar com Python 3.12 e PyTorch recentes (⚠️ verificar); como ele só entra se melhorar o WER, a
-> falta dele não bloqueia a análise. A cadeia de voz da mixagem precisa de redução de ruído de qualquer forma (a
-> faixa 3 é crua) e não depende dele: ver a alternativa na seção 6.4.
+> falta dele não bloqueia a análise. A faixa 3 já sai com RNNoise do OBS (histórico §41); a cadeia de voz da mixagem
+> pode ainda precisar de redução de ruído e não depende dele: ver a alternativa na seção 6.4.
 >
 > **Exceção aceita: CTranslate2.** O faster-whisper roda sobre o CTranslate2, que traz dependências de CUDA próprias
 > (cuBLAS/cuDNN), fora do par PyTorch + ONNX Runtime. A exceção é aceita porque o faster-whisper é a melhor opção
@@ -488,6 +498,9 @@ label = SegmentLabel.model_validate_json(resp.message.content)
 - Saída sempre com **JSON Schema** (structured outputs do Ollama), temperatura baixa, exemplos no prompt, validação com
   Pydantic + nova tentativa. Se continuar inválido, o segmento cai para "revisão humana".
 - Porta `LLMProvider` com adaptadores `OllamaProvider`, `ClaudeCodeProvider` (`claude -p`) e `NullProvider` (só heurística).
+  Decisão de 2026-11-16 (histórico §40): entra também o `LocalScriptProvider`, **experimental**, que escreve o roteiro
+  localmente por trecho curto. Só é usado se passar no benchmark de roteiro da Fase 2 (qualidade medida contra o gabarito e
+  lida pelo criador); o `NullProvider` continua sendo o fallback padrão. Os modelos testados são só modelos abertos locais.
   Cada tarefa declara qual provedor usa, e a troca é por configuração.
 - 12 GB de VRAM: um modelo por vez. O orquestrador agenda as etapas por modelo e descarrega com `keep_alive: 0`.
 - O benchmark de desempenho (velocidade e VRAM) é feito na **Fase 2**, junto do benchmark de qualidade (decisão de 2026-11-16, histórico §36). A precisão de cada
@@ -542,7 +555,7 @@ Trilhas da timeline exportada (no Resolve, a trilha de número maior fica por ci
 | A4 | Música (vazia até a Fase 8; depois, trilhas da biblioteca com corte no beat e ducking) |
 | A5 | SFX: sons do brand kit (transição de dia, "som de morte") e SFX de meme (Fase 8) |
 | A6 | Áudio do jogo cru (faixa 2 original), desativado; só existe quando A1 recebe um stem processado |
-| A7 | Microfone cru (faixa 3 original), desativado; só existe quando A2 recebe um stem processado |
+| A7 | Microfone original (faixa 3, já com RNNoise do OBS), desativado; só existe quando A2 recebe um stem processado |
 | Legendas | Roteiro (SRT importado à parte) |
 
 Os stems crus em A6/A7 cumprem a regra "stems mixados + stems crus abaixo" da seção 6.4: para desfazer a mixagem,
@@ -574,7 +587,10 @@ são sempre WAVs (seção 2).
 Marcadores coloridos: tipo do momento, fala sugerida e **sugestões de edição** (zoom aqui, efeito sonoro, freeze-frame + texto, meme).
 ⚠️ O FCPXML não tem campo de cor de marcador, então a cor vem por outro caminho: EDL de marcadores no formato do
 Resolve ou script interno (Rota B), conforme o spike (seção 6.5).
-Piadas visuais ficam como sugestão, não como efeito aplicado: feitas automaticamente, são o que mais denuncia vídeo feito por IA.
+~~Piadas visuais ficam como sugestão, não como efeito aplicado: feitas automaticamente, são o que mais denuncia vídeo feito por IA.~~
+**Substituída em 2026-11-16 (histórico §40):** música, SFX, SFX de meme e piadas visuais são escolhidos e posicionados
+automaticamente pelo Cronista (modo `aplicar editável`), sempre dentro do orçamento de efeitos por minuto (seção 6.4). O risco
+de "cara de IA" que motivou a regra anterior continua valendo e é coberto pelo orçamento e pela revisão do primeiro corte.
 
 Como o caminho é de mão única, a revisão no Studio (Fase 7) acontece **antes** de exportar.
 
@@ -598,14 +614,16 @@ Cada efeito tem três modos, configuráveis por projeto:
 
 Regras anti-"cara de template": limite de efeitos por minuto, variação entre presets, intensidade ligada à nota do momento
 (uma morte boba ganha um zoom leve; a morte para um chefe ganha o pacote completo) e revisão no Studio.
-O que a IA decidir com baixa confiança fica só como `sugerir`.
+~~O que a IA decidir com baixa confiança fica só como `sugerir`.~~ **Substituída em 2026-11-16 (histórico §40):** a
+automação é o padrão para música e SFX (inclusive meme e piada visual), em `aplicar editável` e sempre reversível; quando a
+biblioteca não tem item adequado, nada é aplicado. Os modos `sugerir` e `aplicar renderizado` seguem escolhíveis por efeito.
 
 A mixagem básica foi antecipada para a Fase 6 (ganho alto, risco baixo); o restante fica na Fase 8, porque só vale
 polir quando o primeiro corte já estiver bom e o Studio permitir controlar os efeitos.
 
 Detalhes da mixagem:
-- **Redução de ruído da voz não depende do benchmark de WER.** A faixa 3 é crua (teclado, respiração) e é ela que
-  vira a trilha A2 do vídeo, então a cadeia de voz sempre limpa o áudio. Ferramenta escolhida na Fase 6, ouvindo o
+- **Redução de ruído da voz não depende do benchmark de WER.** A faixa 3 (com RNNoise do OBS, histórico §41) é a que
+  vira a trilha A2 do vídeo; se o RNNoise do OBS não bastar, a cadeia de voz limpa mais. Ferramenta escolhida na Fase 6, ouvindo o
   resultado: DeepFilterNet, se instalar; senão, os filtros do próprio FFmpeg (⚠️ de memória: `arnndn`, que é RNNoise,
   e `afftdn`). O benchmark da Fase 2 decide só se a limpeza entra **antes da transcrição**.
 - **Ducking sob a narração complementar.** A narração da trilha A3 é gravada depois, no Resolve, justamente onde não
@@ -620,7 +638,11 @@ Detalhes da mixagem:
 thumbnails, para o canal ter identidade visual **e** sonora:
 - Visual: paleta, fontes, LUT de série, estilo de cartela "Dia N", contador de mortes, molduras.
 - Sonora: vinheta de abertura, som de transição de dia, "som de morte" recorrente, loudness padrão, trilhas-tema por clima.
-- Música: Biblioteca de Áudio do YouTube ou música gerada por IA. ⚠️ Antes de monetizar, verificar a licença de uso
+- **Biblioteca pessoal (fonte prioritária, decisão de 2026-11-16):** os efeitos, transições e SFX que o criador já tem, em
+  arquivos de áudio e vídeo (funcionam no Resolve gratuito, sem marca d'água). O app mantém um inventário com tags, origem e
+  licença de cada item; os arquivos ficam fora do git e o caminho em `config/*.local.yaml`. Pacote de terceiros só entra com
+  a licença registrada.
+- Música: Biblioteca de Áudio do YouTube ou música gerada por IA, como complemento da biblioteca pessoal. ⚠️ Antes de monetizar, verificar a licença de uso
   comercial de cada gerador de IA; vários planos gratuitos e alguns modelos locais proíbem uso comercial.
 
 ## 6.5 Integração com o DaVinci Resolve gratuito
@@ -676,9 +698,41 @@ As fontes são a documentação oficial e o teste prático:
   usar os WAVs extraídos de cada faixa (seção 6.3).
 - ⚠️ **Hybrid MP4 após queda:** se o Resolve abre o arquivo remuxado sem recodificar (seção 2).
 
+**Resultado do spike no PC de casa (2026-11-16, Resolve 21.2.1.0006 gratuito, interface em português; histórico §39):**
+- ✅ **Importação de FCPXML 1.9** (menu Arquivo → Importar → Linha de Tempo, ou `ImportTimelineFromFile`): cortes,
+  volume, título (vira "Texto - Dia 1" na V2, o UID de memória funcionou), velocidade, zoom com keyframes, transição,
+  overlay e áudio entram a 60 fps. Conteúdo fino (velocidade 2x, keyframes, transição) ainda **não foi inspecionado**
+  no Resolve. ❌ HEVC (`02f`) é recusado; sem impacto, o OBS grava H.264. Um recurso ruim derruba o arquivo inteiro
+  (o `02-recursos` combinado foi recusado): o app deve importar só o que o Resolve aceita.
+- ✅ **FCPXML do próprio app** (`cronista export`): o do adaptador OTIO foi recusado (sem `library`) e depois travou o
+  Resolve; o app agora escreve o FCPXML 1.9 à mão no desenho do kit, e esse importou (5 clipes na V1, jogo na A1 e
+  microfone na A2, 1:57:06). Nesta janela de importação o código de tempo inicial vem `01:00:00:00` por padrão.
+- ✅ **Overlay com alfa** (ProRes 4444): fica na trilha acima, transparente, sem fundo preto.
+- ✅ **Áudio:** o FCPXML do kit cria 3 trilhas (A1–A3); o canal `enabled="0"` chega como clipe desativado (A1 cinza com
+  "M"). ⚠️ Qual faixa do MP4 caiu em cada trilha ainda não foi conferido de ouvido.
+- ❌ **Marcadores pelo FCPXML:** nenhum chega como marcador de timeline, nem dentro do clipe, nem na `<sequence>`, nem
+  num `<gap>` (painel Marcadores vazio). O Resolve gratuito 21.2 **não tem importação de marcadores por EDL** nos menus
+  Arquivo, Marcar e Linha de Tempo. ✅ `AddMarker` pelo script interno funciona (cor, nome e nota). Conclusão:
+  **marcadores só entram por script**.
+- ✅ **Legenda SRT:** Arquivo → Importar → Legenda… cria um item no Pool; arrastado à timeline vira a trilha ST1.
+  Detalhe: o clipe começa na primeira fala e, solto no início, desloca tudo (chegou 1 s adiantado). **O app gera o SRT
+  com uma fala vazia em 0 s** (confirmado: com ela as falas ficam em 1 s, 4 s e 8 s). `ImportMedia` não importa SRT.
+- ❌ **Scripting externo:** bloqueado (`scriptapp` devolve nulo; o README da API diz que é só Studio). O script
+  **interno** só roda pelo Console (Área de Trabalho → Console), que no gratuito aceita **só Lua**, sem `io`, `dofile`,
+  `loadfile` nem `require`: o código vai **colado numa linha**. Scripts na pasta `Scripts\Utility` **não aparecem** no
+  menu Scripts, mesmo após reiniciar. `ImportTimelineFromFile`, `AddMarker`, `CreateProject` (nome inédito) e
+  `SetSettings` funcionam por esse Console; `ImportMedia` com dicionário devolve vazio. `SetLUT` devolveu `false`.
+- ⚠️ **Ainda sem resposta:** relink (A5), FCPXML do próprio app (A16), HEVC importado à mão, tons de áudio por trilha,
+  cartela editável de fato, LUT, desempenho e render (bloco D do roteiro), ProRes na página Entrega.
+- **Editor:** nada do que falhou impede o produto. Trocar o Resolve não se justifica; plano B, se um bloqueio futuro
+  surgir: Kdenlive (de memória, não verificado: gratuito, projeto em XML do MLT, sem marca d'água).
+
 **Estratégia:**
 - **Rota A (base):** o app gera FCPXML/OTIO + SRT e você importa pelo menu File → Import.
-- **Rota B (quase um clique):** script interno do Cronista instalado na pasta de scripts do Resolve, executado pelo menu.
+- **Rota B (quase um clique):** *rebaixada em 2026-11-16 (ver resultado do spike acima)*: o gratuito não lista scripts
+  no menu; o script interno é um Lua de uma linha **colado no Console**, e fica reservado aos **marcadores coloridos**
+  (e, opcionalmente, criar projeto e importar). Na versão original: script interno do Cronista instalado na pasta de
+  scripts do Resolve, executado pelo menu.
   Ele lê o pacote exportado pelo app e cria o projeto, importa a mídia e a timeline, adiciona marcadores coloridos com notas,
   aplica a LUT e configura o preset de render.
 - Zooms animados e VFX: **renderizados pelo app** na trilha acima do original (ou composição Fusion importada, se o spike aprovar).
@@ -744,6 +798,42 @@ Formato a decidir junto (ver decisões em aberto). Proposta inicial:
   automaticamente, gerando 2–3 variações para teste A/B no YouTube.
 - O app também sugere títulos, passando pela mesma skill de humanização.
 
+## 6.8 Princípios editoriais (questionário v0.1, histórico §40)
+
+> Adicionada em 2026-11-16. São decisões editoriais aprovadas, usadas como critério de revisão e de aceite das Fases 4 a 7.
+> Descrevem o que se quer; a viabilidade de cada item continua sujeita ao gabarito e aos benchmarks. Os pontos que
+> conflitam com decisões anteriores foram decididos em seguida e estão na seção 9 (histórico §40).
+
+**O que um vídeo editado pelo Cronista não pode ter (os quatro juntos):** acontecimento importante cortado, trecho monótono
+mantido, drama artificial e narrativa desconexa. Cada um vira item da revisão do primeiro corte.
+
+- **Contexto × ritmo:** preservar o contexto essencial e condensar o que é lento; o ritmo é dinâmico (ação, humor e momentos importantes).
+- **Fidelidade aos fatos:** suspense e tensão nascem da edição e da narração, sem distorcer o que aconteceu. Fato concreto no
+  lugar de adjetivo.
+- **Cronologia:** ordem cronológica por padrão. Antecipação só para **gerar desejo de assistir** ou **ilustrar uma narração com
+  cinemática**, sem distorcer fatos. Toda antecipação sai marcada (`antecipação`, com a justificativa) no story-pack e na
+  timeline, para o criador conferir.
+- **Abertura:** cena forte antes da explicação, e cinemáticas profissionais enquanto o criador narra o objetivo, **quando
+  existirem** na gravação (a IA reconhece tomadas, não cria ângulos; seção 6.2). A abertura é escolhida pelo material, sem inventar fatos.
+- **Fim:** direto, logo após a conquista ou o desfecho principal, sem retrospectiva desnecessária. Se o desfecho real foi um
+  fracasso, o fracasso é preservado: o último beat da seção 5.4 pode ser `falha`.
+- **Fracasso e dificuldade:** montagem de tentativas que mostra a evolução (vários intentos contra um chefe, por exemplo).
+  ⚠️ Depende de reconhecer tentativas pela 5A (`falhou`, `retoma`); viabilidade não comprovada.
+- **Imprevistos fora do objetivo:** o impacto é avaliado e um pequeno arco só se cria quando merece.
+- **Fala longa de estratégia que mudou:** mantém as partes relevantes da fala ao vivo e a narração complementa, incluindo a
+  mudança de estratégia. Exige selecionar trechos de uma fala, não só cortar silêncio (Fases 4 e 6).
+- **Humor:** adaptado ao contexto, preservando a espontaneidade; nada de piada forçada em gameplay séria.
+- **Ganchos de retenção:** combinados conforme a narrativa (antecipações breves, perguntas abertas, reviravoltas e dificuldades
+  reais), sem exagero e sem invenção.
+- **Roteiro:** texto completo, com falas sugeridas e **estimativa de duração por fala**. É uma base: o criador corta se a
+  narração ficar mais curta e estende se ficar mais longa. O roteiro não pode depender de a gravação ter a duração prevista.
+- **Tom do roteiro:** natural, dinâmico e adaptativo, com humor e suspense. A skill `/humanizar` não pode achatar o suspense: ela
+  corta frase de efeito e adjetivo, e o suspense deve vir de fato concreto do story-pack.
+- **Identidade:** híbrida, com a assinatura do canal (brand kit, seção 6.4) adaptada a cada série por um estilo declarativo em
+  YAML, sem `if jogo` no núcleo.
+- **Supervisão:** o Cronista gera uma primeira edição e o criador revisa antes de publicar, especialmente eventos não
+  verificados e objetivos vindos de mods (seção 7, Fase 5A).
+
 ---
 
 ## 7. Fases
@@ -806,6 +896,8 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Fusão de sinais (áudio + vídeo + marcadores + eventos de mod) → segmentação → classificação → nota explicável.
 - Lookback dos marcadores e refino dos limites dos segmentos.
 - Métricas contra o gabarito (precisão/revocação de "farm" e de "momento legal") e medição da taxa de compressão real.
+- Seleção de trechos relevantes dentro de uma fala longa (seção 6.8) e agrupamento de tentativas repetidas, como as de um chefe
+  (seção 6.8; depende dos estados da 5A, viabilidade não comprovada).
 - Painel da série (seção 4.1) no relatório: minutos estimados de produto final por sessão e acumulados.
 - ✅ Aceite: ≥ 85% dos momentos do gabarito aparecem no top de candidatos; farm identificado como farm.
 
@@ -813,8 +905,11 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Estrutura por dia/capítulo, arco com os beats da seção 5.4 (setup → conflito → falha → virada → conquista; conflito e falha são o "sofrimento"), alocação de tempo por capítulo.
 - `story-pack.json` compacto (eventos, resumos, citações suas, frames-chave) dentro do limite do plano Pro.
 - Skills Claude Code: `/roteirizar`, `/humanizar`, perfil de voz. Sem Claude disponível, o fallback é o
-  `NullProvider`: sem roteiro escrito, só os marcadores com o contexto de cada trecho (o LLM local não escreve roteiro,
-  seção 6.1).
+  `NullProvider`: sem roteiro escrito, só os marcadores com o contexto de cada trecho. ~~O LLM local não escreve roteiro
+  (seção 6.1).~~ **Ajustado em 2026-11-16 (histórico §40):** o `LocalScriptProvider` experimental pode escrever o roteiro
+  localmente por trecho curto, se passar no benchmark de roteiro da Fase 2; senão vale o `NullProvider`.
+- Roteiro completo com falas sugeridas e estimativa de duração por fala; segue os princípios editoriais da seção 6.8
+  (fidelidade aos fatos, cronologia, antecipações marcadas, tom natural e adaptativo).
 - ✅ Aceite: roteiro de uma sessão real lido por você sem soar artificial; cada fala ligada a um segmento.
 
 ### Fase 5A — Objetivos, subobjetivos, estados e evidências
@@ -830,6 +925,9 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **Descoberta por fala:** uma tarefa curta do LLM local (JSON Schema, Pydantic) recebe a transcrição já segmentada e o
   contexto do projeto. Cada objetivo precisa citar um trecho literal com timestamp; o app verifica a citação, e sem
   citação válida o objetivo fica como hipótese (sinalizada para correção no Studio).
+- **Revisão humana de itens não confirmados** (questionário Q14): evento de mod ou objetivo que a IA não consegue confirmar
+  é sinalizado para revisão, nunca descartado e nunca afirmado. Como o Studio só chega na Fase 7, a 5A entrega uma **fila de
+  revisão** em CSV ou relatório HTML, que o Studio absorve depois (lacuna registrada no histórico §40).
 - **Persistência entre sessões:** objetivos são do projeto, com estado por sessão; uma retomada mantém o mesmo id.
 - **Contexto de jogo e mods:** campos opcionais `objetivos` e `regras` no perfil YAML ou no projeto, sem código (seção 4 da visão).
 - **Vertical slice (planejar; a implementação é desta fase):** fala de objetivo → evento observado → subobjetivo →
@@ -861,7 +959,7 @@ Só se avança com os critérios da fase anterior cumpridos.
   - Dependências: a 5A só começa depois do padrão de evidência e da unicidade de `Artifact` por variante (Fase 2,
     lacunas 2 e 3), dos sinais em série temporal (Fase 2, lacuna 4), dos estados de cena (Fase 3) e dos eventos e segmentos
     (Fase 4). Nada disso entra antes; a 1B e a 1C não ganham tabelas novas.
-- ✅ **Aceite:** em sessões gravadas com `MIC_RAW` ativo e um gabarito de objetivos e estados, precisão e revocação
+- ✅ **Aceite:** em sessões gravadas com o microfone (faixa 3) ativo e um gabarito de objetivos e estados, precisão e revocação
   medidas e registradas; nenhum objetivo confirmado sem evidência; citação inválida nunca vira objetivo confirmado.
   Os números de corte são definidos no início da 5A.
 
@@ -880,6 +978,13 @@ Só se avança com os critérios da fase anterior cumpridos.
 - App Next.js: lista de segmentos com player, waveform e sinais; aceitar/rejeitar/ajustar limites; editar roteiro; re-exportar.
 - Progresso dos jobs em tempo real e painel da série (seção 4.1).
 - Aprendizado: suas decisões recalibram os pesos do perfil genérico e geram/ajustam perfis de jogo declarativos (modelo simples e explicável primeiro).
+  Decidido em 2026-11-16 (histórico §40): a recalibração automática por manter/tirar trecho **continua**, e o feedback
+  escrito em linguagem natural (Q26) acrescenta regras explícitas; os dois canais coexistem.
+- **Feedback escrito no Studio** (Q26): o criador explica a correção em texto livre. O modelo local (Ollama) a interpreta como
+  saída estruturada (JSON Schema validado por Pydantic, tarefa curta e fechada) e o SQLite guarda preferência e evidência numa
+  tabela nova só de inserção, no padrão da 5A. **Não é fine-tuning.** A tarefa só fica no modelo local se atingir a precisão
+  mínima do benchmark (seção 6.1). **Q27 decidida:** o feedback aplica a correção na edição atual (re-executando só as etapas afetadas, antes de
+  exportar, pelo cache por hash) **e** registra a preferência para as próximas.
 - ✅ Aceite: um vídeo completo produzido de ponta a ponta pelo fluxo Studio → Resolve.
 
 ### Fase 8 — Acabamento automático e identidade do canal
@@ -888,6 +993,10 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Pacote de templates Remotion (contador de mortes, cartelas regeneráveis pelo app, que são a opção 2 da
   seção 6.3, freeze-frame + texto, barra de progresso) + SFX.
 - Modos sugerir / editável / renderizado por efeito, controlados no Studio; orçamento de efeitos por minuto.
+- **Legendas pontuais no vídeo longo** (Q25): só falas e momentos importantes, com animação de palavras e reações, a partir dos
+  timestamps por palavra do Whisper (Fase 2) e como overlay Remotion (V4). Não confundir com a trilha "Legendas" da seção 6.3
+  (SRT do roteiro). Sem legenda automática do Resolve, que é do Studio.
+- **Estilo por série** (Q18): configuração declarativa em YAML sobre o brand kit, separada do perfil de jogo.
 - ✅ Aceite: vídeo exportado precisando só de narração gravada e ajustes finos; efeitos reversíveis no Resolve.
 
 ### Fase 9 — Embalagem e distribuição
@@ -937,6 +1046,12 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Sem facecam (seções 6.6 e 6.7).
 - Produto: **um único vídeo de 30–50 min** por série, montado a partir de sessões de duração variável (3 h, 6 h, 10 h…) (seções 0.1, 1 e 2).
 - O app não substitui o Resolve como editor, mas pode codificar vídeo quando é só execução (seção 1).
+- **Microfone sem a fonte crua (2026-11-16, histórico §41):** o `MIC_RAW` foi descartado; fonte única `MIC` com RNNoise
+  nas faixas 1 (mix) e 3 (microfone). Faixas: 1 = mix, 2 = jogo, 3 = microfone (com RNNoise). O código não muda
+  (`AUDIO_TRACKS`); a detecção de teclado e respiração depende do benchmark da Fase 2 (seções 2 e 3).
+- **Spike do Resolve gratuito 21.2 (2026-11-16, histórico §39):** FCPXML importa pelo menu; marcadores só por script
+  (Lua colado no Console, único que o gratuito aceita); legenda SRT pelo menu Importar → Legenda, com fala vazia em 0 s;
+  scripting externo bloqueado; HEVC recusado (o projeto usa H.264). O Resolve fica como editor (seção 6.5).
 - Marcador = "aconteceu algo aqui" (ponto no tempo dentro do arquivo); os capítulos do vídeo vêm só de `Novo dia`
   (seção 4). O "contador de dias persistido por projeto" foi substituído (ver abaixo).
 - Quem cria o marcador: **opção A**, programa do Cronista ao lado do OBS via obs-websocket (seção 4).
@@ -944,7 +1059,8 @@ Só se avança com os critérios da fase anterior cumpridos.
   dia é definido na edição. `Construção ▶/■` é uma tecla só, que alterna (seção 4).
 - A contagem de dias aparece na tela, mas o número final e a divisão são decididos na edição; `Novo dia` é proposta,
   e cartelas/contador saem editáveis (seções 4 e 6.3).
-- Gravação e timeline em 60 fps exatos; microfone em duas fontes no OBS (RNNoise só na do mix) (seção 2).
+- Gravação e timeline em 60 fps exatos; microfone em uma fonte só no OBS, com RNNoise, nas faixas 1 e 3 (seção 2,
+  histórico §41). *Substitui* "duas fontes, RNNoise só na do mix".
 - Processamento automático ao fim da gravação, com pausa enquanto o OBS grava ou um jogo em tela cheia está aberto (seção 4.1).
 - ML em PyTorch + ONNX Runtime; OCR com RapidOCR em frames do master; DeepFilterNet só se melhorar o WER (seção 5.2).
 - Exceção aceita: o CTranslate2 (base do faster-whisper) traz CUDA próprio; se conflitar com o PyTorch, a
@@ -953,7 +1069,9 @@ Só se avança com os critérios da fase anterior cumpridos.
   ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados (seção 6.3).
 - CI em Ubuntu e Windows; configuração versionada sem caminhos pessoais + `*.local.yaml` fora do git (seção 5.6).
 - ~~Benchmark da Fase 1 só de desempenho~~: **substituído** (histórico §36): benchmarks de desempenho e de qualidade (WER, precisão) ocorrem na Fase 2; a 1C não faz benchmark de modelos (seções 6.1 e 7).
-- Sem Claude disponível, o roteiro não cai para o LLM local: fallback = `NullProvider` (Fase 5).
+- ~~Sem Claude disponível, o roteiro não cai para o LLM local: fallback = `NullProvider` (Fase 5).~~ **Ajustada em
+  2026-11-16 (histórico §40):** fallback = `NullProvider`; o `LocalScriptProvider` experimental só entra se passar no
+  benchmark de roteiro da Fase 2.
 - Aceite da Fase 1 sem mínimo de horas: qualquer duração de gravação é válida (Fase 1).
 - Áudio original sempre dentro do vídeo; WAVs extraídos são cache regenerável no SSD; proxy toca o mix (seção 2, Fase 1).
 - Planos de fase não dependem de skills fora do repositório (`CLAUDE.md`, seção 0).
@@ -1004,7 +1122,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **Montagem inteligente como preferência editorial** (seção 6.3). Timelapse é uma das opções, escolhida por trecho.
 - **Fase 5A** (objetivos, subobjetivos, estados e evidências), entre a Fase 4 e a Fase 5 (seção 7).
 - **Benchmarks de modelos na Fase 2**, não na 1C. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE, GpuGate,
-  gravação real com `MIC_RAW` ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).
+  gravação real com o microfone ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).
 
 **Lacunas técnicas identificadas (2026-11-16) e fase de correção:**
 1. **Tempo do marcador em float de segundos** (`marker.media_time_s`) → guardar em **quadros inteiros a 60 fps**. Fase: **1B, antes do merge** (o modelo do marcador é entregue pela 1B).
@@ -1016,6 +1134,22 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **SQLite como memória persistente do contexto narrativo**, no banco do engine, com objetivos, acontecimentos, relações,
   evidências com quadros e origem, resumos e correções humanas por inserção (seção 7, Fase 5A). A análise recebe só o
   recorte relevante. Sem banco de grafos, sem banco vetorial e sem outro serviço. Implementação na Fase 5A, depois da Fase 4.
+
+**Decisões de 2026-11-16 (questionário de decisões editoriais v0.1; histórico §40):** só documentação, sem código e sem
+alterar a ordem do roadmap.
+- **Princípios editoriais** aprovados (seção 6.8): os quatro riscos evitados juntos, fidelidade aos fatos, cronologia por padrão
+  com antecipação marcada, abertura com cena forte, fim direto, montagem de tentativas, fala longa mantida em partes, roteiro
+  completo com estimativa de duração, tom natural e adaptativo.
+- **Revisão humana** de evento ou objetivo não confirmado, com fila em CSV/HTML antes do Studio (5A, seção 7).
+- **Feedback em texto livre** no Studio, interpretado pelo modelo local em saída estruturada; não é fine-tuning (Fase 7).
+- **Legendas pontuais** no vídeo longo e **estilo por série** declarativo (Fase 8).
+- O Q15 (resposta livre) entra só como indício sobre o ducking (item 9 de "Em aberto"), sem decidi-lo.
+- **Conflitos decididos no mesmo dia** (histórico §40): (1) `LocalScriptProvider` experimental ao lado do `NullProvider`
+  (seção 6.1 e Fase 5); (2) duração-alvo de 30–50 min como referência, não obrigação, e um vídeo de 25 min com arco narrativo
+  completo é postável (CLAUDE.md, seções 0.1 e 1); (3) aceitar/rejeitar continua recalibrando os pesos, junto do feedback em
+  texto (Fase 7); (4) música e SFX, inclusive meme e piada visual, 100% automáticos em `aplicar editável`, dentro do orçamento por
+  minuto (seções 6.3 e 6.4); (5) a biblioteca pessoal de arquivos de áudio e vídeo é a fonte prioritária (seção 6.4);
+  (6) só modelos abertos locais; (7) Q27: o feedback ajusta a edição atual e registra a preferência (Fase 7).
 
 **Status da Fase 1 (2026-11-16):** 1A integrada à `main` (PR #1). 1B com código completo no `dev` (histórico §28–34); `/code-review` feito e 10 achados corrigidos (§35); PR #3 integrado à `main` com CI verde; a
 tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadros` (histórico §38), a integrar.
@@ -1054,8 +1188,11 @@ tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadr
      antes de afirmar "Fairlight completo" (seção 6.5).
    - Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público?
 9. Dúvidas levantadas na quarta revisão (histórico §22), sem resposta ainda:
-   - Para que serve o mix com RNNoise? A análise nunca usa a faixa 1 e a timeline usa as faixas 2 e 3; o mix só toca
-     no proxy. Uma fonte única de microfone, sem filtro, nas faixas 1 e 3 seria mais simples (seção 2).
+   - **Marcação com teclado de 60% (histórico §41):** o criador não tem F13–F24 e não quer decorar vários atalhos. Nos
+     testes usa só a tecla nativa do OBS (capítulos sem tipo). Em aberto: como marcar o início do dia (`novo_dia`,
+     obrigatório hoje) e os tipos com uma ou duas teclas; decidir antes da Fase 3.
+   - ~~Para que serve o mix com RNNoise?~~ **Resolvida em 2026-11-16 (histórico §41):** o criador descartou o
+     `MIC_RAW`; uma fonte única `MIC`, com RNNoise, nas faixas 1 e 3.
    - Como o criador sabe que o toque foi registrado com o jogo em tela cheia? Na tecla de construção, que alterna, um
      toque perdido inverte tudo dali em diante. E se o programa de marcadores não estiver aberto? (seção 4)
      **Parcialmente tratado na 1B (histórico §31):** som por tipo a cada toque (dois toques para o fim da
@@ -1086,3 +1223,13 @@ tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadr
      fundo desfocado como padrão ou gravar em resolução maior? (seção 6.6)
    - ~~Quem dispara o processamento e em que linguagem é o gravador~~: **decidido** (D1), engine dispara; gravador em Python.
    - Stems processados: cobrem a sessão inteira ou só os trechos usados na timeline? (seção 2; plano da Fase 6)
+11. Questionário editorial v0.1 (histórico §40). ~~Os 6 conflitos e a Q27~~: **decididos** (ver "Já decididas", bloco
+   "Conflitos decididos no mesmo dia"). Seguem em aberto:
+   - **Lacunas:** fila de revisão humana entre a 5A e o Studio (proposta na 5A); "tom" ou emoção da cena como sinal (Q16 e Q19),
+     viabilidade não comprovada; critérios de aceite qualitativos para os quatro riscos da seção 6.8 (sem número ainda).
+   - **Duração:** a faixa 30–50 min continua como referência do painel da série; confirmar se vale também como faixa para
+     formatos que não são "100 dias" (missão, desafio).
+   - **`LocalScriptProvider`:** quebra a regra do CLAUDE.md "LLM local só para tarefas curtas e fechadas"; ficou como exceção
+     experimental, por trecho curto. Confirmar o escopo ao desenhar o benchmark de roteiro da Fase 2.
+   - **Biblioteca pessoal:** inventário (tags, origem, licença) e formato dos arquivos ainda não levantados; definir com o brand kit.
+   - Q15 (resposta livre): reforça o item 9 sobre o ducking pré-aplicado, sem decidi-lo.

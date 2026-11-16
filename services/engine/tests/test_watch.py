@@ -9,16 +9,20 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
+from unittest.mock import patch
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from cronista import watch
 from cronista.config import Settings
-from cronista.db.models import Artifact, Marker, RecordingSession
+from cronista.db.models import Artifact, Marker, Project, RecordingSession
 from cronista.domain.models import MarkerKind
 from cronista.ingest.journal import JournalWriter, Stamp
+from cronista.ingest.service import SessionConflictError, ingest_files, ingest_folder
 from cronista.pipeline import AlwaysFreeGate
-from cronista.watch import Processed, scan_once, serve
+from cronista.watch import Failure, Processed, scan_once, serve
 from tests.conftest import needs_ffmpeg
 
 pytestmark = needs_ffmpeg
@@ -198,22 +202,166 @@ def test_abandoned_open_journal_is_ingested_as_interrupted(
     assert len(session.media_files) == 1
 
 
-def test_failure_is_reported_once_and_retried_only_when_the_journal_changes(
+def test_failure_is_reported_once_then_retried_with_growing_backoff(
     db: Session, settings: Settings, tmp_path: Path
 ) -> None:
     folder = tmp_path / "obs"
     folder.mkdir()
     journal = write_journal(folder, "g1", str(folder / "sumiu.mp4"), [])
     settle(journal, folder)
-    failed: dict[Path, float] = {}
+    failed: dict[Path, Failure] = {}
+    t0 = time.time()
 
-    (first,) = scan(db, settings, folder, failed=failed)
+    (first,) = scan(db, settings, folder, failed=failed, now=lambda: t0)
     assert first.error and "nenhum arquivo" in first.error
-    assert scan(db, settings, folder, failed=failed) == []  # não vira laço quente
+    assert scan(db, settings, folder, failed=failed, now=lambda: t0 + 599) == []  # antes do prazo: nada
+    assert len(scan(db, settings, folder, failed=failed, now=lambda: t0 + 601)) == 1  # prazo de 600 s
+    # A 2ª falha dobra o prazo (1200 s): 601 + 600 ainda não basta.
+    assert scan(db, settings, folder, failed=failed, now=lambda: t0 + 1300) == []
+    assert len(scan(db, settings, folder, failed=failed, now=lambda: t0 + 601 + 1201)) == 1
+    assert failed[journal].attempts == 3
 
-    later = time.time() - 1800
-    os.utime(journal, (later, later))  # o diário mudou
-    assert len(scan(db, settings, folder, failed=failed, now=lambda: time.time() + 60)) == 1
+
+def test_failed_journal_is_retried_at_once_when_it_grows(
+    db: Session, settings: Settings, tmp_path: Path
+) -> None:
+    folder = tmp_path / "obs"
+    folder.mkdir()
+    journal = write_journal(folder, "g1", str(folder / "sumiu.mp4"), [])
+    settle(journal, folder)
+    failed: dict[Path, Failure] = {}
+    scan(db, settings, folder, failed=failed)
+    assert scan(db, settings, folder, failed=failed) == []
+
+    with JournalWriter(journal) as writer:  # o diário ganhou eventos (uma nova parada, como o gravador faria)
+        writer.marker(MarkerKind.MOMENTO, "novo", stamp(105.0))
+        writer.recording_stopped(stamp(111.0))
+    settle(journal, folder)
+    assert len(scan(db, settings, folder, failed=failed)) == 1
+
+
+def test_unexpected_error_in_one_journal_does_not_stop_the_scan(
+    db: Session,
+    settings: Settings,
+    fixture_folders: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    folder = tmp_path / "obs"
+    folder.mkdir()
+    gone = write_journal(folder, "g1", str(folder / "a.mp4"), [])
+    good_video = put_video(folder, fixture_folders, "normal", "b.mp4", 105.0)
+    good = write_journal(folder, "g2", str(good_video), [])
+    settle(gone, folder)
+    settle(good, folder)
+
+    real = watch.resolve_files
+
+    def flaky(rec: watch.Recording, directory: Path, cfg: Settings) -> tuple[list[Path], list[str]]:
+        if rec.journal == gone:
+            return [folder / "sumiu-entre-listar-e-ler.mp4"], []  # `stat()` vai falhar
+        return real(rec, directory, cfg)
+
+    monkeypatch.setattr(watch, "resolve_files", flaky)
+    results = scan(db, settings, folder)
+    by_journal = {r.journal.name: r for r in results}
+    assert by_journal["g1.markers.jsonl"].error and "erro inesperado" in by_journal["g1.markers.jsonl"].error
+    assert by_journal["g2.markers.jsonl"].error is None  # o outro diário foi ingerido normalmente
+
+
+def test_database_error_is_rolled_back_so_the_session_stays_usable(
+    db: Session,
+    settings: Settings,
+    fixture_folders: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    folder = tmp_path / "obs"
+    folder.mkdir()
+    video = put_video(folder, fixture_folders, "normal", "a.mp4", 105.0)
+    settle(write_journal(folder, "g1", str(video), []), folder)
+
+    def broken(*_: object, **__: object) -> object:
+        db.add(Project(name="meio-da-transacao"))  # pendente quando o erro acontece
+        raise RuntimeError("banco indisponível")
+
+    monkeypatch.setattr(watch, "ingest_files", broken)
+    with patch.object(db, "rollback", wraps=db.rollback) as rollback:
+        (result,) = scan(db, settings, folder)
+    assert result.error == "banco indisponível"
+    rollback.assert_called()
+    assert not db.new  # nada pendente: a Session continua utilizável nas próximas varreduras
+
+
+def test_file_already_in_another_session_is_a_clear_error_not_an_empty_session(
+    db: Session, settings: Settings, fixture_folders: dict[str, Path], tmp_path: Path
+) -> None:
+    folder = tmp_path / "obs"
+    folder.mkdir()
+    video = put_video(folder, fixture_folders, "normal", "jogo.mp4", 105.0)
+    journal = write_journal(folder, "g1", str(video), [])
+    settle(journal, folder)
+    manual = ingest_folder(db, folder, settings, AlwaysFreeGate(), "p")  # a pasta do OBS ingerida à mão
+    assert manual.ok
+
+    failed: dict[Path, Failure] = {}
+    (result,) = scan(db, settings, folder, failed=failed)
+    assert result.error and "já pertence à sessão" in result.error
+    assert len(sessions(db)) == 1  # nenhuma sessão oca criada
+    assert scan(db, settings, folder, failed=failed) == []  # e nada de laço de reingestão a cada varredura
+
+
+def test_ingest_files_checks_conflicts_before_creating_anything(
+    db: Session, settings: Settings, fixture_folders: dict[str, Path], tmp_path: Path
+) -> None:
+    folder = tmp_path / "obs"
+    folder.mkdir()
+    video = put_video(folder, fixture_folders, "normal", "jogo.mp4", 105.0)
+    ingest_folder(db, folder, settings, AlwaysFreeGate(), "p")
+    with pytest.raises(SessionConflictError, match=r"jogo\.mp4"):
+        ingest_files(db, "outra-origem", [video], settings, AlwaysFreeGate(), "outro-projeto")
+    assert len(sessions(db)) == 1
+    assert db.scalar(select(Project).where(Project.name == "outro-projeto")) is None
+
+
+def test_journal_that_grows_after_an_abandoned_ingestion_is_ingested_again(
+    db: Session, settings: Settings, fixture_folders: dict[str, Path], tmp_path: Path
+) -> None:
+    folder = tmp_path / "obs"
+    folder.mkdir()
+    video = put_video(folder, fixture_folders, "interrompida", "queda.mp4", 105.0)
+    journal = write_journal(folder, "g1", str(video), [(MarkerKind.NOVO_DIA, "d1", 100.5)], stop_at=None)
+    settle(journal, folder)
+    (first,) = scan(db, settings, folder, now=lambda: time.time() + 5 * 3600)
+    assert first.abandoned and first.error is None
+    (session,) = sessions(db)
+    assert markers_of(db, session) == [("novo_dia", "d1")]
+    assert scan(db, settings, folder, now=lambda: time.time() + 5 * 3600) == []  # nada mudou: não repete
+
+    # O OBS só estava parado há horas: o criador retoma, marca e encerra; o arquivo termina de verdade.
+    shutil.copy(sorted(fixture_folders["normal"].iterdir())[0], video)
+    with JournalWriter(journal) as writer:
+        writer.marker(MarkerKind.MOMENTO, "depois", stamp(101.0))
+        writer.recording_stopped(stamp(110.0))
+    settle(journal, folder)
+
+    (again,) = scan(db, settings, folder)
+    assert again.error is None and not again.abandoned
+    assert again.session_id == session.id and len(sessions(db)) == 1
+    assert ("momento", "depois") in markers_of(db, session)
+    assert scan(db, settings, folder) == []
+
+
+def test_serve_reports_an_unreachable_watch_dir_once(
+    db: Session, settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*_: object, **__: object) -> list[Processed]:
+        raise OSError("disco desconectado")
+
+    monkeypatch.setattr(watch, "scan_once", broken)
+    reported: list[Processed] = []
+    serve(db, settings, AlwaysFreeGate(), tmp_path, "p", reported.append, max_scans=3, sleep=lambda _: None)
+    assert [r.error for r in reported] == ["varredura falhou: disco desconectado"]
 
 
 def test_incomplete_session_is_resumed(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 
 import typer
 
@@ -30,15 +31,25 @@ def _default_beep(frequency: int, duration_ms: int) -> None:
         winsound.Beep(frequency, duration_ms)
     except ImportError:
         sys.stderr.write("\a")
+    except RuntimeError:
+        pass  # sem dispositivo de áudio: a mensagem no console continua valendo
 
 
 class ConsoleFeedback:
+    """Mensagem no console + tom. O tom toca em uma thread própria (uma fila, na ordem): `winsound.Beep` é
+    síncrono e, no laço asyncio, atrasaria o carimbo dos eventos do OBS (pausa, divisão de arquivo)."""
+
     def __init__(self, beep: Callable[[int, int], None] = _default_beep, quiet: bool = False) -> None:
         self._beep, self._quiet = beep, quiet
+        self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cronista-beep")
 
     def _sound(self, tone: tuple[int, int]) -> None:
         if not self._quiet:
-            self._beep(*tone)
+            self._pool.submit(self._beep, *tone)
+
+    def close(self) -> None:
+        """Espera os tons pendentes terminarem (chamar ao sair)."""
+        self._pool.shutdown(wait=True)
 
     def marked(self, kind: MarkerKind, detail: str = "") -> None:
         suffix = f" ({detail})" if detail else ""

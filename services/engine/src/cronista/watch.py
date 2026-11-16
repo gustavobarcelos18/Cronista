@@ -123,6 +123,87 @@ def is_complete(db: Session, session: RecordingSession) -> bool:
     )
 
 
+MAX_RETRY_S = 6 * 3600.0
+
+
+@dataclass
+class Failure:
+    """Última falha de um diário: só tenta de novo se o diário mudou ou o prazo (com recuo) venceu."""
+
+    signature: str
+    retry_at: float
+    attempts: int
+
+
+def _note_failure(
+    failed: dict[Path, Failure], journal: Path, signature: str, now: float, retry_s: float
+) -> None:
+    previous = failed.get(journal)
+    attempts = previous.attempts + 1 if previous is not None and previous.signature == signature else 1
+    failed[journal] = Failure(signature, now + min(retry_s * 2 ** (attempts - 1), MAX_RETRY_S), attempts)
+
+
+def _process(
+    db: Session,
+    settings: Settings,
+    gate: GpuGate,
+    watch_dir: Path,
+    project: str,
+    journal: Path,
+    now: Callable[[], float],
+    failed: dict[Path, Failure],
+) -> Processed | None:
+    """Uma gravação: devolve o resultado se ingeriu (ou falhou), None se não era hora ou nada mudou."""
+    signature = str(journal.stat().st_size)  # o diário só cresce: tamanho diferente = há eventos novos
+    origin = str(journal.resolve())
+    session = db.scalar(select(RecordingSession).where(RecordingSession.folder == origin))
+    if session is not None and session.source_signature == signature and is_complete(db, session):
+        return None
+    failure = failed.get(journal)
+    if failure is not None and failure.signature == signature and now() < failure.retry_at:
+        return None
+    rec = inspect_journal(journal)
+    if rec is None:
+        return None
+    files, warnings = resolve_files(rec, watch_dir, settings)
+
+    newest = max([journal.stat().st_mtime, *(f.stat().st_mtime for f in files)])
+    abandoned = not rec.ended
+    wait = settings.abandoned_after_hours * 3600 if abandoned else settings.settle_seconds
+    if now() - newest < wait:
+        return None
+
+    result = Processed(journal, files=files, warnings=warnings, abandoned=abandoned)
+    if abandoned:
+        result.warnings.append(
+            "gravação sem recording_stopped (OBS fechou ou o PC caiu): tratada como interrompida"
+        )
+    if not files:
+        result.error = "nenhum arquivo de vídeo encontrado para esta gravação"
+    else:
+        log_event("ingestao_automatica", journal=journal.name, files=[f.name for f in files])
+        try:
+            report = ingest_files(db, origin, files, settings, gate, project)
+        except Exception as exc:
+            db.rollback()  # a Session vive o laço todo: um erro de banco não pode contaminar o resto
+            result.error = str(exc)
+        else:
+            result.session_id = report.session_id
+            result.warnings += report.markers.warnings
+            if not report.ok:
+                result.error = "; ".join(f"{Path(p).name}: {e}" for p, e in report.failures.items())
+            else:
+                ingested = db.get(RecordingSession, report.session_id)
+                if ingested is not None:
+                    ingested.source_signature = signature
+                    db.commit()
+    if result.error:
+        _note_failure(failed, journal, signature, now(), settings.retry_seconds)
+    else:
+        failed.pop(journal, None)
+    return result
+
+
 def scan_once(
     db: Session,
     settings: Settings,
@@ -131,56 +212,25 @@ def scan_once(
     project: str = "default",
     *,
     now: Callable[[], float] = time.time,
-    failed: dict[Path, float] | None = None,
+    failed: dict[Path, Failure] | None = None,
 ) -> list[Processed]:
-    """Uma varredura: ingere as gravações prontas que ainda não foram ingeridas (ou ficaram incompletas).
+    """Uma varredura: ingere as gravações prontas que ainda não foram ingeridas (ou mudaram depois).
 
-    `failed` guarda, por diário, a data de modificação em que a ingestão falhou: só tenta de novo se o diário
-    mudar (ou o serviço reiniciar), para uma falha não virar um laço quente.
+    Cada diário é tratado isolado: um erro inesperado (arquivo que sumiu, banco) vira o resultado daquele
+    diário, com `rollback`, e não derruba a varredura. `failed` guarda a última falha de cada diário: ele só
+    é tentado de novo se o diário mudou ou se o prazo, que dobra a cada falha, venceu.
     """
     failed = failed if failed is not None else {}
     done: list[Processed] = []
     for journal in find_journals(watch_dir):
-        origin = str(journal.resolve())
-        session = db.scalar(select(RecordingSession).where(RecordingSession.folder == origin))
-        if session is not None and is_complete(db, session):
-            continue
-        mtime = journal.stat().st_mtime
-        if failed.get(journal) == mtime:
-            continue
-        rec = inspect_journal(journal)
-        if rec is None:
-            continue
-        files, warnings = resolve_files(rec, watch_dir, settings)
-
-        newest = max([mtime, *(f.stat().st_mtime for f in files)])
-        idle = now() - newest
-        abandoned = not rec.ended
-        wait = settings.abandoned_after_hours * 3600 if abandoned else settings.settle_seconds
-        if idle < wait:
-            continue
-
-        result = Processed(journal, files=files, warnings=warnings, abandoned=abandoned)
-        if abandoned:
-            result.warnings.append(
-                "gravação sem recording_stopped (OBS fechou ou o PC caiu): tratada como interrompida"
-            )
-        if not files:
-            result.error = "nenhum arquivo de vídeo encontrado para esta gravação"
-        else:
-            log_event("ingestao_automatica", journal=journal.name, files=[f.name for f in files])
-            try:
-                report = ingest_files(db, origin, files, settings, gate, project)
-            except Exception as exc:
-                result.error = str(exc)
-            else:
-                result.session_id = report.session_id
-                result.warnings += report.markers.warnings
-                if not report.ok:
-                    result.error = "; ".join(f"{Path(p).name}: {e}" for p, e in report.failures.items())
-        if result.error:
-            failed[journal] = mtime
-        done.append(result)
+        try:
+            item = _process(db, settings, gate, watch_dir, project, journal, now, failed)
+        except Exception as exc:  # arquivo some entre listar e ler, erro de banco...
+            db.rollback()
+            item = Processed(journal, error=f"erro inesperado: {exc}")
+            _note_failure(failed, journal, "?", now(), settings.retry_seconds)
+        if item is not None:
+            done.append(item)
     return done
 
 
@@ -197,10 +247,18 @@ def serve(
     now: Callable[[], float] = time.time,
 ) -> None:
     """Laço do serviço (Ctrl+C sai). `max_scans` existe para `--once` e para os testes."""
-    failed: dict[Path, float] = {}
+    failed: dict[Path, Failure] = {}
+    last_scan_error: str | None = None
     scans = 0
     while max_scans is None or scans < max_scans:
-        for item in scan_once(db, settings, gate, watch_dir, project, now=now, failed=failed):
+        try:
+            items = scan_once(db, settings, gate, watch_dir, project, now=now, failed=failed)
+            last_scan_error = None
+        except Exception as exc:  # pasta de gravação inacessível (disco desconectado, rede)
+            message = f"varredura falhou: {exc}"
+            items = [] if message == last_scan_error else [Processed(watch_dir, error=message)]
+            last_scan_error = message  # avisa uma vez, não a cada 5 s
+        for item in items:
             report(item)
         scans += 1
         if max_scans is None or scans < max_scans:

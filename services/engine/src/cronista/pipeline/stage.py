@@ -22,7 +22,7 @@ class StageContext:
     settings: Settings
     inputs: dict[str, StageResult]  # resultados das etapas listadas em `needs`
     wait_for_gpu: Callable[[], None] = lambda: None
-    """Etapas de GPU longas chamam isto entre blocos de trabalho: bloqueia enquanto a GPU estiver ocupada."""
+    """Etapas longas chamam isto entre blocos: bloqueia com o OBS gravando ou jogo em tela cheia."""
 
 
 class Stage(Protocol):

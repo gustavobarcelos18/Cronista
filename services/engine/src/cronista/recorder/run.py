@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections.abc import Callable
+from functools import partial
 
 from cronista.config import Settings
 from cronista.domain.models import MarkerKind
@@ -39,6 +40,12 @@ async def run_forever(
     tasks: set[asyncio.Task[None]] = set()
     current: Recorder | None = None
 
+    def finished(task: asyncio.Task[None], *, kind: MarkerKind) -> None:
+        tasks.discard(task)
+        if not task.cancelled() and (error := task.exception()) is not None:
+            # Sem isto o toque falharia calado, e o som é justamente o que diz ao criador que funcionou.
+            feedback.warn(f"{kind.value}: toque NÃO registrado ({error})")
+
     def on_press(kind: MarkerKind) -> None:  # chamado na thread do teclado
         stamp = clock()  # o instante do toque, não o de quando a tarefa rodar
 
@@ -46,7 +53,7 @@ async def run_forever(
             if current is not None:
                 task = loop.create_task(current.press(kind, stamp))
                 tasks.add(task)
-                task.add_done_callback(tasks.discard)
+                task.add_done_callback(partial(finished, kind=kind))
             else:
                 feedback.warn(f"{kind.value}: sem conexão com o OBS, toque perdido")
 

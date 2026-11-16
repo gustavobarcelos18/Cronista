@@ -23,6 +23,7 @@ from cronista.ingest.journal import JournalWriter, Stamp, find_journals, read_jo
 from cronista.ingest.service import ingest_folder
 from cronista.pipeline import AlwaysFreeGate
 from cronista.recorder.core import Recorder
+from cronista.recorder.feedback import TONES, WARN_TONE, ConsoleFeedback
 from cronista.recorder.files import find_recording_file, newest_video
 from cronista.recorder.hotkeys import HotkeyConfigError, resolve_hotkeys
 from cronista.recorder.obs import SimpleObsLink
@@ -590,3 +591,139 @@ def test_journal_lines_are_plain_json(tmp_path: Path) -> None:
         writer.marker(MarkerKind.MOMENTO, "m", FakeClock.at(1.0))
     line = (tmp_path / "x.markers.jsonl").read_text(encoding="utf-8").strip()
     assert json.loads(line)["mono_s"] == 1.0
+
+
+# --- correções da revisão ---
+
+
+def test_journal_that_cannot_be_opened_does_not_wedge_the_recorder(
+    tmp_path: Path, settings: Settings
+) -> None:
+    not_a_folder = tmp_path / "arquivo.txt"
+    not_a_folder.write_text("x", encoding="utf-8")
+    recorder, link, feedback, _ = _recorder(not_a_folder, settings)  # a "pasta de gravação" é um arquivo
+
+    async def scenario() -> None:
+        await recorder.handle(_started(100.0))  # não pode levantar
+        assert recorder.recording
+        await asyncio.wait_for(recorder.press(MarkerKind.MOMENTO, FakeClock.at(101.0)), 2)  # nem pendurar
+
+    asyncio.run(scenario())
+    assert link.chapters == ["momento|id1"]  # o marcador do OBS continua sendo criado
+    assert any("sem diário nesta gravação" in w for w in feedback.warnings)
+    assert feedback.marked_calls
+
+
+def test_journal_write_failure_warns_but_keeps_creating_chapters(
+    tmp_path: Path, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "jogo.mp4").write_bytes(b"x")
+    recorder, link, feedback, _ = _recorder(tmp_path, settings)
+
+    def disk_full(*_: object, **__: object) -> None:
+        raise OSError("disco cheio")
+
+    async def scenario() -> None:
+        await recorder.handle(_started(100.0))
+        monkeypatch.setattr(JournalWriter, "marker", disk_full)
+        monkeypatch.setattr(JournalWriter, "paused", disk_full)
+        await recorder.press(MarkerKind.MOMENTO, FakeClock.at(101.0))
+        await recorder.handle(RecordState(STATE_PAUSED, None, FakeClock.at(102.0)))  # também não levanta
+
+    asyncio.run(scenario())
+    assert link.chapters == ["momento|id1"]
+    assert any("disco cheio" in w for w in feedback.warnings)
+
+
+def _crashed_journal(directory: Path, video: Path, *, paused: bool) -> None:
+    with JournalWriter(directory / "gravacao-antiga.markers.jsonl") as writer:
+        writer.recording_started(str(video), FakeClock.at(100.0))
+        if paused:
+            writer.paused(FakeClock.at(105.0))
+
+
+@pytest.mark.parametrize(
+    ("journal_paused", "obs_paused", "expected_last"),
+    [
+        (True, False, "unpaused"),
+        (False, True, "paused"),
+        (True, True, "paused"),
+        (False, False, "recording_started"),
+    ],
+)
+def test_resume_reconciles_the_pause_state_of_the_reopened_journal(
+    tmp_path: Path, settings: Settings, journal_paused: bool, obs_paused: bool, expected_last: str
+) -> None:
+    video = tmp_path / "jogo.mp4"
+    video.write_bytes(b"x")
+    _crashed_journal(tmp_path, video, paused=journal_paused)
+    recorder, link, _, clock = _recorder(tmp_path, settings)
+    link.status = RecordStatus(active=True, paused=obs_paused, duration_s=40.0)
+    clock.t = 140.0
+
+    async def scenario() -> None:
+        await recorder.attach()
+        await recorder.press(MarkerKind.MOMENTO, FakeClock.at(141.0))
+        recorder.close()
+
+    asyncio.run(scenario())
+    events, _ = read_journal(_journal(tmp_path))
+    pause_events = [e.type for e in events if e.type in ("paused", "unpaused", "recording_started")]
+    assert pause_events[-1] == expected_last
+    marker = reconstruct_media_times(events)
+    if not obs_paused:  # gravando de verdade: o marcador cai no tempo certo, sem aviso de "durante pausa"
+        assert marker.warnings == []
+        # pausado de 105 s a 140 s no diário reaberto: 141 - 100 - 35 = 6 s; sem pausa, 41 s
+        expected = 6.0 if journal_paused else 41.0
+        assert marker.markers[-1].media_time_s == pytest.approx(expected, abs=0.01)
+
+
+def test_beep_runs_off_the_event_loop_and_in_order() -> None:
+    import time
+
+    played: list[tuple[int, int]] = []
+
+    def slow_beep(frequency: int, duration_ms: int) -> None:
+        time.sleep(0.3)
+        played.append((frequency, duration_ms))
+
+    feedback = ConsoleFeedback(beep=slow_beep)
+    started = time.perf_counter()
+    feedback.warn("a")
+    feedback.marked(MarkerKind.CONSTRUCAO, "fim")  # dois tons
+    elapsed = time.perf_counter() - started
+    assert elapsed < 0.2  # não bloqueou o chamador (o laço asyncio) pelos 0,9 s dos tons
+    feedback.close()
+    assert [p[0] for p in played] == [
+        WARN_TONE[0],
+        TONES[MarkerKind.CONSTRUCAO][0],
+        TONES[MarkerKind.CONSTRUCAO][0],
+    ]
+
+
+def test_a_press_that_crashes_is_reported_not_swallowed(
+    tmp_path: Path, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "jogo.mp4").write_bytes(b"x")
+    hotkeys = FakeHotkeys()
+    feedback = FakeFeedback()
+
+    async def boom(self: Recorder, kind: MarkerKind, stamp: Stamp) -> None:
+        raise OSError("disco cheio")
+
+    monkeypatch.setattr(Recorder, "press", boom)
+
+    async def scenario() -> None:
+        async with running_fake_obs(tmp_path) as obs:
+            cfg = settings.model_copy(update={"obs_port": obs.port, "obs_host": "127.0.0.1"})
+            runner = asyncio.create_task(run_forever(cfg, feedback, hotkeys=hotkeys, retry_s=0.05))
+            await _until(lambda: bool(obs._connections))
+            assert hotkeys.on_press is not None
+            await asyncio.sleep(0.1)
+            hotkeys.on_press(MarkerKind.MOMENTO)
+            await _until(lambda: any("toque NÃO registrado" in w for w in feedback.warnings))
+            runner.cancel()
+            await asyncio.gather(runner, return_exceptions=True)
+
+    asyncio.run(scenario())
+    assert any("momento" in w and "disco cheio" in w for w in feedback.warnings)

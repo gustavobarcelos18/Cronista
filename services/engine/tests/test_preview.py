@@ -131,16 +131,30 @@ def test_preview_leaves_no_work_files_and_is_repeatable(
 
 
 @needs_ffmpeg
-def test_preview_waits_for_gpu_only_with_nvenc(
+def test_preview_waits_for_the_gate_before_starting_and_between_clips(
     db: Session, settings: Settings, fixture_folders: dict[str, Path]
 ) -> None:
     report = ingest_folder(db, fixture_folders["normal"], settings, AlwaysFreeGate(), "p")
+    checks: list[str] = []
 
-    class BusyGate:
+    class Gate:
+        def __init__(self) -> None:
+            self.busy_left = 2
+
         def is_free(self) -> bool:
-            raise AssertionError("encoder de CPU não deve consultar a GPU")
+            checks.append("antes")
+            self.busy_left -= 1
+            return self.busy_left < 0
 
-    build_preview(db, report.session_id, settings, BusyGate())  # libx264: não consulta
+        def is_free_while_working(self) -> bool:
+            checks.append("entre")
+            return True
+
+    naps: list[float] = []
+    result = build_preview(db, report.session_id, settings, Gate(), sleep=naps.append)
+    assert len(naps) == 2  # esperou o gate antes de começar (o encoder é de CPU, mas é processamento)
+    assert checks == ["antes", "antes", "antes", "entre"]  # e olhou de novo antes do único trecho
+    assert result.clips == 1
 
 
 def test_preview_errors_are_clear(db: Session, settings: Settings) -> None:

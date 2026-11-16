@@ -15,7 +15,15 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cronista.config import Settings
-from cronista.domain.journal import FileChanged, RecordingStarted, RecordingStopped, chapter_title
+from cronista.domain.journal import (
+    FileChanged,
+    JournalEvent,
+    Paused,
+    RecordingStarted,
+    RecordingStopped,
+    Unpaused,
+    chapter_title,
+)
 from cronista.domain.models import MarkerKind
 from cronista.domain.timeline import file_key
 from cronista.ingest.journal import JOURNAL_SUFFIX, JournalWriter, Stamp, find_journals, read_journal
@@ -63,6 +71,7 @@ class Recorder:
         self._journal: JournalWriter | None = None
         self._ready = asyncio.Event()  # diário aberto (ou impossível); toques esperam por ele
         self._construction_open = False
+        self._paused = False
         self._count = 0
 
     # --- estado (leitura) ---
@@ -88,8 +97,14 @@ class Recorder:
             "OBS já estava gravando: o início é estimado pela duração e pausas anteriores não constam"
         )
         await self._begin(started, adopted=True)
-        if status.paused and self._journal is not None:
-            self._journal.paused(now)
+        # Reconcilia a pausa: o diário reaberto pode dizer "pausado" (o gravador caiu em pausa e o criador
+        # retomou), ou o contrário; sem isto os marcadores seguintes saem presos no ponto da pausa.
+        if status.paused and not self._paused:
+            self._write("paused", lambda j: j.paused(now))
+            self._paused = True
+        elif not status.paused and self._paused:
+            self._write("unpaused", lambda j: j.unpaused(now))
+            self._paused = False
 
     async def handle(self, event: ObsEvent) -> None:
         match event:
@@ -98,25 +113,43 @@ class Recorder:
                     await self._begin(stamp)
                 elif state == STATE_STOPPED and self._recording:
                     self._end(stamp)
-                elif state == STATE_PAUSED and self._journal is not None:
-                    self._journal.paused(stamp)
-                elif state == STATE_RESUMED and self._journal is not None:
-                    self._journal.unpaused(stamp)
+                elif state == STATE_PAUSED:
+                    self._paused = True
+                    self._write("paused", lambda j: j.paused(stamp))
+                elif state == STATE_RESUMED:
+                    self._paused = False
+                    self._write("unpaused", lambda j: j.unpaused(stamp))
             case RecordFile(new_path=path, stamp=stamp):
-                if self._journal is not None:
-                    self._journal.file_changed(path, stamp)
+                if self._write("file_changed", lambda j: j.file_changed(path, stamp)):
                     log_event("arquivo_dividido", path=path)
 
+    def _write(self, what: str, action: Callable[[JournalWriter], None]) -> bool:
+        """Escreve no diário sem nunca derrubar o gravador: disco cheio ou arquivo bloqueado viram aviso.
+
+        O toque ainda vira marcador no arquivo do OBS; o aviso (com som) diz que o diário falhou.
+        """
+        if self._journal is None:
+            return False
+        try:
+            action(self._journal)
+        except OSError as exc:
+            self._feedback.warn(f"diário: não consegui gravar '{what}' ({exc})")
+            return False
+        return True
+
     async def _begin(self, stamp: Stamp, *, adopted: bool = False) -> None:
-        self._recording, self._construction_open, self._count = True, False, 0
+        self._recording, self._construction_open, self._count, self._paused = True, False, 0, False
         self._ready.clear()
         try:
-            directory = Path(await self._obs.record_directory())
-        except ObsError as exc:
-            self._feedback.warn(f"sem a pasta de gravação do OBS ({exc}): toques só no marcador do OBS")
-            self._ready.set()
-            return
+            await self._open(stamp, adopted)
+        except (ObsError, OSError) as exc:  # sem pasta, sem permissão, disco cheio...
+            self._close_journal()
+            self._feedback.warn(f"sem diário nesta gravação ({exc}): toques só no marcador do OBS")
+        finally:
+            self._ready.set()  # nunca deixa os toques pendurados esperando o diário
 
+    async def _open(self, stamp: Stamp, adopted: bool) -> None:
+        directory = Path(await self._obs.record_directory())
         path = await find_recording_file(
             directory,
             self._settings.video_extensions,
@@ -129,8 +162,9 @@ class Recorder:
                 f"não achei o arquivo da gravação em {directory}: a ingestão vai assumir o primeiro arquivo"
             )
 
-        journal_path = _open_journal(directory, path) if adopted else None
-        if journal_path is not None:
+        reopened = _open_journal(directory, path) if adopted else None
+        if reopened is not None:
+            journal_path, self._paused = reopened
             self._journal = JournalWriter(journal_path)
             self._feedback.warn(f"diário retomado ({journal_path.name}); o que passou fora do ar não consta")
         else:
@@ -138,18 +172,20 @@ class Recorder:
             self._journal.recording_started(str(path) if path else "", stamp)
         self._feedback.info(f"Gravando: {path.name if path else '(arquivo desconhecido)'}")
         log_event("gravacao_iniciada", path=str(path) if path else None, adotada=adopted)
-        self._ready.set()
 
-    def _end(self, stamp: Stamp) -> None:
+    def _close_journal(self) -> None:
         if self._journal is not None:
-            self._journal.recording_stopped(stamp)
             self._journal.close()
             self._journal = None
+
+    def _end(self, stamp: Stamp) -> None:
+        self._write("recording_stopped", lambda j: j.recording_stopped(stamp))
+        self._close_journal()
         if self._construction_open:
             self._feedback.warn("construção ficou aberta: a ingestão fecha no fim da sessão, com aviso")
         self._feedback.info(f"Gravação encerrada: {self._count} marcador(es)")
         log_event("gravacao_encerrada", marcadores=self._count)
-        self._recording, self._construction_open = False, False
+        self._recording, self._construction_open, self._paused = False, False, False
         self._ready.clear()
 
     # --- toques ---
@@ -165,8 +201,7 @@ class Recorder:
             return
 
         marker_id = self._new_id()
-        if self._journal is not None:
-            self._journal.marker(kind, marker_id, stamp)
+        in_journal = self._write("marker", lambda j: j.marker(kind, marker_id, stamp))
         self._count += 1
         detail = ""
         if kind is MarkerKind.CONSTRUCAO:
@@ -178,7 +213,7 @@ class Recorder:
             created = await self._obs.create_chapter(chapter_title(kind, marker_id))
         except ObsError as exc:
             self._feedback.warn(f"{kind.value}: {exc}")
-        if self._journal is None:
+        if not in_journal:
             self._feedback.warn(f"{kind.value}: sem diário; só o marcador do OBS registrou o toque")
         elif not created:
             self._feedback.warn(f"{kind.value}: o OBS não criou o marcador no arquivo; o diário tem o toque")
@@ -187,13 +222,14 @@ class Recorder:
 
     def close(self) -> None:
         """Encerra o gravador sem fechar a gravação: o OBS continua gravando e a retomada reabre o diário."""
-        if self._journal is not None:
-            self._journal.close()
-            self._journal = None
+        self._close_journal()
 
 
-def _open_journal(directory: Path, current_file: Path | None) -> Path | None:
-    """Diário de uma gravação em andamento (gravador reiniciado): o último sem `recording_stopped`."""
+def _open_journal(directory: Path, current_file: Path | None) -> tuple[Path, bool] | None:
+    """Diário de uma gravação em andamento (gravador reiniciado) e se ele a deixou pausada.
+
+    É o último diário sem `recording_stopped` cujo arquivo atual é o que o OBS está gravando.
+    """
     if current_file is None:
         return None
     for candidate in reversed(find_journals(directory)):
@@ -201,5 +237,16 @@ def _open_journal(directory: Path, current_file: Path | None) -> Path | None:
         files = [e.path for e in events if isinstance(e, RecordingStarted | FileChanged)]
         stopped = bool(events) and isinstance(events[-1], RecordingStopped)
         if files and not stopped and file_key(files[-1]) == file_key(str(current_file)):
-            return candidate
+            return candidate, _journal_paused(events)
     return None
+
+
+def _journal_paused(events: list[JournalEvent]) -> bool:
+    """O diário termina em pausa? (pausa ainda aberta: o último `paused` não teve `unpaused`)."""
+    paused = False
+    for event in events:
+        if isinstance(event, RecordingStarted | Unpaused):
+            paused = False
+        elif isinstance(event, Paused):
+            paused = True
+    return paused

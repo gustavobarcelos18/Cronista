@@ -71,13 +71,12 @@ def build_preview(
     plan = plan_session(db, session_id, settings)
     windows, warnings = plan.windows, plan.warnings
 
-    uses_gpu = settings.preview_encoder.endswith("_nvenc")
+    def wait_for_gpu(working: bool) -> None:
+        wait_until_free(
+            gate, settings.gpu_poll_seconds, sleep, working=working, session_id=session_id, stage="preview"
+        )
 
-    def wait_for_gpu() -> None:
-        if uses_gpu:
-            wait_until_free(gate, settings.gpu_poll_seconds, sleep, session_id=session_id, stage="preview")
-
-    wait_for_gpu()
+    wait_for_gpu(working=False)  # a prévia também é processamento: pausa com o OBS gravando ou jogo aberto
 
     target = out or settings.data_dir / "previews" / f"sessao-{session_id}.mp4"
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +87,7 @@ def build_preview(
     try:
         clips: list[Path] = []
         for index, window in enumerate(windows):
-            wait_for_gpu()  # um jogo pode abrir no meio: pausa entre os trechos
+            wait_for_gpu(working=True)  # um jogo pode abrir no meio: pausa entre os trechos
             clip = work / f"{index:04d}.mp4"
             try:
                 _cut(settings, plan.sources[window.file_id].master, window, clip)

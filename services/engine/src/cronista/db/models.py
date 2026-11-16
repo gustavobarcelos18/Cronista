@@ -34,7 +34,9 @@ class RecordingSession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("project.id"))
-    folder: Mapped[str] = mapped_column(String(1000), unique=True)
+    folder: Mapped[str] = mapped_column(String(1000), unique=True)  # origem: pasta ou diário
+    source_signature: Mapped[str | None] = mapped_column(String(100), default=None)
+    """Tamanho do diário no momento da ingestão (o diário só cresce): se mudar, a sessão é reingerida."""
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     project: Mapped[Project] = relationship(back_populates="sessions")

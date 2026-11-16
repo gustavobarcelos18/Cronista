@@ -606,6 +606,7 @@ manual, como antes) ou o arquivo de diário (serviço). Sem migração: a coluna
 - `--once` faz uma varredura e sai; `--watch` sobrepõe `watch_dir` (caminho pessoal, só em `*.local.yaml`).
 - Recupera jobs órfãos ao iniciar (como `cronista ingest`). Recebe a `GpuGate` e a repassa, mas a ingestão usa só
   CPU; a `GpuGate` real (próximo item) importa para as etapas de GPU da Fase 2 em diante e para a prévia com NVENC.
+  **Substituído pelo §35:** o gate vale para toda etapa, de CPU ou GPU (CLAUDE.md: "Processamento pausa enquanto o OBS grava...").
 
 **Testes (11 novos, 114 no total):** gravação encerrada ingerida uma só vez; não ingere antes de parar nem de
 assentar; duas gravações na mesma pasta viram duas sessões sem avisos de marcador fora da sessão; divisão de arquivo;
@@ -632,6 +633,8 @@ Sexto item da ordem da 1B: a política de GPU da seção 4.1 (pausar com o OBS g
 - `GpuLoadGate` (opcional, `gpu_busy_percent`): `nvidia-smi --query-gpu=utilization.gpu`, ocupada com uso >= o limite.
   Cobre o janela-sem-borda, mas mede a GPU inteira (a consulta é só *antes* de cada etapa, então o próprio
   processamento não se auto-bloqueia). Neste PC o `nvidia-smi` existe e respondeu 5%.
+- **Substituído pelo §35:** o gate é consultado antes de **toda** etapa que vai rodar (não só as de GPU) e a carga da GPU não vale
+  entre blocos de uma etapa; o gate passou a ter cache curto.
 - Regra comum: sinal ilegível (OBS fechado, sem `nvidia-smi`, sem Windows) conta como "não ocupado"; só se adia por
   um sinal real. Consequência: se o WebSocket do OBS estiver desligado ou com senha errada, o gate não enxerga a
   gravação. Mitigação: se a porta do OBS responde mas a conexão falha (senha errada), o gate registra um aviso
@@ -677,6 +680,55 @@ arquivo novo (1, só o teste combinado pausa+divisão pega, então ele é necess
 **Limite honesto:** o vídeo é gerado pelo FFmpeg e a pausa é recortada por nós, então prova que a **conta** do diário
 bate com o conteúdo sob a premissa de que o OBS recorta a pausa do arquivo e restaura o relógio na divisão. Essa
 premissa vem do plano e da documentação do OBS; verificá-la com uma gravação real com pausa é item da 1C.
+
+## 35. 1B: correções da revisão de código (10 achados)
+
+`/code-review` sobre os 6 commits à frente do `origin/main` (o `main` local estava desatualizado; o PR #2 da 1B inicial já
+estava no `origin/main`). Os 10 achados foram corrigidos, cada um com teste; os mais sutis foram conferidos por mutação.
+
+**Decisões que mudam o que foi escrito antes (§32 e §33 ficam como história):**
+- **Todo processamento pausa, não só o de GPU.** O CLAUDE.md diz "Processamento pausa enquanto o OBS grava ou um jogo
+  em tela cheia está aberto", e eu tinha restringido o gate às etapas com `uses_gpu`. Pior caso real: parar a gravação
+  e começar a próxima, e o serviço fazer proxy e WAV de horas de vídeo (CPU/disco) durante o jogo. Agora `run_pipeline`
+  espera o gate antes de **toda** etapa que vai rodar (etapa em cache não espera), e a prévia também (CPU ou NVENC).
+  O `uses_gpu` ficou só informativo.
+- **Dois modos de consulta.** `is_free()` = pode começar; `is_free_while_working()` = continuar entre blocos de uma
+  etapa. O `GpuLoadGate` só vale no primeiro: no meio da etapa a carga medida é a da própria etapa, que esperaria por
+  si mesma para sempre (o que a docstring antiga negava). Gates sem o segundo método usam o primeiro.
+- **Cache curto do gate (`CachedGate`, 3 s).** Cada sonda do OBS custava ~1 s com o OBS fechado, e a prévia consulta por
+  trecho (200 marcadores = 200 s só de sondas). O TTL (3 s) é menor que o intervalo de espera (5 s), então esperar por
+  um gate ocupado sempre reconsulta. A checagem de porta caiu de 0,5 s para 0,25 s (localhost responde em ms).
+
+**Serviço (`watch.py`):**
+- Um arquivo já pertencente a outra sessão (ex.: a pasta do OBS ingerida à mão antes) agora é erro claro
+  (`SessionConflictError`), checado **antes** de criar projeto ou sessão. Antes criava uma sessão sem arquivos, que
+  era reingerida a cada varredura e quebrava `preview`/`export`. `cronista ingest` também mostra o erro de forma limpa.
+- Cada diário é tratado isolado: erro inesperado (arquivo que some, banco) vira o resultado daquele diário, com
+  `rollback()` (a `Session` vive o laço inteiro), sem derrubar a varredura. Pasta de gravação inacessível é avisada uma vez.
+- Falha tem prazo de nova tentativa que dobra (`retry_seconds` = 600 s, teto de 6 h), e é tentada de novo na hora se o
+  diário mudou. Antes só reiniciando o serviço.
+- **Diário que cresce depois da ingestão** (ex.: tratado como abandonado após 4 h parado, e o criador retoma e para):
+  a sessão guarda `source_signature` = tamanho do diário na ingestão (migração 0003; o diário só cresce). Mudou =
+  reingere (as etapas em cache não refazem nada). Só o tamanho, não a data, para backup/antivírus não disparar nada.
+
+**Gravador:**
+- `_begin` nunca deixa o gravador travado ou caído: `OSError` (sem permissão, disco cheio) vira aviso, `_ready` é sempre
+  liberado (`finally`) e os toques seguem só no marcador do OBS. Escritas do diário (toque, pausa, divisão, parada)
+  que falham viram aviso em vez de exceção.
+- Retomada reconcilia o estado de pausa: se o diário reaberto termina pausado e o OBS já retomou, escreve `unpaused`
+  (e o contrário). Antes os marcadores seguintes saíam presos no ponto da pausa, com aviso falso.
+- O tom (`winsound.Beep`, síncrono) toca em uma thread própria, na ordem: bloqueava o laço por até 350 ms e atrasava o
+  carimbo dos eventos do OBS (pausa, divisão), estourando os 100 ms do critério.
+- Falha numa tarefa de toque agora avisa ("toque NÃO registrado") em vez de sumir.
+
+**Ainda aberto (não está nos 10):** `_open_journal` repete a lógica de `watch.inspect_journal` (duplicação pequena);
+`watch` consulta o banco por diário a cada varredura (barato em SQLite, mas cresce com a série); `gates` importa o relógio
+de `recorder.core`. Ficam para quando incomodarem.
+
+**Testes (160 no total, 26 novos):** um por achado (gate em etapa de CPU e em etapa em cache, modo "trabalhando" sem
+auto-bloqueio, `CachedGate`, conflito de sessão, rollback, prazo com recuo, diário que cresce, `_begin` com pasta
+inválida, escrita de diário falhando, retomada com pausa nos 4 cruzamentos, beep fora do laço, toque que falha).
+**Mutação manual:** desfazer cada correção faz o teste correspondente falhar.
 
 ---
 

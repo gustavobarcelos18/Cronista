@@ -29,6 +29,10 @@ class IngestReport:
         return not self.failures
 
 
+class SessionConflictError(Exception):
+    """Um arquivo da ingestão já pertence a outra sessão (um arquivo só pode estar em uma)."""
+
+
 def find_media(folder: Path, settings: Settings) -> list[Path]:
     exts = {e.lower() for e in settings.video_extensions}
     return sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in exts)
@@ -56,7 +60,10 @@ def ingest_files(
     """Ingere uma sessão. `origin` a identifica: uma pasta (manual) ou um diário `.markers.jsonl` (serviço).
 
     Reingerir a mesma origem não duplica nada: sessão, arquivos e etapas vêm do banco e do cache.
+    Um arquivo que já está em outra sessão (ex.: a pasta do OBS ingerida à mão antes do serviço) é um erro
+    claro, antes de criar qualquer linha: nunca uma sessão sem arquivos.
     """
+    _check_no_conflict(db, origin, files)
     project = db.scalar(select(Project).where(Project.name == project_name))
     if project is None:
         project = Project(name=project_name)
@@ -92,3 +99,17 @@ def ingest_files(
 
     report.markers = ingest_markers(db, session, ingested, settings)
     return report
+
+
+def _check_no_conflict(db: Session, origin: str, files: list[Path]) -> None:
+    rows = db.execute(
+        select(MediaFile.path, RecordingSession.id, RecordingSession.folder)
+        .join(RecordingSession, MediaFile.session_id == RecordingSession.id)
+        .where(MediaFile.path.in_([str(f) for f in files]), RecordingSession.folder != origin)
+    ).all()
+    if rows:
+        path, session_id, folder = rows[0]
+        raise SessionConflictError(
+            f"{Path(path).name} já pertence à sessão {session_id} (origem: {folder}); "
+            "um arquivo só pode estar em uma sessão"
+        )

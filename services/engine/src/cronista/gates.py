@@ -4,8 +4,9 @@ Cada gate responde "a GPU está livre para mim?" e, se não, por quê (`reason()
 consiga ser lido (OBS fechado, sem `nvidia-smi`, sem Windows) conta como "não ocupado": o processamento só é
 adiado por um sinal que existe de fato, nunca por dúvida.
 
-Limite honesto: o `is_free` é consultado **antes** de cada etapa de GPU e entre os blocos em que a etapa chama
-`ctx.wait_for_gpu()`. Uma etapa que não faz isso só pausa na próxima fronteira (plano mestre, seção 4.1).
+Limite honesto: o gate é consultado **antes** de cada etapa que vai rodar e entre os blocos em que a etapa
+chama `ctx.wait_for_gpu()`. Uma etapa que não faz isso só pausa na próxima fronteira (plano mestre, 4.1).
+Entre blocos vale `is_free_while_working()`, que ignora sinais causados pelo próprio processamento.
 """
 
 from __future__ import annotations
@@ -15,12 +16,13 @@ import logging
 import socket
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 
 from cronista.config import Settings
 from cronista.logging_setup import log_event
-from cronista.pipeline.gpu import AlwaysFreeGate, GpuGate, gate_reason
+from cronista.pipeline.gpu import AlwaysFreeGate, GpuGate, gate_reason, is_free_now
 from cronista.recorder.core import system_clock
 from cronista.recorder.obs import SimpleObsLink
 from cronista.recorder.ports import ObsError
@@ -32,7 +34,8 @@ QUNS_PRESENTATION_MODE = 4
 FULLSCREEN_STATES = {QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENTATION_MODE}
 
 OBS_PROBE_TIMEOUT_S = 2.0
-PORT_CHECK_TIMEOUT_S = 0.5
+PORT_CHECK_TIMEOUT_S = 0.25  # localhost responde em ms; recusar leva ~2 s por endereço no Windows
+CACHE_TTL_S = 3.0  # menor que `gpu_poll_seconds` (5 s): esperar por um gate ocupado sempre reconsulta
 
 
 class ObsRecordingGate:
@@ -136,8 +139,9 @@ def _nvidia_smi_utilization(executable: str = "nvidia-smi") -> int | None:
 class GpuLoadGate:
     """Ocupada quando a GPU está ocupada por outro programa (uso >= `busy_percent`), via `nvidia-smi`.
 
-    Cobre o jogo em janela sem borda, que a tela cheia não pega. ⚠️ Mede a GPU inteira: não use enquanto o
-    próprio processamento roda em paralelo, ou ele se auto-bloqueia (a consulta é feita antes de cada etapa).
+    Cobre o jogo em janela sem borda, que a tela cheia não pega. Mede a GPU inteira, então só vale **antes**
+    de começar a trabalhar (`is_free`). Entre blocos de uma etapa (`is_free_while_working`) ela não é
+    consultada: a carga medida seria a da própria etapa, que esperaria por si mesma para sempre.
     """
 
     def __init__(self, busy_percent: int, read: Callable[[], int | None] = _nvidia_smi_utilization) -> None:
@@ -147,6 +151,9 @@ class GpuLoadGate:
     def is_free(self) -> bool:
         self._utilization = self._read()
         return self._utilization is None or self._utilization < self._busy
+
+    def is_free_while_working(self) -> bool:
+        return True
 
     def reason(self) -> str | None:
         busy = self._utilization is not None and self._utilization >= self._busy
@@ -161,11 +168,43 @@ class CompositeGate:
         self._blocking: GpuGate | None = None
 
     def is_free(self) -> bool:
-        self._blocking = next((g for g in self._gates if not g.is_free()), None)
+        self._blocking = next((g for g in self._gates if not is_free_now(g, working=False)), None)
+        return self._blocking is None
+
+    def is_free_while_working(self) -> bool:
+        self._blocking = next((g for g in self._gates if not is_free_now(g, working=True)), None)
         return self._blocking is None
 
     def reason(self) -> str | None:
         return gate_reason(self._blocking) if self._blocking is not None else None
+
+
+class CachedGate:
+    """Guarda a resposta do gate por `ttl_s`: quem consulta em sequência rápida (um trecho de prévia a cada
+    poucos segundos) não paga a sonda do OBS toda vez. A espera por um gate ocupado reconsulta sempre, porque
+    o intervalo entre as sondagens é maior que o TTL."""
+
+    def __init__(self, inner: GpuGate, ttl_s: float, now: Callable[[], float] = time.monotonic) -> None:
+        self._inner, self._ttl, self._now = inner, ttl_s, now
+        self._cache: dict[bool, tuple[float, bool]] = {}
+
+    def _check(self, working: bool) -> bool:
+        moment = self._now()
+        hit = self._cache.get(working)
+        if hit is not None and moment - hit[0] < self._ttl:
+            return hit[1]
+        free = is_free_now(self._inner, working=working)
+        self._cache[working] = (moment, free)
+        return free
+
+    def is_free(self) -> bool:
+        return self._check(False)
+
+    def is_free_while_working(self) -> bool:
+        return self._check(True)
+
+    def reason(self) -> str | None:
+        return gate_reason(self._inner)
 
 
 def build_gate(settings: Settings) -> GpuGate:
@@ -178,4 +217,4 @@ def build_gate(settings: Settings) -> GpuGate:
     ]
     if settings.gpu_busy_percent is not None:
         gates.append(GpuLoadGate(settings.gpu_busy_percent))
-    return CompositeGate(gates)
+    return CachedGate(CompositeGate(gates), CACHE_TTL_S)

@@ -1,4 +1,8 @@
-"""Política de GPU como porta (plano mestre, seção 4.1). As implementações reais estão em `cronista.gates`."""
+"""Política de GPU como porta (plano mestre, seção 4.1). As implementações reais estão em `cronista.gates`.
+
+A regra do projeto é que **todo processamento** pausa enquanto o OBS grava ou um jogo está em tela cheia
+(CLAUDE.md, "Ambientes"), então o executor consulta o gate antes de cada etapa que vai rodar (CPU ou GPU).
+"""
 
 from __future__ import annotations
 
@@ -11,7 +15,7 @@ from cronista.logging_setup import log_event
 
 class GpuGate(Protocol):
     def is_free(self) -> bool:
-        """True quando o processamento com GPU pode rodar (OBS parado, sem jogo em tela cheia)."""
+        """True quando o processamento pode **começar** (OBS parado, sem jogo em tela cheia)."""
         ...
 
 
@@ -20,6 +24,19 @@ class AlwaysFreeGate:
 
     def is_free(self) -> bool:
         return True
+
+
+def is_free_now(gate: GpuGate, *, working: bool) -> bool:
+    """Consulta o gate. `working=True` = já estamos processando (entre blocos de uma etapa).
+
+    Um gate pode ter `is_free_while_working()` para ignorar sinais que o próprio processamento causa (a carga
+    da GPU, por exemplo: medida no meio de uma etapa de GPU, seria a da própria etapa).
+    """
+    if working:
+        check = getattr(gate, "is_free_while_working", None)
+        if callable(check):
+            return bool(check())
+    return gate.is_free()
 
 
 def gate_reason(gate: GpuGate) -> str | None:
@@ -32,11 +49,13 @@ def wait_until_free(
     gate: GpuGate,
     poll_seconds: float,
     sleep: Callable[[float], None] = time.sleep,
+    *,
+    working: bool = False,
     **log_fields: Any,
 ) -> int:
-    """Bloqueia até a GPU ficar livre; devolve quantas vezes esperou. Registra o motivo a cada espera."""
+    """Bloqueia até o processamento poder rodar; devolve o número de esperas (motivo no log)."""
     waits = 0
-    while not gate.is_free():
+    while not is_free_now(gate, working=working):
         waits += 1
         log_event("gpu_ocupada_aguardando", motivo=gate_reason(gate), **log_fields)
         sleep(poll_seconds)

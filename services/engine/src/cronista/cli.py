@@ -15,7 +15,7 @@ from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
 from cronista.export.service import export_session
 from cronista.gates import build_gate
-from cronista.ingest.service import ingest_folder
+from cronista.ingest.service import SessionConflictError, ingest_folder
 from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
 from cronista.pipeline import recover_orphans
@@ -41,7 +41,11 @@ def ingest(
         recovered = recover_orphans(db)
         if recovered:
             typer.echo(f"{recovered} job(s) interrompido(s) voltaram para a fila.")
-        report = ingest_folder(db, folder, settings, build_gate(settings), project)
+        try:
+            report = ingest_folder(db, folder, settings, build_gate(settings), project)
+        except (FileNotFoundError, SessionConflictError) as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
     for path, result in report.files.items():
         typer.echo(f"{path}: executadas={result.executed} em_cache={result.cached}")
         for stage in result.results.values():
@@ -160,13 +164,16 @@ def record(
     """Gravador de marcadores: escuta as hotkeys e registra cada toque no OBS e no diário. Ctrl+C sai."""
     settings = load_settings()
     setup_logging(settings.log_level)
+    feedback = ConsoleFeedback(quiet=quiet)
     try:
-        asyncio.run(run_forever(settings, ConsoleFeedback(quiet=quiet)))
+        asyncio.run(run_forever(settings, feedback))
     except HotkeyConfigError as exc:
         typer.echo(f"erro nas teclas: {exc}", err=True)
         raise typer.Exit(1) from exc
     except KeyboardInterrupt:
         typer.echo("Gravador encerrado.")
+    finally:
+        feedback.close()
 
 
 @app.command()

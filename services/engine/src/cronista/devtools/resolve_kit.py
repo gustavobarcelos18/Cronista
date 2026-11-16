@@ -275,9 +275,13 @@ def marker_edl() -> str:
     return "\n".join(lines)
 
 
-def srt() -> str:
+def srt(marca_zero: bool = False) -> str:
+    """`marca_zero` põe uma fala vazia em 0 s: no Resolve o clipe de legenda do Pool começa na 1ª fala e, solto no
+    início da timeline, desloca tudo (o `roteiro.srt` chegou 1 s adiantado em 2026-11-16)."""
     cues = [(1, 2, "Primeira fala do roteiro."), (4, 6, "Segunda fala, com duas linhas\nno mesmo bloco."),
             (8, 9, "Terceira.")]  # fmt: skip
+    if marca_zero:
+        cues = [(0, 1, ".")] + cues
     out = []
     for n, (start, end, text) in enumerate(cues, start=1):
         out.append(f"{n}\n00:00:{start:02d},000 --> 00:00:{end:02d},000\n{text}\n")
@@ -309,6 +313,7 @@ def make_resolve_kit(settings: Settings, out: Path, with_media: bool = True) -> 
         "03-audio.fcpxml": fcpxml_audio(files),
         "marcadores.edl": marker_edl(),
         "roteiro.srt": srt(),
+        "roteiro-marca-zero.srt": srt(marca_zero=True),
         "teste.cube": lut_cube(),
     }.items():
         path = out / name

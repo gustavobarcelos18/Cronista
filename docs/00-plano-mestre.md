@@ -715,7 +715,7 @@ for instalado, e obrigatoriamente antes da Fase 6):
 - Se o desempenho for ruim, gerar mídia intermediária só dos trechos usados.
 - Conferir em quais trilhas o Resolve põe os clipes do FCPXML (layout V1–V5 / A1–A7 da seção 6.3) e se dá para criar
   trilhas vazias (A3, A4); se não, o script interno cria e organiza.
-- Gerar o FCPXML de teste pelo mesmo caminho que o app vai usar (OTIO → FCPXML). ⚠️ De memória: o adaptador FCPXML do
+- Gerar o FCPXML de teste pelo mesmo caminho que o app vai usar (OTIO → FCPXML; a 1B já tem esse caminho em `cronista export`, medições no histórico §30). ⚠️ De memória: o adaptador FCPXML do
   OTIO é um plugin à parte e limitado; se ele não cobrir títulos, keyframes, clipes desativados e áudio por faixa, o
   app escreve o FCPXML direto.
 - Rodar o script interno sem janela própria. ⚠️ De memória: versões recentes do gratuito (19.1+) teriam restringido
@@ -935,6 +935,9 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **D2:** contratos Pydantic → JSON Schema/OpenAPI → TypeScript gerado; a seção 5.2 foi atualizada.
 - **D3:** gabarito em CSV (`inicio, fim, classe, nota`) + script de validação e prévia; o Studio não é necessário.
 - **D4:** sem Fase 1.5; a prévia MP4 da 1B cumpre o papel do rough cut só de marcadores.
+- **FCPXML mínimo (1B, histórico §30):** OTIO → adaptador `fcpx_xml` (pacote `otio-fcpx-xml-adapter`), com
+  pós-processamento mínimo e validação estrutural; V1 = master, A1/A2 = WAVs extraídos (jogo e microfone), não as
+  faixas embutidas. Também grava `.otio`.
 - Marcador que existe só no arquivo (e não no diário): tratado como `Momento`, com aviso no relatório da sessão.
 - Primeira sessão do projeto sem `Novo dia`: abre um dia implícito no início, sem número.
 - Marcadores na ingestão: passo idempotente da sessão (não etapa com cache por arquivo); `Construção ▶/■` pareada pela ordem dos toques, com `■` sintético se ficar aberta; dia implícito como marcador sintético (histórico §28).
@@ -989,7 +992,8 @@ Só se avança com os critérios da fase anterior cumpridos.
    - ~~Ferramenta de anotação do gabarito~~: **decidido** (D3), CSV + script de validação.
 10. Dúvidas levantadas na quinta revisão (histórico §24), sem resposta ainda:
    - ⚠️ O adaptador FCPXML do OTIO dá conta de títulos, keyframes, clipes desativados e áudio por faixa, ou o app
-     escreve o FCPXML direto? (spike, seção 6.5)
+     escreve o FCPXML direto? (spike, seção 6.5) **Parcialmente medido na 1B (histórico §30):** cobre tempos em
+     quadros, cortes e áudio em lanes; falta medir o resto (títulos, keyframes, desativados) e a importação real.
    - ⚠️ O FCPXML garante o layout fixo de trilhas e cria trilhas vazias, ou isso fica com o script interno? (spike)
    - ⚠️ O script interno (Rota B) funciona no gratuito recente sem interface gráfica própria? (spike)
    - Timelapse de farm na Fase 6: o áudio do jogo é removido e a música só chega na Fase 8. Fica em silêncio até lá

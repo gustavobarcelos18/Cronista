@@ -12,23 +12,20 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cronista.config import Settings
-from cronista.db.models import Artifact, Marker, MediaFile, RecordingSession
-from cronista.domain.models import MarkerKind, StageResult
-from cronista.domain.preview import ClipWindow, MarkerPoint, expected_duration_s, plan_windows
+from cronista.domain.preview import ClipWindow, expected_duration_s
 from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
 from cronista.logging_setup import log_event
+from cronista.montage import SessionPlanError, plan_session
 from cronista.pipeline import GpuGate, StageError
 
 PREVIEW_FPS = "60"
 PREVIEW_SIZE = "1920:1080"
 
 
-class PreviewError(Exception):
-    """Sessão inexistente, sem arquivos ingeridos, sem marcadores ou sem trechos utilizáveis."""
+PreviewError = SessionPlanError
 
 
 @dataclass
@@ -52,20 +49,6 @@ def _concat_line(path: Path) -> str:
     return f"file '{escaped}'"
 
 
-def _load_normalized(db: Session, media: MediaFile) -> tuple[Path, float | None]:
-    artifact = db.scalar(
-        select(Artifact).where(Artifact.media_file_id == media.id, Artifact.stage == "normalize")
-    )
-    if artifact is None or not Path(artifact.result_path).is_file():
-        raise PreviewError(f"{Path(media.path).name} ainda não foi ingerido (rode `cronista ingest`)")
-    result = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8"))
-    path = Path(str(result.data["media"]))
-    if not path.is_file():
-        raise PreviewError(f"{path} não existe mais; rode `cronista ingest` de novo")
-    duration = result.data["probe"].get("duration_s")
-    return path, float(duration) if duration is not None else None
-
-
 def _cut(settings: Settings, source: Path, window: ClipWindow, out: Path) -> None:
     """Um trecho: `-ss` antes do `-i` com recodificação é preciso no quadro e rápido em arquivo grande."""
     run_ffmpeg(
@@ -85,30 +68,8 @@ def build_preview(
     out: Path | None = None,
     sleep: Callable[[float], None] = time.sleep,
 ) -> PreviewReport:
-    session = db.get(RecordingSession, session_id)
-    if session is None:
-        raise PreviewError(f"sessão {session_id} não existe (veja `cronista status`)")
-    markers = list(db.scalars(select(Marker).where(Marker.session_id == session_id)))
-    if not markers:
-        raise PreviewError(f"sessão {session_id} não tem marcadores")
-
-    sources: dict[int, tuple[Path, float | None]] = {}
-    ordinals: dict[int, int] = {}
-    for media in session.media_files:
-        sources[media.id] = _load_normalized(db, media)
-        ordinals[media.id] = media.ordinal
-
-    points: list[MarkerPoint] = []
-    for m in markers:
-        if m.media_file_id is not None and m.media_file_id in sources:
-            duration = sources[m.media_file_id][1]
-            points.append(
-                MarkerPoint(m.marker_id, MarkerKind(m.kind), m.media_file_id, m.media_time_s, duration)
-            )
-    points.sort(key=lambda p: (ordinals[p.file_id], p.time_s))
-    windows, warnings = plan_windows(points, settings.preview_pre_s, settings.preview_post_s)
-    if not windows:
-        raise PreviewError("nenhum marcador gerou trecho utilizável")
+    plan = plan_session(db, session_id, settings)
+    windows, warnings = plan.windows, plan.warnings
 
     if settings.preview_encoder.endswith("_nvenc"):
         while not gate.is_free():
@@ -126,7 +87,7 @@ def build_preview(
         for index, window in enumerate(windows):
             clip = work / f"{index:04d}.mp4"
             try:
-                _cut(settings, sources[window.file_id][0], window, clip)
+                _cut(settings, plan.sources[window.file_id].master, window, clip)
             except StageError as exc:
                 raise PreviewError(f"trecho do marcador {window.marker_id}: {exc}") from exc
             clips.append(clip)

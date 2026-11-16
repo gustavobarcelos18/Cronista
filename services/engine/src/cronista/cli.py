@@ -1,4 +1,4 @@
-"""CLI: `cronista ingest <pasta>`, `status`, `preview <sessão>`, `fixtures`."""
+"""CLI: `cronista ingest <pasta>`, `status`, `preview <sessão>`, `export <sessão>`, `fixtures`."""
 
 from __future__ import annotations
 
@@ -12,8 +12,10 @@ from cronista.config import load_settings
 from cronista.db.models import Job, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
+from cronista.export.service import export_session
 from cronista.ingest.service import ingest_folder
 from cronista.logging_setup import setup_logging
+from cronista.montage import SessionPlanError
 from cronista.pipeline import AlwaysFreeGate, recover_orphans
 from cronista.preview import PreviewError, build_preview
 
@@ -84,6 +86,29 @@ def preview(
     typer.echo(f"{report.path}: {report.clips} trecho(s), esperado {report.expected_s:.1f}s, gerado {actual}")
     for warning in report.warnings:
         typer.echo(f"  aviso: {warning}")
+
+
+@app.command()
+def export(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/export)")] = None,
+) -> None:
+    """Grava a timeline da sessão (V1 + A1/A2, 60 fps) como .fcpxml e .otio para importar no Resolve."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            report = export_session(db, session, settings, out)
+        except SessionPlanError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    typer.echo(f"{report.fcpxml_path}: {report.clips} clipe(s), {report.duration_s:.1f}s")
+    typer.echo(f"{report.otio_path}")
+    for warning in report.warnings:
+        typer.echo(f"  aviso: {warning}")
+    for problem in report.problems:
+        typer.echo(f"  validação: {problem}", err=True)
+    raise typer.Exit(1 if report.problems else 0)
 
 
 @app.command()

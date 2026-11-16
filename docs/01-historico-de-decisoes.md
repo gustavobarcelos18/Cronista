@@ -496,6 +496,32 @@ Segundo item da ordem da 1B (§28). Decisões de implementação, todas dentro d
 - Não é etapa do orquestrador (sem cache): é barato de refazer e depende do conjunto de marcadores da sessão, que
   muda a cada ingestão. A pasta de trabalho é apagada ao fim.
 
+## 30. 1B: FCPXML mínimo via OTIO (`cronista export`)
+
+Terceiro item da ordem da 1B. Primeira medição do adaptador FCPXML do OTIO (pendência da seção 9, item 10).
+
+- Dependências: `opentimelineio` 0.18.1 e `otio-fcpx-xml-adapter` 1.0.0 (o adaptador é um pacote à parte, como o
+  plano supunha). Instalam e funcionam em Python 3.12 no Windows.
+- `cronista export <sessão>` grava `data/export/sessao-N.fcpxml` e `.otio` (o Resolve recente importa OTIO,
+  ⚠️ a conferir na 1C). Mesmos trechos da prévia (módulo `montage.py`, compartilhado): um clipe por marcador.
+- **Layout:** V1 = master normalizado; A1 = WAV do jogo (faixa 2); A2 = WAV do microfone (faixa 3). Decisão: a OTIO
+  não consegue dizer "faixa 2 do MP4", então o mínimo já usa os WAVs que a ingestão extrai, que é o plano B previsto
+  na seção 6.3. O teste "o Resolve respeita a faixa embutida?" fica para quando o app precisar das faixas cruas.
+  O mix (faixa 1) não entra: A1/A2 são os stems.
+- Tempos: quadros inteiros de 1/60 s (`RationalTime(frames, 60)`), recortados ao fim do arquivo.
+- **O que o adaptador faz bem (medido):** FCPXML 1.8 com `frameDuration="1/60s"`, um `asset` por arquivo reaproveitado
+  entre clipes, áudio em lanes -1 e -2, duração da sequência = soma dos clipes, tempos na grade de quadros.
+- **Defeitos medidos e corrigidos em `export/fcpxml.py`** (sem mudar a timeline): `asset-clip` soltos na raiz do
+  documento (nada os referencia; posição válida ⚠️ de memória), `format` sem largura/altura (acrescentado 1920x1080) e
+  `uid=""` vazio no projeto.
+- **Limites que ficam:** o `asset` leva o nome do primeiro clipe que o usa (o rótulo do marcador), o que só atrapalha
+  a leitura; áudio vai embrulhado em `<gap>`; faixa vazia é descartada (A3, A4 não saem); versão do FCPXML é a 1.8;
+  não testado: títulos, keyframes, clipes desativados, cor de marcador. Nada disso foi pedido ao mínimo da 1B.
+- **Validação:** não há DTD oficial utilizável offline. `check_fcpxml` confere XML bem formado, `format` a 60 fps
+  exatos, `ref`/`format` que resolvem, tempos na grade de quadros, duração da sequência e lanes de A1/A2; o `export`
+  sai com código 1 se algo falhar. Isso prova coerência interna, **não** que o Resolve importa: a importação real é
+  da 1C. Se ela falhar ou o layout de trilhas vier errado, o plano já prevê escrever o FCPXML direto.
+
 ---
 
 ## Decisões em aberto

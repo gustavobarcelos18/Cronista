@@ -139,5 +139,5 @@ def finish() -> None:
     print(f"\nRelatório gravado em {out}")
 
 
-if __name__ == "__main__":
-    main()
+# Sem a guarda `__name__ == "__main__"`: o menu Scripts e o Console do Resolve nem sempre a satisfazem.
+main()

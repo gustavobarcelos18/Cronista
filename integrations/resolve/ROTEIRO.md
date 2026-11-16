@@ -22,7 +22,7 @@ O kit tem três FCPXML separados de propósito: se um falhar, o item culpado fic
 | Arquivo | Contém |
 |---|---|
 | `01-basico.fcpxml` | dois cortes, volume -6 dB, marcador e marcador de capítulo, relink |
-| `02-recursos.fcpxml` | título "Dia 1", velocidade 2x, zoom/posição com keyframe, transição, overlay com alfa, clipe HEVC |
+| `02a` a `02f` (`titulo`, `velocidade`, `zoom-keyframes`, `transicao`, `overlay-alfa`, `hevc`) | um recurso por arquivo, para achar qual o Resolve recusa |
 | `03-audio.fcpxml` | faixas de áudio do MP4 por canal, canal desativado |
 | `marcadores.edl` | três marcadores coloridos (azul, vermelho, verde) |
 | `roteiro.srt` | três falas |
@@ -38,7 +38,7 @@ O kit tem três FCPXML separados de propósito: se um falhar, o item culpado fic
 | A3 | Volume -6 dB do primeiro clipe | Inspetor → Áudio | | |
 | A4 | Marcador "Momento" em 2 s, nota `momento\|teste-001` | Marcadores da timeline | | |
 | A5 | **Relink**: renomear `clips` para `clips_x`, reimportar, apontar para a pasta certa | Resolve pede e aceita o relink | | |
-| A6 | `02-recursos.fcpxml` importa (anotar o que falta se for parcial) | | | |
+| A6 | Importar cada `02a` a `02f`; anotar quais entram e o que falta nos parciais (o `02-recursos` junto foi recusado em 2026-11-16) | | | |
 | A7 | Velocidade 2x (clipe 2 dura 5 s e mostra 10 s da fonte) | Inspetor → Velocidade | | |
 | A8 | Zoom e posição **com keyframes** (clipe 3) | Inspetor → Transformar, losangos de keyframe | | |
 | A9 | Transição Cross Dissolve entre os clipes 3 e 4 | Linha do tempo | | |

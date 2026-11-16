@@ -114,7 +114,7 @@ def main() -> None:
         ok = clip.SetLUT(1, str(KIT_DIR / "teste.cube"))
         return f"SetLUT={ok}"
 
-    for fcpxml in ("01-basico", "02-recursos", "03-audio"):
+    for fcpxml in ("01-basico", "02a-titulo", "02b-velocidade", "02c-zoom-keyframes", "02d-transicao", "02e-overlay-alfa", "02f-hevc", "03-audio"):
 
         @step(f"importar {fcpxml}.fcpxml (ImportTimelineFromFile)")
         def _(name=fcpxml):

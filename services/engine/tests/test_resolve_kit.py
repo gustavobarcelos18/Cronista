@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from cronista.config import Settings
-from cronista.devtools.resolve_kit import make_media, make_resolve_kit
+from cronista.devtools.resolve_kit import RECURSOS, make_media, make_resolve_kit
 
 FPS = 60
 
@@ -28,7 +28,10 @@ def _times(root: ET.Element) -> list[tuple[str, str]]:
     ]
 
 
-@pytest.mark.parametrize("name", ["01-basico.fcpxml", "02-recursos.fcpxml", "03-audio.fcpxml"])
+FCPXMLS = ["01-basico.fcpxml", *[f"{n}.fcpxml" for n in RECURSOS], "03-audio.fcpxml"]
+
+
+@pytest.mark.parametrize("name", FCPXMLS)
 def test_fcpxml_valido_e_na_grade_de_60_quadros(kit_text: dict[str, Path], name: str) -> None:
     root = ET.fromstring(kit_text[name].read_text(encoding="utf-8"))
     assert root.tag == "fcpxml"
@@ -55,9 +58,17 @@ def test_sequencia_dura_o_que_os_clipes_somam(kit_text: dict[str, Path]) -> None
 
 
 def test_recursos_cobrem_o_checklist(kit_text: dict[str, Path]) -> None:
-    text = kit_text["02-recursos.fcpxml"].read_text(encoding="utf-8")
-    for needle in ("<timeMap>", "keyframeAnimation", "<transition", "<title", 'lane="2"'):
-        assert needle in text
+    esperado = {
+        "02a-titulo": "<title",
+        "02b-velocidade": "<timeMap>",
+        "02c-zoom-keyframes": "keyframeAnimation",
+        "02d-transicao": "<transition",
+        "02e-overlay-alfa": 'lane="2"',
+        "02f-hevc": "C_hevc",
+    }
+    assert set(esperado) == set(RECURSOS)
+    for name, needle in esperado.items():
+        assert needle in kit_text[f"{name}.fcpxml"].read_text(encoding="utf-8")
     audio = kit_text["03-audio.fcpxml"].read_text(encoding="utf-8")
     assert 'enabled="0"' in audio and audio.count("audio-channel-source") == 3
 

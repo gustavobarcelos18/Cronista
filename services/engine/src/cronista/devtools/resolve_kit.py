@@ -121,31 +121,36 @@ def fcpxml_basico(files: dict[str, Path]) -> str:
     return _wrap("01-basico", resources, spine, 600)
 
 
-def fcpxml_recursos(files: dict[str, Path]) -> str:
-    """Velocidade constante, zoom/posição com keyframe, transição, título (cartela) e overlay com alfa."""
-    names = ["A_h264", "B_h264", "overlay_alfa"] + (["C_hevc"] if "C_hevc" in files else [])
-    resources = _resources(files, names)
-    last = len(names) + 1
-    extra = (
-        f'    <effect id="r{last + 1}" name="Cross Dissolve" '
-        'uid="FxPlug:4731E73A-8DAC-4113-9A30-AE85B1761265"/>\n'
-        f'    <effect id="r{last + 2}" name="Basic Title" '
-        'uid=".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"/>\n'
-    )
-    fourth = "r5" if "C_hevc" in files else "r2"
-    spine = f"""            <asset-clip ref="r2" name="01-titulo-dia" offset="0s" start="0s" duration="{_t(300)}" format="r1" tcFormat="NDF">
-              <title ref="r{last + 2}" lane="1" name="Dia 1" offset="0s" start="0s" duration="{_t(120)}">
+_CLIP = 'format="r1" tcFormat="NDF"'
+
+
+def _spine_titulo() -> tuple[str, int]:
+    return (
+        f"""            <asset-clip ref="r2" name="titulo-dia" offset="0s" start="0s" duration="{_t(300)}" {_CLIP}>
+              <title ref="r7" lane="1" name="Dia 1" offset="0s" start="0s" duration="{_t(120)}">
                 <text><text-style ref="ts1">Dia 1</text-style></text>
                 <text-style-def id="ts1"><text-style font="Helvetica" fontSize="120" fontColor="1 1 1 1"/></text-style-def>
               </title>
-            </asset-clip>
-            <asset-clip ref="r3" name="02-velocidade-2x" offset="{_t(300)}" start="0s" duration="{_t(300)}" format="r1" tcFormat="NDF">
+            </asset-clip>""",
+        300,
+    )
+
+
+def _spine_velocidade() -> tuple[str, int]:
+    return (
+        f"""            <asset-clip ref="r3" name="velocidade-2x" offset="0s" start="0s" duration="{_t(300)}" {_CLIP}>
               <timeMap>
                 <timept time="0s" value="0s" interp="linear"/>
                 <timept time="{_t(300)}" value="{_t(600)}" interp="linear"/>
               </timeMap>
-            </asset-clip>
-            <asset-clip ref="r2" name="03-zoom-keyframes" offset="{_t(600)}" start="{_t(300)}" duration="{_t(300)}" format="r1" tcFormat="NDF">
+            </asset-clip>""",
+        300,
+    )
+
+
+def _spine_zoom() -> tuple[str, int]:
+    return (
+        f"""            <asset-clip ref="r2" name="zoom-keyframes" offset="0s" start="{_t(300)}" duration="{_t(300)}" {_CLIP}>
               <adjust-transform>
                 <param name="scale"><keyframeAnimation>
                   <keyframe time="{_t(300)}" value="1 1"/>
@@ -156,13 +161,65 @@ def fcpxml_recursos(files: dict[str, Path]) -> str:
                   <keyframe time="{_t(600)}" value="10 5"/>
                 </keyframeAnimation></param>
               </adjust-transform>
-              <asset-clip ref="r4" lane="2" name="overlay-alfa" offset="{_t(300)}" start="0s" duration="{_t(300)}" format="r1"/>
-            </asset-clip>
-            <transition name="Cross Dissolve" offset="{_t(870)}" duration="{_t(60)}">
-              <filter-video ref="r{last + 1}" name="Cross Dissolve"/>
+            </asset-clip>""",
+        300,
+    )
+
+
+def _spine_transicao() -> tuple[str, int]:
+    return (
+        f"""            <asset-clip ref="r2" name="antes" offset="0s" start="{_t(30)}" duration="{_t(300)}" {_CLIP}/>
+            <transition name="Cross Dissolve" offset="{_t(270)}" duration="{_t(60)}">
+              <filter-video ref="r6" name="Cross Dissolve"/>
             </transition>
-            <asset-clip ref="{fourth}" name="04-pos-transicao{"-hevc" if fourth == "r5" else ""}" offset="{_t(900)}" start="{_t(30)}" duration="{_t(300)}" format="r1" tcFormat="NDF"/>"""
-    return _wrap("02-recursos", resources, spine, 1200, extra)
+            <asset-clip ref="r3" name="depois" offset="{_t(300)}" start="{_t(30)}" duration="{_t(300)}" {_CLIP}/>""",
+        600,
+    )
+
+
+def _spine_overlay() -> tuple[str, int]:
+    return (
+        f"""            <asset-clip ref="r2" name="base" offset="0s" start="0s" duration="{_t(300)}" {_CLIP}>
+              <asset-clip ref="r4" lane="2" name="overlay-alfa" offset="0s" start="0s" duration="{_t(300)}" format="r1"/>
+            </asset-clip>""",
+        300,
+    )
+
+
+def _spine_hevc() -> tuple[str, int]:
+    return (
+        f"""            <asset-clip ref="r5" name="hevc" offset="0s" start="0s" duration="{_t(300)}" {_CLIP}/>""",
+        300,
+    )
+
+
+# Um FCPXML por recurso: se o Resolve recusar um, o culpado fica óbvio (o `02-recursos` junto recusou em 2026-11-16).
+RECURSOS = {
+    "02a-titulo": _spine_titulo,
+    "02b-velocidade": _spine_velocidade,
+    "02c-zoom-keyframes": _spine_zoom,
+    "02d-transicao": _spine_transicao,
+    "02e-overlay-alfa": _spine_overlay,
+    "02f-hevc": _spine_hevc,
+}
+
+
+def _recursos_resources(files: dict[str, Path]) -> tuple[str, str]:
+    """Recursos fixos (r2 A, r3 B, r4 overlay, r5 HEVC, r6 transição, r7 título), iguais em todos os arquivos."""
+    resources = _resources(files, ["A_h264", "B_h264", "overlay_alfa", "C_hevc"])
+    extra = (
+        '    <effect id="r6" name="Cross Dissolve" uid="FxPlug:4731E73A-8DAC-4113-9A30-AE85B1761265"/>\n'
+        '    <effect id="r7" name="Basic Title" '
+        'uid=".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"/>\n'
+    )
+    return resources, extra
+
+
+def fcpxml_recurso(files: dict[str, Path], name: str) -> str:
+    """Um recurso isolado (título, velocidade, zoom com keyframe, transição, overlay com alfa ou HEVC)."""
+    resources, extra = _recursos_resources(files)
+    spine, total = RECURSOS[name]()
+    return _wrap(name, resources, spine, total, extra)
 
 
 def fcpxml_audio(files: dict[str, Path]) -> str:
@@ -222,7 +279,7 @@ def make_resolve_kit(settings: Settings, out: Path, with_media: bool = True) -> 
     written = dict(files)
     for name, content in {
         "01-basico.fcpxml": fcpxml_basico(files),
-        "02-recursos.fcpxml": fcpxml_recursos(files),
+        **{f"{n}.fcpxml": fcpxml_recurso(files, n) for n in RECURSOS},
         "03-audio.fcpxml": fcpxml_audio(files),
         "marcadores.edl": marker_edl(),
         "roteiro.srt": srt(),

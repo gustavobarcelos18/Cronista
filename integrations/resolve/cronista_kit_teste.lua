@@ -64,23 +64,28 @@ local function main()
 
   local pool = project:GetMediaPool()
 
-  step("importar mídia (H.264, HEVC, overlay com alfa)", function()
-    local names = { "A_h264.mp4", "B_h264.mp4", "C_hevc.mp4", "overlay_alfa.mov" }
-    local infos = {}
-    for _, n in ipairs(names) do infos[#infos + 1] = { FilePath = KIT .. "\\clips\\" .. n } end
-    state.items = pool:ImportMedia(infos)
-    if not state.items or #state.items == 0 then error("ImportMedia não devolveu nenhum item") end
-    return #state.items .. " de " .. #names .. " itens"
-  end)
+  -- Um arquivo por chamada: na 1ª passada (lista de 4) o ImportMedia devolveu vazio sem dizer qual falhou.
+  state.items = {}
+  for _, n in ipairs({ "A_h264.mp4", "B_h264.mp4", "C_hevc.mp4", "overlay_alfa.mov" }) do
+    step("importar mídia " .. n, function()
+      local got = pool:ImportMedia({ { FilePath = KIT .. "\\clips\\" .. n } })
+      if not got or #got == 0 then error("ImportMedia não devolveu item") end
+      state.items[#state.items + 1] = got[1]
+      return "ok"
+    end)
+  end
 
-  step("criar timeline e anexar clipe H.264", function()
+  step("criar timeline vazia e anexar o primeiro clipe importado", function()
     state.timeline = pool:CreateEmptyTimeline("kit-script")
+    if not state.timeline then error("CreateEmptyTimeline devolveu nil") end
+    if not state.items[1] then error("nenhum clipe importado para anexar") end
     local appended = pool:AppendToTimeline({ { mediaPoolItem = state.items[1] } })
-    return "timeline=" .. tostring(state.timeline ~= nil) .. ", anexados=" .. count(appended)
+    return "anexados=" .. count(appended)
   end)
 
   step("marcadores coloridos com nome e nota (AddMarker)", function()
     local t = state.timeline
+    if not t then error("sem timeline") end
     local r = {
       t:AddMarker(60, "Blue", "Momento", "nota de Momento", 1, "Momento|teste"),
       t:AddMarker(180, "Red", "Morte", "nota de Morte", 1, "Morte|teste"),
@@ -90,20 +95,27 @@ local function main()
       "; lidos=" .. count(t:GetMarkers())
   end)
 
-  step("LUT no primeiro clipe (SetLUT)", function()
-    project:RefreshLUTList()
-    local clip = state.timeline:GetItemListInTrack("video", 1)[1]
-    return "SetLUT=" .. tostring(clip:SetLUT(1, KIT .. "\\teste.cube"))
-  end)
-
-  for _, name in ipairs({ "01-basico", "02-recursos", "03-audio" }) do
+  for _, name in ipairs({
+    "01-basico", "02a-titulo", "02b-velocidade", "02c-zoom-keyframes", "02d-transicao", "02e-overlay-alfa",
+    "02f-hevc", "03-audio",
+  }) do
     step("importar " .. name .. ".fcpxml (ImportTimelineFromFile)", function()
       local tl = pool:ImportTimelineFromFile(KIT .. "\\" .. name .. ".fcpxml", { importSourceClips = true })
       if not tl then error("devolveu nil: o Resolve recusou o arquivo (veja o Console)") end
+      if name == "01-basico" then state.timeline_basico = tl end
       return "timeline=" .. tostring(tl:GetName()) .. " video=" .. tl:GetTrackCount("video") ..
         " audio=" .. tl:GetTrackCount("audio") .. " fps=" .. tostring(tl:GetSetting("timelineFrameRate"))
     end)
   end
+
+  step("LUT no primeiro clipe (SetLUT)", function()
+    project:RefreshLUTList()
+    local tl = state.timeline_basico or state.timeline
+    if not tl then error("sem timeline") end
+    local clip = tl:GetItemListInTrack("video", 1)[1]
+    if not clip then error("sem clipe de vídeo na V1") end
+    return "SetLUT=" .. tostring(clip:SetLUT(1, KIT .. "\\teste.cube"))
+  end)
 
   step("importar legenda SRT", function()
     local items = pool:ImportMedia({ { FilePath = KIT .. "\\roteiro.srt" } })

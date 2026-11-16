@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Annotated
 
@@ -18,6 +19,9 @@ from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
 from cronista.pipeline import AlwaysFreeGate, recover_orphans
 from cronista.preview import PreviewError, build_preview
+from cronista.recorder.feedback import ConsoleFeedback
+from cronista.recorder.hotkeys import HotkeyConfigError
+from cronista.recorder.run import run_forever
 
 app = typer.Typer(help="Cronista: gameplay do OBS → timeline do Resolve.", no_args_is_help=True)
 
@@ -109,6 +113,22 @@ def export(
     for problem in report.problems:
         typer.echo(f"  validação: {problem}", err=True)
     raise typer.Exit(1 if report.problems else 0)
+
+
+@app.command()
+def record(
+    quiet: Annotated[bool, typer.Option("--quiet", help="Sem sons (só mensagens)")] = False,
+) -> None:
+    """Gravador de marcadores: escuta as hotkeys e registra cada toque no OBS e no diário. Ctrl+C sai."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        asyncio.run(run_forever(settings, ConsoleFeedback(quiet=quiet)))
+    except HotkeyConfigError as exc:
+        typer.echo(f"erro nas teclas: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    except KeyboardInterrupt:
+        typer.echo("Gravador encerrado.")
 
 
 @app.command()

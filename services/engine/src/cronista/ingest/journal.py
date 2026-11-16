@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
@@ -25,6 +26,18 @@ from cronista.domain.journal import (
 from cronista.domain.models import MarkerKind
 
 JOURNAL_SUFFIX = ".markers.jsonl"
+
+
+@dataclass(frozen=True)
+class Stamp:
+    """Instante de um evento (relógio monotônico + UTC), capturado quando ele acontece.
+
+    O gravador tira o carimbo no momento do toque e só depois escreve a linha, que pode esperar a
+    resolução do arquivo; sem isso o tempo do marcador sairia atrasado.
+    """
+
+    mono_s: float
+    utc: datetime
 
 
 def find_journals(folder: Path) -> list[Path]:
@@ -71,27 +84,36 @@ class JournalWriter:
         self._handle.flush()
         os.fsync(self._handle.fileno())
 
+    def now(self) -> Stamp:
+        return Stamp(self._mono(), self._utc())
+
     def _write(self, event: JournalEvent) -> None:
         self._handle.write(event.model_dump_json().encode("utf-8") + b"\n")
         self._sync()
 
-    def recording_started(self, path: str) -> None:
-        self._write(RecordingStarted(mono_s=self._mono(), utc=self._utc(), path=path))
+    def recording_started(self, path: str, at: Stamp | None = None) -> None:
+        s = at or self.now()
+        self._write(RecordingStarted(mono_s=s.mono_s, utc=s.utc, path=path))
 
-    def paused(self) -> None:
-        self._write(Paused(mono_s=self._mono(), utc=self._utc()))
+    def paused(self, at: Stamp | None = None) -> None:
+        s = at or self.now()
+        self._write(Paused(mono_s=s.mono_s, utc=s.utc))
 
-    def unpaused(self) -> None:
-        self._write(Unpaused(mono_s=self._mono(), utc=self._utc()))
+    def unpaused(self, at: Stamp | None = None) -> None:
+        s = at or self.now()
+        self._write(Unpaused(mono_s=s.mono_s, utc=s.utc))
 
-    def file_changed(self, path: str) -> None:
-        self._write(FileChanged(mono_s=self._mono(), utc=self._utc(), path=path))
+    def file_changed(self, path: str, at: Stamp | None = None) -> None:
+        s = at or self.now()
+        self._write(FileChanged(mono_s=s.mono_s, utc=s.utc, path=path))
 
-    def recording_stopped(self) -> None:
-        self._write(RecordingStopped(mono_s=self._mono(), utc=self._utc()))
+    def recording_stopped(self, at: Stamp | None = None) -> None:
+        s = at or self.now()
+        self._write(RecordingStopped(mono_s=s.mono_s, utc=s.utc))
 
-    def marker(self, kind: MarkerKind, marker_id: str) -> None:
-        self._write(MarkerPressed(mono_s=self._mono(), utc=self._utc(), kind=kind, marker_id=marker_id))
+    def marker(self, kind: MarkerKind, marker_id: str, at: Stamp | None = None) -> None:
+        s = at or self.now()
+        self._write(MarkerPressed(mono_s=s.mono_s, utc=s.utc, kind=kind, marker_id=marker_id))
 
     def close(self) -> None:
         self._handle.close()

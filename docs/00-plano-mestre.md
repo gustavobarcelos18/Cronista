@@ -235,7 +235,7 @@ A versão mínima do OBS e o nome exato da API de marcadores serão confirmados 
 de capítulo") que funciona sem instalar nada, mas é **uma tecla só e não guarda o tipo**: todo toque viraria
 `Momento`, e o `Novo dia` ficaria indistinguível. Para ter o tipo, algo precisa criar o marcador com nome:
 - **A (escolhida): programa do Cronista ao lado do OBS, via obs-websocket.** Cria o marcador do OBS com nome
-  (⚠️ requisição `CreateRecordChapter`; versão mínima a confirmar), escreve o diário a partir dos eventos de
+  (requisição `CreateRecordChapter`, parâmetro opcional `chapterName`: **confirmada no protocolo oficial, obs-websocket 5.5.0 = OBS 30.2+**, só Hybrid MP4; ⚠️ comportamento com o OBS real a validar na 1C), escreve o diário a partir dos eventos de
   gravação, pausa e troca de arquivo do próprio OBS, sabe se há uma construção aberta e escuta num lugar só as hotkeys
   globais, as teclas F13–F24 e a FIFINE (MIDI/HID). Precisa estar aberto durante a gravação.
 - **B: script Lua dentro do OBS.** Não exige instalar nada. ⚠️ Confirmar se a função de marcador com nome está
@@ -935,6 +935,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **D2:** contratos Pydantic → JSON Schema/OpenAPI → TypeScript gerado; a seção 5.2 foi atualizada.
 - **D3:** gabarito em CSV (`inicio, fim, classe, nota`) + script de validação e prévia; o Studio não é necessário.
 - **D4:** sem Fase 1.5; a prévia MP4 da 1B cumpre o papel do rough cut só de marcadores.
+- **Gravador de marcadores (1B, histórico §31):** `simpleobsws` 1.4.3 (obs-websocket v5) e `pynput` 1.8.2 (hotkeys globais, só Windows); `cronista record`. Teclas padrão F13–F20, configuráveis em `marker_hotkeys`.
 - **FCPXML mínimo (1B, histórico §30):** OTIO → adaptador `fcpx_xml` (pacote `otio-fcpx-xml-adapter`), com
   pós-processamento mínimo e validação estrutural; V1 = master, A1/A2 = WAVs extraídos (jogo e microfone), não as
   faixas embutidas. Também grava `.otio`.
@@ -977,6 +978,9 @@ Só se avança com os critérios da fase anterior cumpridos.
      no proxy. Uma fonte única de microfone, sem filtro, nas faixas 1 e 3 seria mais simples (seção 2).
    - Como o criador sabe que o toque foi registrado com o jogo em tela cheia? Na tecla de construção, que alterna, um
      toque perdido inverte tudo dali em diante. E se o programa de marcadores não estiver aberto? (seção 4)
+     **Parcialmente tratado na 1B (histórico §31):** som por tipo a cada toque (dois toques para o fim da
+     construção), aviso sonoro de toque perdido, e o gravador reassume uma gravação em andamento se for reaberto
+     ou cair. Continua em aberto: toque com o programa fechado, e o jogo em tela cheia (teste na 1C).
    - ~~Marcador que existe só no arquivo e não no diário~~: **decidido**, `Momento` com aviso (seção 4).
    - `Cinemática` e `Foto de progresso`: a tomada é antes ou depois do toque? O lookback de 60–90 s só faz sentido
      para `Momento`, `Morte/Falha`, `Engraçado` e `Conquista` (seção 4).

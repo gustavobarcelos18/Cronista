@@ -11,6 +11,8 @@ dependencies = [
     "typer>=0.12",
     "opentimelineio>=0.18.1",
     "otio-fcpx-xml-adapter>=1.0.0",
+    "simpleobsws>=1.4.3",
+    "pynput>=1.8.2 ; sys_platform == 'win32'",
 ]
 
 [project.scripts]
@@ -22,6 +24,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "types-PyYAML",
+    "websockets>=17.4",
 ]
 
 [build-system]
@@ -58,3 +61,7 @@ exclude = ["src/cronista/db/migrations/versions/"]
 [[tool.mypy.overrides]]
 module = ["opentimelineio", "opentimelineio.*"]
 ignore_missing_imports = true  # a OTIO não publica tipos
+
+[[tool.mypy.overrides]]
+module = ["simpleobsws", "pynput", "pynput.*", "msgpack"]
+ignore_missing_imports = true  # sem tipos publicados

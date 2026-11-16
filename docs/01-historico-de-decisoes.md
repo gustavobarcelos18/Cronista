@@ -522,6 +522,62 @@ Terceiro item da ordem da 1B. Primeira medição do adaptador FCPXML do OTIO (pe
   sai com código 1 se algo falhar. Isso prova coerência interna, **não** que o Resolve importa: a importação real é
   da 1C. Se ela falhar ou o layout de trilhas vier errado, o plano já prevê escrever o FCPXML direto.
 
+## 31. 1B: gravador de marcadores (`cronista record`)
+
+Quarto item da ordem da 1B. Confirmação das bibliotecas (pedida pelo plano) e decisões de implementação.
+
+**Bibliotecas (conferidas no PyPI e no protocolo oficial em 2026-11-16):**
+- obs-websocket: `simpleobsws` 1.4.3 (MIT, junho de 2025, Python >= 3.9; do IRLToolkit, mesmo autor do protocolo,
+  assíncrona sobre `websockets` e `msgpack`). Descartadas: `obsws-python` (GPL-3.0) e `obs-websocket-py` (parada
+  desde 2023, só protocolo v4 na prática).
+- Hotkeys globais: `pynput` 1.8.2 (LGPL, maio de 2026; F1–F24 no Windows). Descartada: `keyboard` (parada desde
+  2020). Instalada só em Windows (`sys_platform == "win32"`): em Linux sem display o `pynput` nem importa, e a CI
+  roda em Ubuntu. O núcleo e os testes não dependem dele (porta `HotkeySource`).
+- Protocolo (doc oficial): `CreateRecordChapter` (`chapterName` opcional, desde a 5.5.0 = OBS 30.2, só Hybrid MP4);
+  eventos `RecordStateChanged` (`outputState`: STARTED, STOPPED, PAUSED, RESUMED...) e `RecordFileChanged`
+  (`newOutputPath`, 5.5.0); `GetRecordStatus`; `GetRecordDirectory`. Assinatura de eventos `Outputs` = `1 << 6`.
+
+**Achado que mudou o desenho:** o protocolo **não informa o arquivo ao iniciar a gravação**. `outputPath` só vem ao
+parar, e `newOutputPath` só nas divisões. O diário precisa do arquivo desde o início, então o gravador procura o
+vídeo mais novo na pasta de gravação (`GetRecordDirectory`), esperando até 3 s. Se não achar, escreve o caminho
+**vazio** no diário e avisa; a ingestão assume o **primeiro arquivo da sessão**, com aviso (o arquivo desconhecido é
+sempre o primeiro da gravação, porque as divisões chegam com caminho). ⚠️ Validar com o OBS real na 1C: se o OBS
+informar o caminho de outro jeito, a busca na pasta sai.
+
+**Decisões de implementação:**
+- Portas (`recorder/ports.py`): `ObsLink`, `HotkeySource`, `Feedback`. O núcleo (`recorder/core.py`) é testado sem
+  OBS, teclado ou alto-falante; as bibliotecas podem ser trocadas.
+- A cada toque, nesta ordem: linha no diário com o **instante do toque** (carimbo tirado na thread do teclado, não
+  quando a tarefa roda), `CreateRecordChapter` com `tipo|id` (id aleatório de 4 bytes em hex) e feedback. Se o OBS
+  recusar o marcador, o diário ainda tem o toque (os dois registros são independentes, seção 4).
+  `JournalWriter` passou a aceitar o carimbo (`Stamp`) como argumento.
+- Toque durante a busca do arquivo espera o diário abrir, mas mantém o carimbo original.
+- Toque fora de gravação: ignorado com aviso sonoro (nada é escrito).
+- `Construção ▶/■`: o gravador guarda se há construção aberta (som do fim = dois toques; aviso ao parar com ela
+  aberta). O pareamento definitivo continua sendo da ingestão.
+- Diário em `<pasta de gravação>/gravacao-AAAAMMDD-HHMMSS.markers.jsonl`, ao lado do vídeo (a ingestão acha por
+  pasta).
+- **Retomada:** se o gravador abre (ou reconecta) com o OBS já gravando, reabre o diário da gravação em curso
+  (sem repetir `recording_started`; a linha cortada pela queda é tolerada) ou, se não houver, cria um com o início
+  estimado por `outputDuration`. Pausas e divisões ocorridas enquanto ele estava fora do ar não constam; avisa.
+  Ao encerrar (Ctrl+C) com o OBS gravando, **não** escreve `recording_stopped`.
+- Conexão: nova tentativa a cada 3 s (OBS ainda fechado ou conexão perdida); senha do WebSocket em
+  `obs_password` no `*.local.yaml` ou em `CRONISTA_OBS_PASSWORD`, nunca em arquivo versionado.
+- Teclas (config `marker_hotkeys`, sintaxe do `pynput`): padrão F13–F20; mudar uma não apaga as outras; `momento` e
+  `novo_dia` obrigatórias; tecla repetida ou tipo desconhecido dão erro claro. `null` desliga uma opcional.
+- Feedback: tom diferente por tipo (`winsound.Beep`), tom grave para aviso; `--quiet` só imprime.
+- Detalhes da `simpleobsws` que condicionam o código (lidos da fonte): usa o subprotocolo msgpack; cada evento vira
+  uma `Task` separada, então o callback só enfileira, para manter a ordem; não avisa quando a conexão cai, então
+  há um vigia em `ws_open`.
+
+**Testes (27 novos, 103 no total):** servidor obs-websocket **falso** (`tests/fake_obs.py`, protocolo v5 em
+msgpack, com autenticação) contra o adaptador real; núcleo com OBS em memória (gravação completa com pausa e tempos
+conferidos, fora de gravação, construção, marcador recusado, divisão, arquivo desconhecido, espera de arquivo,
+retomada após queda com linha cortada); reconexão do laço principal; validação das teclas; ingestão com caminho vazio.
+
+**Não coberto (1C, com o OBS real):** hotkey com o jogo em tela cheia e elevado; `CreateRecordChapter` com nome
+`tipo|id` e comportamento durante pausa; a busca do arquivo na pasta; formato real dos eventos.
+
 ---
 
 ## Decisões em aberto

@@ -324,7 +324,7 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 | UI | **Next.js + React + TypeScript** | Stack que você já domina; player com waveform e timeline |
 | Export | OpenTimelineIO → FCPXML (+ EDL de reserva) + SRT | Importa no Resolve **gratuito** (não depende da API do Studio) |
 
-> Versões e modelos exatos serão confirmados com benchmark na Fase 1. O que vale aqui é a *categoria* da ferramenta.
+> Versões e modelos exatos serão confirmados com benchmark na Fase 2. O que vale aqui é a *categoria* da ferramenta.
 >
 > Frameworks de ML padronizados em **PyTorch + ONNX Runtime**, para evitar um segundo framework de GPU com CUDA
 > próprio no Windows. Por isso o OCR é RapidOCR (ONNX) e não PaddleOCR. O DeepFilterNet está sem atualização desde
@@ -354,7 +354,7 @@ A arquitetura em portas/adaptadores permite colocar um gateway Nest depois, se o
 ### 5.4 Modelo de domínio
 
 ```
-Projeto (uma série de 100 dias = um vídeo de 30–50 min; ex.: "100 dias Valheim Hardcore", jogo, perfil; números dos dias definidos na edição)
+Projeto (uma série = um vídeo de 30–50 min; formato narrativo: 100 dias, missão, desafio etc.; ex.: "100 dias Valheim Hardcore", jogo, perfil; números dos dias definidos na edição)
  └─ Sessão (uma gravação de duração variável: 3 h, 6 h, 10 h…; arquivos master/proxy; faixas)
      ├─ Marcador (hotkey: tipo, t, id; sem número de dia: o dia de cada trecho sai da posição dos `Novo dia`)
      ├─ Sinal (série temporal: energia_fala, novidade_audio_jogo, movimento, similaridade_cena…)
@@ -362,7 +362,7 @@ Projeto (uma série de 100 dias = um vídeo de 30–50 min; ex.: "100 dias Valhe
      └─ Segmento (intervalo + classe [farm, combate, exploração, construção, falha, humor, conquista, menu/loading]
                   + nota + explicação + decisão humana)
 Narrativa
- └─ Capítulo/Dia → Beat (setup, conflito, falha, virada, conquista) → Segmentos + Fala sugerida
+ └─ Capítulo (unidade de progresso: "dia" no formato 100 dias; etapa ou cena em outros formatos) → Beat (setup, conflito, falha, virada, conquista) → Segmentos + Fala sugerida
 Timeline (versão exportável: clipes, velocidades/timelapse, marcadores, legendas do roteiro)
 ```
 
@@ -490,7 +490,7 @@ label = SegmentLabel.model_validate_json(resp.message.content)
 - Porta `LLMProvider` com adaptadores `OllamaProvider`, `ClaudeCodeProvider` (`claude -p`) e `NullProvider` (só heurística).
   Cada tarefa declara qual provedor usa, e a troca é por configuração.
 - 12 GB de VRAM: um modelo por vez. O orquestrador agenda as etapas por modelo e descarrega com `keep_alive: 0`.
-- A Fase 1 mede só desempenho na RTX 3060 (velocidade e VRAM), porque não depende do gabarito. A precisão de cada
+- O benchmark de desempenho (velocidade e VRAM) é feito na **Fase 2**, junto do benchmark de qualidade (decisão de 2026-11-16, histórico §36). A precisão de cada
   tarefa é medida contra o gabarito (obrigatório a partir da Fase 2), e a tarefa só fica no modelo local se atingir a
   precisão mínima.
 
@@ -520,8 +520,11 @@ fixo a partir disso.
 Regras de montagem automática:
 - Corte na ação, com folga de 1–2 s antes e depois; nunca corta no meio de uma palavra (limites ajustados pelos timestamps de palavra do Whisper).
 - Remoção de silêncio morto na sua fala; cortes J/L usando os limites da fala.
-- Farm vira timelapse 4×–50× **pré-renderizado com FFmpeg/NVENC**, com o áudio do jogo removido
-  (mais confiável que retime em massa no Resolve).
+- **Preferência editorial: montagem inteligente** (decisão de 2026-11-16, histórico §36). Para um esforço longo
+  (ex.: 20 min de mineração que dá diamantes), entram o início/objetivo, alguns marcos representativos do esforço,
+  a descoberta e a consequência. Timelapse contínuo não é o padrão obrigatório. Quando o trecho é repetitivo e
+  sem valor narrativo, ele pode virar timelapse 4×–50× **pré-renderizado com FFmpeg/NVENC**, com o áudio do jogo
+  removido (mais confiável que retime em massa no Resolve). Esta é uma das opções, escolhida por trecho, não regra fixa.
 - Orçamento de tempo por dia/capítulo e ritmo guiado pelas métricas de referência.
 
 Trilhas da timeline exportada (no Resolve, a trilha de número maior fica por cima):
@@ -771,8 +774,8 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **Esqueleto de ponta a ponta:** gravação + marcadores → cortes simples ao redor de cada marcador → **prévia MP4
   renderizada com FFmpeg** (valida o fluxo sem depender do Resolve) + FCPXML mínimo (validado no Resolve quando possível).
 - CLI: `cronista ingest <pasta>` / `cronista status` / `cronista preview`.
-- **Benchmark de desempenho** dos modelos na RTX 3060 (no PC de casa): velocidade e VRAM. Não depende do gabarito;
-  a qualidade (WER, precisão) é medida no início da Fase 2.
+- Benchmark de modelos: **movido para a Fase 2** (ver abaixo). A 1C mantém só testes físicos e técnicos.
+- Marcadores com tempo em **quadros inteiros a 60 fps** (lacuna técnica 1, seção 9): correção feita dentro da 1B, antes do merge.
 - **Gabarito:** formato e ferramenta de anotação prontos. A anotação (2–3 h, começando pela gameplay de teste de ~30 min)
   acontece quando o criador puder; ela é obrigatória a partir da Fase 2.
 - ✅ Aceite: ingerir sem intervenção uma gravação de qualquer duração (não há mínimo de horas; vale a gameplay de
@@ -780,7 +783,8 @@ Só se avança com os critérios da fase anterior cumpridos.
   a partir dos marcadores, CI verde.
 
 ### Fase 2 — Análise de áudio
-- **Benchmark de qualidade** contra o gabarito (primeira tarefa da fase): WER do Whisper com e sem DeepFilterNet.
+- **Benchmarks de modelos na RTX 3060** (primeiras tarefas da fase): desempenho (velocidade, VRAM, convivência de CUDA; antes movido da 1C) e **qualidade** contra o gabarito (WER do Whisper com e sem DeepFilterNet). Os modelos da fase são escolhidos por esses números.
+- Lacunas técnicas 2–4 da seção 9 (provenance, unicidade de artefato por variante, formato de sinais) são resolvidas no início da fase, antes do primeiro benchmark.
 - Microfone: (DeepFilterNet, se aprovado no benchmark) → Silero VAD → faster-whisper (com timestamps por palavra) → picos relativos. Risada e grito vêm do classificador de eventos sonoros, que roda também no microfone (seção 3).
 - Jogo: classificação de eventos sonoros, baseline adaptativo por sessão (o recorte por contexto visual entra na Fase 3), novidade espectral, detector de periodicidade (rotina).
 - Saída: sinais e eventos de áudio no banco + relatório HTML da sessão (gráfico de sinais × tempo).
@@ -813,8 +817,56 @@ Só se avança com os critérios da fase anterior cumpridos.
   seção 6.1).
 - ✅ Aceite: roteiro de uma sessão real lido por você sem soar artificial; cada fala ligada a um segmento.
 
+### Fase 5A — Objetivos, subobjetivos, estados e evidências
+> Adicionada em 2026-11-16 (histórico §36). Entra entre a Fase 4 e a Fase 5, porque a narrativa precisa dos objetivos.
+> Depende da transcrição (Fase 2), dos estados de cena (Fase 3) e dos eventos e segmentos (Fase 4).
+
+- **Entidades:** objetivo principal, secundário e subobjetivo; restrição/regra (ex.: Silent Assassin, dificuldade, mods);
+  acontecimento observado; **estado** (proposto, em andamento, concluído, falhou, abandonado, suspenso, retomado, incerto);
+  **relação** (`contribui_para`, `depende_de`, `impede`, `retoma`, `resolve`); **evidência** (intervalo em quadros, trecho
+  transcrito, sinais que sustentam, confiança e versão do modelo).
+- **Regra central:** declaração não é conclusão. "Preciso achar comida" não cria conquista; mudança de plano e comentário
+  hipotético não viram objetivo confirmado. Toda transição de estado exige evidência própria.
+- **Descoberta por fala:** uma tarefa curta do LLM local (JSON Schema, Pydantic) recebe a transcrição já segmentada e o
+  contexto do projeto. Cada objetivo precisa citar um trecho literal com timestamp; o app verifica a citação, e sem
+  citação válida o objetivo fica como hipótese (sinalizada para correção no Studio).
+- **Persistência entre sessões:** objetivos são do projeto, com estado por sessão; uma retomada mantém o mesmo id.
+- **Contexto de jogo e mods:** campos opcionais `objetivos` e `regras` no perfil YAML ou no projeto, sem código (seção 4 da visão).
+- **Vertical slice (planejar; a implementação é desta fase):** fala de objetivo → evento observado → subobjetivo →
+  sugestão editorial, com transcrição digitada à mão e sem depender de Whisper nem do LLM.
+- **Memória narrativa em SQLite (decisão de 2026-11-16, histórico §37):** o contexto narrativo fica no mesmo banco do
+  engine (SQLAlchemy + Alembic, em `data/`). A análise de cada momento recebe só o recorte relevante, nunca a série inteira,
+  para caber no modelo local e no plano Pro. Nomes de tabelas provisórios, definidos na implementação da 5A:
+  - `objective` (projeto; tipo `principal` | `secundario` | `subobjetivo` | `restricao`; `pai_id`). Vem do perfil ou do projeto.
+  - `objective_state` **só de inserção**: objetivo, estado (da lista acima), sessão, quadro inicial e final, `evidence_id`,
+    `origem` (`auto` | `humano`) e `substitui_id`. O estado atual é a última linha não substituída.
+  - `narrative_event`: sessão, tipo (`acontecimento` | `conquista` | `dificuldade` | `decisao` | `falha`), descrição,
+    quadros, `evidence_id`. Liga-se a objetivos por `narrative_link`.
+  - `narrative_link`: origem, destino, relação (a lista acima), `evidence_id`. Liga sessões diferentes no mesmo projeto,
+    e toda relação exige evidência; sem ela, fica como hipótese.
+  - `evidence`: fonte (`transcricao` | `sinal` | `evento` | `cena` | `marcador` | `humano`), `artifact_id`, quadro inicial
+    e final (inteiros, a 60 fps), citação literal (nula se não houver fala), confiança, versão do modelo e hash dos parâmetros.
+  - `summary`: escopo (sessão, capítulo ou projeto), texto, lista de `evidence_id` de cada frase e indicador `stale`
+    (marcado quando uma fonte muda, inclusive por correção humana).
+  - Correção humana: nunca se atualiza ou apaga um fato derivado. A correção é uma linha nova com `origem=humano`,
+    apontando para a anterior em `substitui_id`. A versão automática e a evidência original permanecem consultáveis.
+  - Recuperação determinística, sem embeddings na 5A: objetivos ativos do projeto; eventos da sessão atual mais a vizinhança
+    de `narrative_link` com profundidade limitada (dois saltos, por consulta recursiva); busca textual sobre as citações e
+    descrições (FTS5, a verificar na implementação); filtro por janela de quadros. Teto fixo de linhas e caracteres por
+    chamada, definido no início da 5A. Saída ao LLM local em JSON compacto validado por Pydantic.
+  - Resumos são gerados por tarefa curta do LLM local e não substituem evidência. Frase sem `evidence_id` válido não entra no resumo.
+  - Limites: SQLite tem um escritor por vez (WAL, transações curtas, `cronista serve` e o Studio respeitando isso); não há
+    busca vetorial nativa (extensão como `sqlite-vec` só se a busca textual não bastar, e entra como dependência nova
+    decidida à parte); índices por `project_id`, `session_id` e quadro são obrigatórios desde a primeira migração.
+  - Dependências: a 5A só começa depois do padrão de evidência e da unicidade de `Artifact` por variante (Fase 2,
+    lacunas 2 e 3), dos sinais em série temporal (Fase 2, lacuna 4), dos estados de cena (Fase 3) e dos eventos e segmentos
+    (Fase 4). Nada disso entra antes; a 1B e a 1C não ganham tabelas novas.
+- ✅ **Aceite:** em sessões gravadas com `MIC_RAW` ativo e um gabarito de objetivos e estados, precisão e revocação
+  medidas e registradas; nenhum objetivo confirmado sem evidência; citação inválida nunca vira objetivo confirmado.
+  Os números de corte são definidos no início da 5A.
+
 ### Fase 6 — Montagem e exportação
-- Montagem automática: cortes, timelapse/aceleração do farm, B-roll (V3), transições de dia com cartelas "Dia N"
+- Montagem automática: cortes, montagem inteligente como padrão (timelapse como opção por trecho), B-roll (V3), transições de capítulo com cartelas (no formato 100 dias, "Dia N")
   editáveis (seção 6.3), ritmo de referência.
 - Exportação OTIO → FCPXML (+ EDL), marcadores coloridos por tipo (EDL de marcadores ou Rota B, conforme o spike),
   SRT do roteiro, relink para os masters do HD, faixas de áudio mapeadas em A1/A2 (ou WAVs extraídos).
@@ -867,6 +919,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 | Processamento disputando a GPU com o jogo | Pausa automática com o OBS gravando ou jogo em tela cheia; pipeline retomável (seção 4.1) |
 | Hotkeys bloqueadas por jogo como administrador ou anti-cheat | OBS/gravador de marcadores também como administrador ou dispositivo físico (MIDI/HID) (seção 4) |
 | Gravação interrompida deixa o Hybrid MP4 sem finalizar | Remux sem recodificar na ingestão; testado no spike (seções 2 e 6.5) |
+| Memória narrativa (SQLite) crescer, gerar resumo inconsistente ou o LLM inventar relações | Tabelas só de inserção com correção por `substitui_id`; resumo com `evidence_id` por frase e marca `stale`; relação sem evidência vira hipótese; recuperação com teto de tamanho e índices (seção 5A) |
 | Dependências de ML quebrando no Windows/Python 3.12 | PyTorch + ONNX Runtime só (exceção: CTranslate2 do faster-whisper, em processo separado se conflitar); RapidOCR; DeepFilterNet opcional; CI também em Windows (seção 5.2) |
 
 ## 9. Decisões
@@ -899,7 +952,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Trilhas da timeline: V1 gameplay, V2 efeitos renderizados, V3 B-roll, V4 overlays, V5 cartelas; A1 jogo, A2 voz
   ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados (seção 6.3).
 - CI em Ubuntu e Windows; configuração versionada sem caminhos pessoais + `*.local.yaml` fora do git (seção 5.6).
-- Benchmark da Fase 1 só de desempenho; WER e precisão contra o gabarito no início da Fase 2 (seções 6.1 e 7).
+- ~~Benchmark da Fase 1 só de desempenho~~: **substituído** (histórico §36): benchmarks de desempenho e de qualidade (WER, precisão) ocorrem na Fase 2; a 1C não faz benchmark de modelos (seções 6.1 e 7).
 - Sem Claude disponível, o roteiro não cai para o LLM local: fallback = `NullProvider` (Fase 5).
 - Aceite da Fase 1 sem mínimo de horas: qualquer duração de gravação é válida (Fase 1).
 - Áudio original sempre dentro do vídeo; WAVs extraídos são cache regenerável no SSD; proxy toca o mix (seção 2, Fase 1).
@@ -944,6 +997,29 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Marcador que existe só no arquivo (e não no diário): tratado como `Momento`, com aviso no relatório da sessão.
 - Primeira sessão do projeto sem `Novo dia`: abre um dia implícito no início, sem número.
 - Marcadores na ingestão: passo idempotente da sessão (não etapa com cache por arquivo); `Construção ▶/■` pareada pela ordem dos toques, com `■` sintético se ficar aberta; dia implícito como marcador sintético (histórico §28).
+
+**Decisões de 2026-11-16 (documento de visão narrativa v0.1; histórico §36):**
+- **Formatos narrativos:** a estrutura é geral (capítulo/unidade de progresso; objetivo; fase). O modo "100 dias" é um formato
+  entre vários (missão, desafio, sobrevivência por regras) e continua preservado, com `Novo dia` e cartelas "Dia N" (seções 4, 5.4, 6.3).
+- **Montagem inteligente como preferência editorial** (seção 6.3). Timelapse é uma das opções, escolhida por trecho.
+- **Fase 5A** (objetivos, subobjetivos, estados e evidências), entre a Fase 4 e a Fase 5 (seção 7).
+- **Benchmarks de modelos na Fase 2**, não na 1C. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE, GpuGate,
+  gravação real com `MIC_RAW` ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).
+
+**Lacunas técnicas identificadas (2026-11-16) e fase de correção:**
+1. **Tempo do marcador em float de segundos** (`marker.media_time_s`) → guardar em **quadros inteiros a 60 fps**. Fase: **1B, antes do merge** (o modelo do marcador é entregue pela 1B).
+2. **Padrão de evidência/proveniência** (intervalo em quadros, fonte, confiança, versão do modelo) não existe no código. Fase: **início da Fase 2** (primeiro consumidor: transcrição e sinais), ampliado na **5A** (objetivos).
+3. **`Artifact` com `UniqueConstraint(media_file_id, stage)`**: duas variantes de um estágio (dois modelos ou parâmetros para comparar no benchmark) se sobrescrevem. Fase: **início da Fase 2, antes do benchmark de WER**. Chave de cache continua incluindo versão e parâmetros.
+4. **Sinais em série temporal sem lugar definido** (energia, novidade, similaridade). Decidir o formato (array no cache, referenciado por `artifact`) e o esquema de consulta. Fase: **início da Fase 2**, antes da primeira análise.
+
+**Decisão de 2026-11-16 (memória narrativa; histórico §37):**
+- **SQLite como memória persistente do contexto narrativo**, no banco do engine, com objetivos, acontecimentos, relações,
+  evidências com quadros e origem, resumos e correções humanas por inserção (seção 7, Fase 5A). A análise recebe só o
+  recorte relevante. Sem banco de grafos, sem banco vetorial e sem outro serviço. Implementação na Fase 5A, depois da Fase 4.
+
+**Status da Fase 1 (2026-11-16):** 1A integrada à `main` (PR #1). 1B com código completo no `dev` (histórico §28–34); `/code-review` feito e 10 achados corrigidos (§35); PR #3 integrado à `main` com CI verde; a
+tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadros` (histórico §38), a integrar.
+1C pendente (PC de casa). A Fase 2 só começa com 1B e 1C cumpridas.
 
 **Em aberto:**
 1. Verificar na prática os itens ☑️/⚠️ da seção 6.5 (FCPXML, scripts, decodificação por GPU, HEVC e tempo de render),

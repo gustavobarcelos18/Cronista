@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from cronista.config import Settings
 from cronista.db.models import Marker, MediaFile, RecordingSession
+from cronista.domain.frames import frame_to_seconds, seconds_to_frame
 from cronista.domain.models import MarkerKind
 from cronista.domain.timeline import (
     JournalMarker,
@@ -99,13 +100,15 @@ def ingest_markers(
         for resolved in reconcile_file(name, mine, probe_chapters(settings, file.ready)):
             rows.append(_Row(file.media.ordinal, file.media.id, resolved))
             if resolved.warning:
-                report.warnings.append(f"{name} @ {resolved.media_time_s:.1f}s: {resolved.warning}")
+                report.warnings.append(
+                    f"{name} @ {frame_to_seconds(resolved.media_frame):.1f}s: {resolved.warning}"
+                )
 
     _pair_constructions(rows, files, report)
     _add_implicit_day(db, session, rows, files, report)
 
     db.execute(delete(Marker).where(Marker.session_id == session.id))
-    for row in sorted(rows, key=lambda r: (r.ordinal, r.marker.media_time_s)):
+    for row in sorted(rows, key=lambda r: (r.ordinal, r.marker.media_frame)):
         m = row.marker
         db.add(
             Marker(
@@ -113,7 +116,7 @@ def ingest_markers(
                 media_file_id=row.media_file_id,
                 marker_id=m.marker_id,
                 kind=m.kind.value,
-                media_time_s=m.media_time_s,
+                media_frame=m.media_frame,
                 source=m.source.value,
                 phase=row.phase,
                 warning=m.warning,
@@ -128,15 +131,15 @@ def _pair_constructions(rows: list[_Row], files: Sequence[IngestedFile], report:
     """`Construção ▶/■` é uma tecla só que alterna: ímpares abrem, pares fecham. Aberta no fim, fecha."""
     ordered = sorted(
         (r for r in rows if r.marker.kind is MarkerKind.CONSTRUCAO),
-        key=lambda r: (r.ordinal, r.marker.media_time_s),
+        key=lambda r: (r.ordinal, r.marker.media_frame),
     )
     for index, row in enumerate(ordered):
         row.phase = "start" if index % 2 == 0 else "end"
     if ordered and ordered[-1].phase == "start":
         opened = ordered[-1]
         last = max(files, key=lambda f: f.media.ordinal)
-        floor = opened.marker.media_time_s if opened.ordinal == last.media.ordinal else 0.0
-        end_time = max(last.duration_s or 0.0, floor)
+        floor = opened.marker.media_frame if opened.ordinal == last.media.ordinal else 0
+        end_frame = max(seconds_to_frame(last.duration_s or 0.0), floor)
         warning = "construção aberta no fim da sessão: fechada automaticamente"
         report.warnings.append(f"{opened.marker.marker_id}: {warning}")
         rows.append(
@@ -147,7 +150,7 @@ def _pair_constructions(rows: list[_Row], files: Sequence[IngestedFile], report:
                     f"{opened.marker.marker_id}-fim",
                     MarkerKind.CONSTRUCAO,
                     Path(last.media.path).name,
-                    end_time,
+                    end_frame,
                     MarkerSource.SYNTHETIC,
                     warning,
                 ),
@@ -192,7 +195,7 @@ def _add_implicit_day(
                 IMPLICIT_DAY_ID,
                 MarkerKind.NOVO_DIA,
                 Path(first.media.path).name,
-                0.0,
+                0,
                 MarkerSource.SYNTHETIC,
                 warning,
             ),

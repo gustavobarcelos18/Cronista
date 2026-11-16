@@ -173,7 +173,7 @@ def test_full_recording_writes_journal_and_chapters_with_the_right_times(
         (MarkerKind.MORTE_FALHA, "id3", str(tmp_path / "jogo.mp4")),
     ]
     # 105-100 = 5 s; 110,5-100 = 10,5 s; 125-100-8 s de pausa = 17 s
-    assert [m.media_time_s for m in rebuilt.markers] == pytest.approx([5.0, 10.5, 17.0])
+    assert [m.media_frame for m in rebuilt.markers] == [300, 630, 1020]
     assert [k for k, _ in feedback.marked_calls] == [
         MarkerKind.MOMENTO, MarkerKind.NOVO_DIA, MarkerKind.MORTE_FALHA,
     ]  # fmt: skip
@@ -235,7 +235,7 @@ def test_split_changes_the_file_for_later_markers(tmp_path: Path, settings: Sett
     asyncio.run(scenario())
     events, _ = read_journal(_journal(tmp_path))
     markers = reconstruct_media_times(events).markers
-    assert [(Path(m.file_name).name, m.media_time_s) for m in markers] == [("a.mp4", 10.0), ("b.mp4", 10.0)]
+    assert [(Path(m.file_name).name, m.media_frame) for m in markers] == [("a.mp4", 600), ("b.mp4", 600)]
 
 
 def test_unknown_recording_file_is_journaled_with_empty_path_and_warns(
@@ -309,7 +309,7 @@ def test_attach_to_a_recording_already_running_backdates_the_start(
     asyncio.run(scenario())
     events, _ = read_journal(_journal(tmp_path))
     assert isinstance(events[0], RecordingStarted) and events[0].mono_s == pytest.approx(170.0)
-    assert reconstruct_media_times(events).markers[0].media_time_s == pytest.approx(40.0)
+    assert reconstruct_media_times(events).markers[0].media_frame == 2400
     assert any("já estava gravando" in w for w in feedback.warnings)
 
 
@@ -578,10 +578,10 @@ def test_ingest_assumes_the_first_file_when_the_journal_has_no_path(
 
     report = ingest_folder(db, folder, settings, AlwaysFreeGate(), "p")
     assert report.ok
-    rows = list(db.scalars(select(Marker).order_by(Marker.media_time_s)))
-    assert [(r.kind, r.source, round(r.media_time_s, 1)) for r in rows] == [
-        ("novo_dia", "journal", 0.5),
-        ("momento", "journal", 1.5),
+    rows = list(db.scalars(select(Marker).order_by(Marker.media_frame)))
+    assert [(r.kind, r.source, r.media_frame) for r in rows] == [
+        ("novo_dia", "journal", 30),
+        ("momento", "journal", 90),
     ]
     assert any("assumido 'gravacao.mp4'" in w for w in report.markers.warnings)
 
@@ -674,8 +674,8 @@ def test_resume_reconciles_the_pause_state_of_the_reopened_journal(
     if not obs_paused:  # gravando de verdade: o marcador cai no tempo certo, sem aviso de "durante pausa"
         assert marker.warnings == []
         # pausado de 105 s a 140 s no diário reaberto: 141 - 100 - 35 = 6 s; sem pausa, 41 s
-        expected = 6.0 if journal_paused else 41.0
-        assert marker.markers[-1].media_time_s == pytest.approx(expected, abs=0.01)
+        expected = 360 if journal_paused else 2460
+        assert marker.markers[-1].media_frame == expected
 
 
 def test_beep_runs_off_the_event_loop_and_in_order() -> None:

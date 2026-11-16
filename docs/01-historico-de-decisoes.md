@@ -748,6 +748,121 @@ inválida, escrita de diário falhando, retomada com pausa nos 4 cruzamentos, be
 
 ---
 
+## 36. Visão narrativa v0.1: decisões aprovadas, Fase 5A e lacunas técnicas
+
+Documento `Cronista_Visao_Narrativa_e_Viabilidade_v0_1.md` (2026-11-16), avaliado contra o plano, o CLAUDE.md, a memória
+da 1B e o código do engine (diagnóstico da sessão, sem alterações de código). O criador aprovou três decisões.
+
+**Decisões aprovadas:**
+1. **Formatos narrativos gerais.** A estrutura passa a ser de capítulo/unidade de progresso, objetivo e fase. O modo
+   "100 dias" é um formato entre vários (missão, desafio, sobrevivência por regras) e continua preservado, com `Novo dia`
+   e cartelas "Dia N". Hitman, por exemplo, não usa dias (seções 4, 5.4 e 6.3 do plano).
+2. **Montagem inteligente como preferência editorial.** Para esforço longo (ex.: 20 min de mineração), entram o início,
+   alguns marcos, a descoberta e a consequência. Timelapse vira opção por trecho, não padrão obrigatório (seção 6.3).
+   Substitui a regra anterior "farm vira timelapse 4×–50×" como padrão.
+3. **Fase 5A** (objetivos, subobjetivos, estados e evidências), entre a Fase 4 e a Fase 5. Estados, relações e evidências
+   como no documento; citação literal obrigatória na descoberta por fala; declaração não é conclusão (seção 7 do plano).
+
+**Benchmarks de modelos na Fase 2.** Decisão de sequência: a 1C não mede desempenho de modelo. Os benchmarks de velocidade,
+VRAM e qualidade (WER) ocorrem no início da Fase 2. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE,
+GpuGate, gravação real com `MIC_RAW` ativo). Isso altera a decisão anterior "benchmark da Fase 1" (seções 6.1, 7 e 9).
+
+**Lacunas técnicas e fase de correção** (levantadas no diagnóstico; nenhuma implementada ainda):
+1. **Tempo do marcador em float de segundos** (`marker.media_time_s`). Com 60 fps exatos, o correto é quadros inteiros,
+   para não haver deriva. Fase: **1B, antes do merge** (tarefa 7 do `fase-1-fundacao.md`).
+2. **Padrão de evidência/proveniência** (intervalo em quadros, fonte, confiança, versão do modelo). Não existe no código.
+   Fase: **início da Fase 2** (primeiro consumidor: transcrição e sinais), ampliado na **5A**.
+3. **`Artifact` com `UniqueConstraint(media_file_id, stage)`.** Duas variantes de um estágio se sobrescrevem, o que
+   impede comparar modelos no benchmark. Fase: **início da Fase 2, antes do benchmark de WER**. A chave de cache já
+   inclui versão e parâmetros (`pipeline/cache.py`).
+4. **Sinais em série temporal sem lugar definido.** Decidir formato (array no cache, referenciado por `artifact`) e
+   consulta. Fase: **início da Fase 2**, antes da primeira análise.
+
+**Notas de diagnóstico registradas:**
+- A visão diz que a 1B estava "em codificação"; o repositório e a memória indicam código completo no `dev`, com o
+  `/code-review` já feito (§35). O roadmap do documento está desatualizado e não foi usado como status.
+- O `Cronista_Teste.mp4` tem a faixa 3 silenciosa (`MIC_RAW` mutado). Não serve para testar fala nem objetivos; a gravação
+  de teste com `MIC_RAW` ativo entra como tarefa 7 da 1C.
+- A sequência do roadmap foi mantida: 1B → 1C → Fase 2 (com benchmarks) → 3 → 4 → **5A** → 5 → 6 → 7 → 8 → 9.
+
+---
+
+## 37. Memória narrativa em SQLite (avaliação e decisão, sem implementação)
+
+**Pergunta:** o SQLite já existente no Cronista pode guardar o contexto narrativo (objetivos, acontecimentos, relações,
+evidências, resumos e correções humanas), para que a IA analise muitas horas sem manter toda a transcrição na janela de contexto?
+
+**Avaliação do SQLite atual:** o banco já é SQLite com SQLAlchemy 2 + Alembic (plano §5.2 e tarefa 4 da 1A), com `project`,
+`session`, `media_file`, `job`, `artifact` e `marker`. Serve a um único usuário, sem infraestrutura, e a migração para Postgres
+continua possível. Limites: um escritor por vez (o que obriga transações curtas com `cronista serve` e o Studio), nenhuma
+busca vetorial embutida e índices que precisam ser desenhados desde o início. A busca textual (FTS5) depende da build do
+SQLite no Python 3.12 do Windows; a crença é que ela vem incluída, mas não foi verificada.
+
+**Decisão:**
+1. A memória narrativa fica **no mesmo banco**, nas tabelas da Fase 5A: `objective`, `objective_state`, `narrative_event`,
+   `narrative_link`, `evidence`, `summary` (nomes provisórios; detalhe na seção 7, Fase 5A).
+2. **Tabelas de fatos só recebem inserção.** Estado, evento e relação nunca são atualizados ou apagados. A correção humana é
+   uma linha nova com `origem=humano` e `substitui_id`. Assim a versão automática e a evidência original continuam
+   consultáveis, o que cumpre o requisito 6 (correção sem perder a rastreabilidade).
+3. **Toda informação deriva de evidência:** quadros inteiros a 60 fps, fonte, `artifact_id`, citação literal quando houver
+   fala, confiança e versão do modelo. Sem evidência válida, a informação fica como hipótese.
+4. **Resumos são derivados e marcados:** cada frase de um resumo aponta para `evidence_id`; quando uma fonte muda (inclusive
+   por correção), o resumo recebe `stale`.
+5. **Recuperação determinística na 5A:** objetivos ativos, eventos da sessão atual, vizinhança de `narrative_link` com dois
+   saltos no máximo, busca textual e janela de quadros, com teto fixo de tamanho por chamada. Embeddings ficam fora desta
+   decisão e só serão reavaliados se a busca textual não bastar.
+
+**Alternativas consideradas e descartadas:**
+- *Manter tudo na janela de contexto:* não cabe em horas de gravação nem no plano Pro (plano §8, risco "limites de uso").
+- *JSON ou planilha por sessão:* não relaciona sessões, não permite consulta e não guarda correções com histórico.
+- *Banco de grafos (ex.: Neo4j) ou banco vetorial dedicado:* um serviço a mais, contra "custo zero e zero infraestrutura".
+  As relações cabem em tabela com recursão limitada.
+- *Atualizar linhas no lugar:* simples, mas destrói a origem; descartado pelo requisito 6.
+
+**Impactos e riscos:**
+- Cresce com a série: índices por `project_id`, `session_id` e quadro desde a primeira migração da 5A.
+- Concorrência: um escritor por vez; WAL e transações curtas. Verificar com `cronista serve` ativo na implementação.
+- Resumo inconsistente ou relação inventada pelo LLM local: mitigado por `evidence_id` obrigatório e `stale`.
+- Contratos: as entidades novas entram no fluxo Pydantic → JSON Schema → TypeScript (D2).
+- Universal: objetivos vêm só do perfil YAML ou do projeto (`objetivos` e `regras`); nada por jogo no núcleo.
+- Não mexe na 1B nem na 1C: nenhuma tabela nova entra agora, e a tarefa 7 da 1B (quadros inteiros) continua como está.
+
+**Associação à Fase 5A e dependências:** a 5A é a implementação desta decisão e depende de: padrão de evidência e
+unicidade de `Artifact` por variante (Fase 2, lacunas 2 e 3 do §36), sinais em série temporal (Fase 2, lacuna 4), estados
+de cena (Fase 3) e eventos e segmentos (Fase 4). A ordem do roadmap do §36 não muda.
+
+**A verificar antes da implementação (não verificado nesta sessão):**
+- Disponibilidade do FTS5 no `sqlite3` do Python 3.12 para Windows.
+- Comportamento de WAL com o serviço `serve` e a leitura pelo Studio.
+- Números de corte do teto de recuperação e da profundidade de relações: definidos no início da 5A, com medição.
+- Se `sqlite-vec` for necessário (só se a busca textual não bastar).
+
+---
+
+## 38. 1B: tempo do marcador em quadros inteiros (tarefa 7, lacuna técnica 1)
+
+**Decisão (2026-11-16):** `marker.media_time_s` (float) vira `marker.media_frame` (inteiro, quadro de mídia a 60 fps
+exatos dentro do arquivo). Executa a lacuna 1 do §36, feita depois do merge do PR #3 numa branch curta
+(`fase/1b-quadros`), porque o merge foi anterior à tarefa.
+
+**Como ficou:**
+- Uma única conversão, em `domain/frames.py`: `seconds_to_frame` (quadro mais próximo, nunca negativo) e
+  `frame_to_seconds`. Segundos só existem nas bordas: `ffprobe` (capítulos), janelas da prévia/exportação e textos de aviso.
+- `JournalMarker`, `FileChapter` e `ResolvedMarker` guardam `media_frame`. A tolerância de reconciliação passa a 60
+  quadros (1 s); o capítulo inicial do OBS é reconhecido por `media_frame == 0`.
+- Migração `0004`: soma a coluna, converte os valores existentes (`round(s * 60)`), remove `media_time_s`; o downgrade volta
+  para segundos. Teste de migração nos dois sentidos.
+- Testes de reconstrução comparam quadros exatos (inclui relógio fracionado: 12,508 s → quadro 750; 12,51 s → 751).
+
+**Alternativas descartadas:** guardar segundos como `Decimal`/racional (continua exigindo arredondar em cada consumidor) e
+manter o float com "tolerância" (o erro de ponto flutuante aparece só em exportação para o Resolve, que exige quadros inteiros).
+
+**Impactos:** a Fase 2 em diante (evidências, objetivos da 5A) já nasce em quadros; `ResolvedMarker` e a tabela `marker`
+são o único lugar do código que tinha tempo em float por marcador. A janela da prévia (`ClipWindow`) segue em segundos,
+por ser decisão de renderização e não evidência.
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

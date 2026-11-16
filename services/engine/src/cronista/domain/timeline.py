@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from cronista.domain.frames import FPS, frame_to_seconds, seconds_to_frame
 from cronista.domain.journal import (
     FileChanged,
     JournalEvent,
@@ -25,7 +26,7 @@ from cronista.domain.journal import (
 )
 from cronista.domain.models import MarkerKind
 
-TOLERANCE_S = 1.0
+TOLERANCE_FRAMES = FPS  # 1 s
 
 
 class MarkerSource(StrEnum):
@@ -41,7 +42,7 @@ class JournalMarker:
     marker_id: str
     kind: MarkerKind
     file_name: str
-    media_time_s: float
+    media_frame: int
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,7 @@ class FileChapter:
     """Marcador (capítulo) lido de dentro do arquivo, com o nome que o OBS gravou."""
 
     title: str
-    media_time_s: float
+    media_frame: int
 
 
 @dataclass(frozen=True)
@@ -57,7 +58,7 @@ class ResolvedMarker:
     marker_id: str
     kind: MarkerKind
     file_name: str
-    media_time_s: float
+    media_frame: int
     source: MarkerSource
     warning: str | None = None
 
@@ -120,13 +121,12 @@ def reconstruct_media_times(events: Sequence[JournalEvent]) -> Reconstruction:
                         "colocado no ponto onde a gravação parou"
                     )
                 out.markers.append(
-                    JournalMarker(event.marker_id, event.kind, current_file, max(elapsed, 0.0))
+                    JournalMarker(event.marker_id, event.kind, current_file, seconds_to_frame(elapsed))
                 )
     return out
 
 
 OBS_END_TITLE = "Dummy"
-OBS_START_EPSILON_S = 0.01
 
 
 def drop_obs_bookends(chapters: Sequence[FileChapter]) -> list[FileChapter]:
@@ -140,7 +140,7 @@ def drop_obs_bookends(chapters: Sequence[FileChapter]) -> list[FileChapter]:
     kept = list(chapters)
     if kept and kept[-1].title == OBS_END_TITLE:
         kept.pop()
-    if kept and kept[0].media_time_s < OBS_START_EPSILON_S and parse_chapter_title(kept[0].title) is None:
+    if kept and kept[0].media_frame == 0 and parse_chapter_title(kept[0].title) is None:
         kept.pop(0)
     return kept
 
@@ -149,7 +149,7 @@ def reconcile_file(
     file_name: str,
     journal: Sequence[JournalMarker],
     chapters: Sequence[FileChapter],
-    tolerance_s: float = TOLERANCE_S,
+    tolerance_frames: int = TOLERANCE_FRAMES,
 ) -> list[ResolvedMarker]:
     """Reconcilia, para um arquivo, os toques do diário com os marcadores gravados dentro dele (pelo `id`)."""
     resolved: list[ResolvedMarker] = []
@@ -169,20 +169,23 @@ def reconcile_file(
         if match is None:  # só o diário
             resolved.append(
                 ResolvedMarker(
-                    marker.marker_id, marker.kind, file_name, marker.media_time_s, MarkerSource.JOURNAL
+                    marker.marker_id, marker.kind, file_name, marker.media_frame, MarkerSource.JOURNAL
                 )
             )
             continue
-        chapter_time = match[1].media_time_s
-        delta = abs(chapter_time - marker.media_time_s)
+        chapter_frame = match[1].media_frame
+        delta = abs(chapter_frame - marker.media_frame)
         warning = None
-        if delta > tolerance_s:
+        if delta > tolerance_frames:
             warning = (
-                f"diário e arquivo divergem em {delta:.1f}s "
-                f"(diário {marker.media_time_s:.1f}s, arquivo {chapter_time:.1f}s); usei o arquivo"
+                f"diário e arquivo divergem em {frame_to_seconds(delta):.1f}s "
+                f"(diário {frame_to_seconds(marker.media_frame):.1f}s, "
+                f"arquivo {frame_to_seconds(chapter_frame):.1f}s); usei o arquivo"
             )
         resolved.append(
-            ResolvedMarker(marker.marker_id, marker.kind, file_name, chapter_time, MarkerSource.FILE, warning)
+            ResolvedMarker(
+                marker.marker_id, marker.kind, file_name, chapter_frame, MarkerSource.FILE, warning
+            )
         )
 
     for marker_id, (_, chapter) in by_id.items():  # só no arquivo
@@ -191,7 +194,7 @@ def reconcile_file(
     for index, chapter in orphans:  # capítulo sem o nome `tipo|id` (ex.: hotkey nativa do OBS)
         resolved.append(_file_only(file_name, f"arquivo-{index}", chapter))
 
-    resolved.sort(key=lambda m: m.media_time_s)
+    resolved.sort(key=lambda m: m.media_frame)
     return resolved
 
 
@@ -200,7 +203,7 @@ def _file_only(file_name: str, marker_id: str, chapter: FileChapter) -> Resolved
         marker_id,
         MarkerKind.MOMENTO,
         file_name,
-        chapter.media_time_s,
+        chapter.media_frame,
         MarkerSource.FILE,
         f"marcador só no arquivo ({chapter.title!r}): tratado como Momento",
     )

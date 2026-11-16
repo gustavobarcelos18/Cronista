@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from cronista.config import Settings
 from cronista.db.models import Artifact, Marker, MediaFile, RecordingSession
+from cronista.domain.frames import frame_to_seconds
 from cronista.domain.models import MarkerKind, StageResult
 from cronista.domain.preview import ClipWindow, MarkerPoint, plan_windows
 
@@ -86,7 +87,13 @@ def plan_session(db: Session, session_id: int, settings: Settings) -> SessionPla
         if m.media_file_id is not None and m.media_file_id in sources:
             duration = sources[m.media_file_id].duration_s
             points.append(
-                MarkerPoint(m.marker_id, MarkerKind(m.kind), m.media_file_id, m.media_time_s, duration)
+                MarkerPoint(
+                    m.marker_id,
+                    MarkerKind(m.kind),
+                    m.media_file_id,
+                    frame_to_seconds(m.media_frame),
+                    duration,
+                )
             )
     points.sort(key=lambda p: (ordinals[p.file_id], p.time_s))
     windows, warnings = plan_windows(points, settings.preview_pre_s, settings.preview_post_s)

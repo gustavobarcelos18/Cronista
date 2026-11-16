@@ -79,7 +79,7 @@ def sessions(db: Session) -> list[RecordingSession]:
 
 
 def markers_of(db: Session, session: RecordingSession) -> list[tuple[str, str]]:
-    rows = db.scalars(select(Marker).where(Marker.session_id == session.id).order_by(Marker.media_time_s))
+    rows = db.scalars(select(Marker).where(Marker.session_id == session.id).order_by(Marker.media_frame))
     return [(r.kind, r.marker_id) for r in rows]
 
 
@@ -439,9 +439,9 @@ def test_recorder_journal_is_consumed_by_the_service(
     (result,) = scan(db, settings, folder)
     assert result.error is None
     (session,) = sessions(db)
-    query = select(Marker).where(Marker.session_id == session.id).order_by(Marker.media_time_s)
+    query = select(Marker).where(Marker.session_id == session.id).order_by(Marker.media_frame)
     rows = list(db.scalars(query))
-    assert [(r.kind, r.source, round(r.media_time_s, 1)) for r in rows] == [
-        ("novo_dia", "journal", 0.5),
-        ("momento", "journal", 1.5),
+    assert [(r.kind, r.source, r.media_frame) for r in rows] == [
+        ("novo_dia", "journal", 30),
+        ("momento", "journal", 90),
     ]

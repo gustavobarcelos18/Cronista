@@ -3,7 +3,7 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 1).
 Decisão de dividir a fase: [histórico §25](01-historico-de-decisoes.md).
 
-Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine, GpuGate real e fixture com pausa prontos, histórico §29–35, com o `/code-review` feito e os 10 achados corrigidos; falta a CI verde no PR) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
+Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine, GpuGate real e fixture com pausa prontos, histórico §29–35, com o `/code-review` feito e os 10 achados corrigidos; tarefa 7 (tempo em quadros, histórico §38) feita na branch `fase/1b-quadros`, a ser integrada à `main`; PR #3 já integrado, com CI verde. 1C pendente (PC de casa)) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
 
 ## Divisão
 
@@ -13,7 +13,7 @@ A Fase 1 original era grande demais. Ela fica em três sub-etapas, nesta ordem:
 |---|---|---|
 | **1A – Esqueleto e ingestão** | `dev` (PC do trabalho, sem GPU) | Monorepo, CI, config, banco, contratos, orquestrador com cache e retomada, ingestão completa sobre fixtures sintéticas |
 | **1B – Marcadores e prévia** | `dev` (testes com mocks); validação final em `prod` | Gravador de marcadores (opção A), diário `.markers.jsonl`, reconciliação, CLI `ingest/status/preview`, prévia MP4, FCPXML mínimo |
-| **1C – Itens do PC de casa** | `prod` (kit montado em `dev`) | Kit de teste do Resolve, spike da FIFINE, guia do OBS, benchmark de desempenho na RTX 3060, gabarito (formato) |
+| **1C – Itens do PC de casa** | `prod` (kit montado em `dev`) | Kit de teste do Resolve, spike da FIFINE, guia do OBS, testes físicos (GpuGate, hotkeys, gravação real com `MIC_RAW`), gabarito (formato). Benchmark de modelos fica na **Fase 2** |
 
 1A não depende de nada em aberto. 1B depende das decisões D1–D3 abaixo. 1C depende de o criador estar no PC de casa.
 Cada sub-etapa só começa com os critérios da anterior cumpridos, exceto 1C, que pode ser executada em paralelo assim
@@ -83,6 +83,7 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 4. **Ingestão de marcadores**: etapa nova no pipeline que lê o diário + chapters do arquivo (`ffprobe -show_chapters`) e grava `marker` no banco com o tempo de mídia final e os avisos. `Construção ▶` sem `■` é fechada no fim da sessão, com aviso. Sessão sem `Novo dia` continua o dia anterior; a primeira sessão do projeto sem `Novo dia`: proposta, abrir um dia implícito no início (confirmar, seção 9 item 8).
 5. **Prévia MP4**: `cronista preview <sessão>`: para cada marcador, corta uma janela ao redor (proposta: 20 s antes e 10 s depois; sem lookback inteligente, que é da Fase 4), concatena com FFmpeg em 1080p60 H.264 (CPU em `dev`, NVENC em `prod`), mudando o áudio para o mix. Sem recursos do Studio.
 6. **FCPXML mínimo**: timeline 60 fps exatos, um clipe por marcador na V1, áudio nas trilhas A1/A2, referências aos masters. Sem keyframes, sem cor de marcador (seção 6.3). Gerado primeiro pelo caminho OTIO → FCPXML, para já medir o limite do adaptador (spike, seção 6.5). Validação contra o Resolve só na 1C.
+7. **Tempo do marcador em quadros inteiros a 60 fps** (histórico §36, lacuna 1): `marker.media_time_s` (float) passa a ser guardado em quadros inteiros, com migração e teste de que o tempo reconstruído cai no quadro certo.
 
 ### Critérios de aceite (1B)
 
@@ -91,7 +92,8 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 - [x] O gravador, contra o servidor falso, cria o marcador com nome `tipo|id` e escreve o diário; reabrir após queda não corrompe o diário.
 - [x] `cronista preview` gera um MP4 reproduzível, com N trechos para N marcadores, duração dentro de ±1 s do esperado.
 - [x] O FCPXML mínimo é gerado e passa em validação estrutural (esquema/DTD, se disponível); a importação real é item da 1C.
-- [ ] CI verde.
+- [x] Tempo do marcador guardado em quadros inteiros a 60 fps (tarefa 7 da 1B; lacuna técnica 1 do plano, seção 9; histórico §38).
+- [x] CI verde (PR #3; a branch `fase/1b-quadros` ainda precisa passar pela CI).
 
 ## 1C — Itens do PC de casa
 
@@ -100,16 +102,17 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 1. **Kit de teste do Resolve gratuito** (montado em `dev`, rodado em `prod`; seção 6.5): FCPXML com corte, velocidade, zoom com keyframe, transição, volume, marcador e relink; script interno mínimo (criar projeto, importar, marcadores, LUT); clipes H.264 e HEVC 8-bit gerados por FFmpeg (scripts, não versionados); **roteiro de checagem** em Markdown com campos para anotar o resultado de cada item do checklist da seção 6.5.
 2. **Spike da FIFINE SC3** (seção 4): script que escuta HID e MIDI e imprime os eventos; ordem: HID/MIDI → marcador por áudio → F13–F24/mouse/macropad.
 3. **Guia de configuração do OBS** (`integrations/obs/`): Hybrid MP4, 60 fps exatos, NVENC H.264 NV12 Rec. 709, microfone em duas fontes, faixas 1/2/3, servidor WebSocket, jogo/OBS como administrador. Inclui o teste de que o OBS aceita o mesmo dispositivo em duas fontes e a versão mínima para marcadores.
-4. **Benchmark de desempenho** (RTX 3060): velocidade e VRAM de faster-whisper, Silero, classificador de eventos, embeddings e Ollama; confere a convivência de cuBLAS/cuDNN do CTranslate2 com o PyTorch (⚠️ seção 5.2). Marcado `@pytest.mark.gpu`.
+4. **Teste de instalação de CUDA** (RTX 3060): confere se cuBLAS/cuDNN do CTranslate2 convivem com o PyTorch no mesmo ambiente (⚠️ seção 5.2), sem medir desempenho de modelo. O benchmark de velocidade e VRAM é da **Fase 2** (decisão de 2026-11-16).
 5. **Gabarito**: formato (CSV, D3) + script de validação documentados. A anotação em si (2–3 h) é do criador, quando puder.
 6. **Validação em `prod`** do que a 1A/1B só testaram com mocks: gravação real com marcadores via gravador, ingestão, prévia e importação do FCPXML.
+7. **Gravação de teste com `MIC_RAW` ativo** (nova; o `Cronista_Teste.mp4` tem a faixa 3 silenciosa): necessária para testar fala e objetivos na Fase 2 e 5A.
 
 ### Critérios de aceite (1C)
 
 - [ ] Roteiro de checagem do Resolve preenchido (itens que o plano marca como ⚠️ ganham resposta e são movidos para a seção 6.5).
 - [ ] Resultado da FIFINE registrado (qual dos três caminhos vale).
 - [ ] Guia do OBS seguido do zero produz uma gravação que passa na validação da ingestão.
-- [ ] Tabela de desempenho (velocidade e VRAM por modelo) salva em `docs/`.
+- [ ] Teste de instalação CUDA (item 4) registrado; o resultado alimenta o benchmark da Fase 2.
 
 ## Aceite da Fase 1 (do plano mestre)
 

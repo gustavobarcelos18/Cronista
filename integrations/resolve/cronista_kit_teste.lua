@@ -50,9 +50,15 @@ local function main()
 
   if not step("criar projeto", function()
     local pm = resolve:GetProjectManager()
-    state.project = pm:CreateProject(PROJECT) or pm:LoadProject(PROJECT)
-    if not state.project then error("CreateProject e LoadProject devolveram nil") end
-    return PROJECT
+    -- CreateProject devolveu nil na 3ª rodada (projeto aberto com alterações?): usa o projeto aberto como reserva.
+    state.project = pm:CreateProject(PROJECT)
+    local how = "criado"
+    if not state.project then
+      state.project = pm:GetCurrentProject()
+      how = "CreateProject devolveu nil; usando o projeto aberto"
+    end
+    if not state.project then error("sem projeto (CreateProject e GetCurrentProject devolveram nil)") end
+    return tostring(state.project:GetName()) .. " (" .. how .. ", timelines: " .. state.project:GetTimelineCount() .. ")"
   end) then return finish() end
   local project = state.project
 

@@ -578,6 +578,44 @@ retomada após queda com linha cortada); reconexão do laço principal; validaç
 **Não coberto (1C, com o OBS real):** hotkey com o jogo em tela cheia e elevado; `CreateRecordChapter` com nome
 `tipo|id` e comportamento durante pausa; a busca do arquivo na pasta; formato real dos eventos.
 
+## 32. 1B: serviço do engine (`cronista serve`)
+
+Quinto item da ordem da 1B: o engine dispara o processamento ao ver `recording_stopped` (decisão D1).
+
+**Problema de desenho encontrado:** a sessão da ingestão era "uma pasta", mas o gravador escreve o diário na pasta de
+gravação do OBS, que normalmente é uma só para todas as gravações. Com a sessão por pasta, gravações diferentes
+seriam fundidas e os marcadores de uma apareceriam como "fora da sessão" nas outras. **Decisão: uma gravação = um
+diário = uma sessão.** `RecordingSession.folder` passou a significar a **origem** da sessão: uma pasta (ingestão
+manual, como antes) ou o arquivo de diário (serviço). Sem migração: a coluna e a unicidade continuam servindo.
+`ingest_folder` virou um invólucro de `ingest_files(origin, arquivos)`.
+
+**Como o serviço funciona (`watch.py`):**
+- Consulta `watch_dir` a cada `watch_poll_seconds` (5 s), sem biblioteca de observação de arquivos: igual em disco
+  local, externo e de rede, e não perde evento se o serviço estava fechado (ao abrir, varre tudo).
+- Uma gravação está pronta quando o diário termina em `recording_stopped` **e** o diário e os arquivos estão
+  parados há `settle_seconds` (10 s). ⚠️ Existe porque o OBS ainda finaliza o Hybrid MP4 depois do evento: não
+  verificado com o OBS real (1C).
+- Os arquivos vêm do diário (`recording_started` + `file_changed`), pelo caminho ou, se o disco mudou, pelo nome na
+  pasta. Caminho vazio (o gravador não achou o arquivo, §31) é deduzido pela data de modificação: o vídeo mais
+  antigo que cabe entre o início e o fim da gravação, com aviso.
+- **Gravação interrompida** (OBS fechou, PC caiu): o diário fica aberto. Depois de `abandoned_after_hours` (4 h) sem
+  nada crescer, entra no mesmo caminho com aviso, e o remux da ingestão cobre o arquivo cortado. 4 h porque uma pausa
+  longa também deixa o arquivo parado; se for pouco ou muito, é config.
+- Sessão incompleta (processo morto no meio) é retomada: "completa" = todos os arquivos chegaram à etapa `audio`.
+- Falha: relatada uma vez e só tentada de novo se o diário mudar ou o serviço reiniciar (sem laço quente).
+- `--once` faz uma varredura e sai; `--watch` sobrepõe `watch_dir` (caminho pessoal, só em `*.local.yaml`).
+- Recupera jobs órfãos ao iniciar (como `cronista ingest`). Recebe a `GpuGate` e a repassa, mas a ingestão usa só
+  CPU; a `GpuGate` real (próximo item) importa para as etapas de GPU da Fase 2 em diante e para a prévia com NVENC.
+
+**Testes (11 novos, 114 no total):** gravação encerrada ingerida uma só vez; não ingere antes de parar nem de
+assentar; duas gravações na mesma pasta viram duas sessões sem avisos de marcador fora da sessão; divisão de arquivo;
+arquivo inicial desconhecido; diário abandonado (arquivo interrompido); falha sem laço quente; retomada de sessão
+incompleta; laço do serviço; e um teste que liga o **gravador** ao **serviço** (o diário que um escreve é o que o
+outro consome). Fumaça pela CLI: `serve --once` → `status` → `preview`.
+
+**Não coberto (1C):** o tempo real que o OBS leva para finalizar o arquivo depois do `STOPPED`; pasta de rede;
+comportamento com o OBS gravando em subpastas (o gravador e o serviço olham só o nível superior da pasta).
+
 ---
 
 ## Decisões em aberto

@@ -37,20 +37,35 @@ def find_media(folder: Path, settings: Settings) -> list[Path]:
 def ingest_folder(
     db: Session, folder: Path, settings: Settings, gate: GpuGate, project_name: str = "default"
 ) -> IngestReport:
+    """Ingestão manual: todos os vídeos da pasta formam uma sessão cuja origem é a pasta."""
     folder = folder.resolve()
     files = find_media(folder, settings)
     if not files:
         raise FileNotFoundError(f"Nenhum arquivo de vídeo em {folder}")
+    return ingest_files(db, str(folder), files, settings, gate, project_name)
 
+
+def ingest_files(
+    db: Session,
+    origin: str,
+    files: list[Path],
+    settings: Settings,
+    gate: GpuGate,
+    project_name: str = "default",
+) -> IngestReport:
+    """Ingere uma sessão. `origin` a identifica: uma pasta (manual) ou um diário `.markers.jsonl` (serviço).
+
+    Reingerir a mesma origem não duplica nada: sessão, arquivos e etapas vêm do banco e do cache.
+    """
     project = db.scalar(select(Project).where(Project.name == project_name))
     if project is None:
         project = Project(name=project_name)
         db.add(project)
         db.flush()
 
-    session = db.scalar(select(RecordingSession).where(RecordingSession.folder == str(folder)))
+    session = db.scalar(select(RecordingSession).where(RecordingSession.folder == origin))
     if session is None:
-        session = RecordingSession(project_id=project.id, folder=str(folder))
+        session = RecordingSession(project_id=project.id, folder=origin)
         db.add(session)
         db.flush()
 

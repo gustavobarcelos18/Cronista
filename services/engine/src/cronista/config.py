@@ -41,6 +41,10 @@ class Settings(BaseModel):
     obs_port: int = 4455
     obs_password: str | None = None  # só em *.local.yaml ou na variável CRONISTA_OBS_PASSWORD
     marker_hotkeys: dict[str, str | None] = DEFAULT_HOTKEYS
+    watch_dir: Path | None = None  # pasta de gravação do OBS (caminho pessoal: só em *.local.yaml)
+    watch_poll_seconds: float = 5.0
+    settle_seconds: float = 10.0  # arquivo parado há tanto tempo = o OBS terminou de escrever
+    abandoned_after_hours: float = 4.0  # diário aberto e arquivo parado há tanto = gravação interrompida
     gpu_poll_seconds: float = 5.0
     log_level: str = "INFO"
 

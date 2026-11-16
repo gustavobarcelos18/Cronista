@@ -53,6 +53,12 @@ class _Row:
     phase: str | None = None
 
 
+def session_journals(session: RecordingSession) -> list[Path]:
+    """Diários da sessão: o próprio arquivo (sessão do serviço) ou todos os da pasta (ingestão manual)."""
+    origin = Path(session.folder)
+    return [origin] if origin.is_file() else find_journals(origin)
+
+
 def ingest_markers(
     db: Session, session: RecordingSession, files: Sequence[IngestedFile], settings: Settings
 ) -> MarkerReport:
@@ -61,7 +67,7 @@ def ingest_markers(
         return report
 
     journal_markers: list[JournalMarker] = []
-    for journal_path in find_journals(Path(session.folder)):
+    for journal_path in session_journals(session):
         events, warnings = read_journal(journal_path)
         report.warnings += warnings
         rebuilt = reconstruct_media_times(events)

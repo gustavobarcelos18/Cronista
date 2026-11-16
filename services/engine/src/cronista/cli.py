@@ -22,6 +22,8 @@ from cronista.preview import PreviewError, build_preview
 from cronista.recorder.feedback import ConsoleFeedback
 from cronista.recorder.hotkeys import HotkeyConfigError
 from cronista.recorder.run import run_forever
+from cronista.watch import Processed
+from cronista.watch import serve as watch_serve
 
 app = typer.Typer(help="Cronista: gameplay do OBS → timeline do Resolve.", no_args_is_help=True)
 
@@ -113,6 +115,41 @@ def export(
     for problem in report.problems:
         typer.echo(f"  validação: {problem}", err=True)
     raise typer.Exit(1 if report.problems else 0)
+
+
+@app.command()
+def serve(
+    project: Annotated[str, typer.Option(help="Nome do projeto (série)")] = "default",
+    watch: Annotated[Path | None, typer.Option(help="Pasta de gravação do OBS (padrão: watch_dir)")] = None,
+    once: Annotated[bool, typer.Option("--once", help="Uma varredura e sai")] = False,
+) -> None:
+    """Serviço: ingere cada gravação quando ela termina (diário com recording_stopped). Ctrl+C sai."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    watch_dir = watch or settings.watch_dir
+    if watch_dir is None or not watch_dir.is_dir():
+        typer.echo("erro: defina watch_dir (config/*.local.yaml) ou use --watch com a pasta do OBS", err=True)
+        raise typer.Exit(1)
+
+    def show(item: Processed) -> None:
+        if item.error:
+            typer.echo(f"FALHOU {item.journal.name}: {item.error}", err=True)
+        else:
+            typer.echo(f"{item.journal.name}: sessão {item.session_id}, {len(item.files)} arquivo(s)")
+        for warning in item.warnings:
+            typer.echo(f"  aviso: {warning}")
+
+    typer.echo(f"Observando {watch_dir} (Ctrl+C para sair)")
+    with open_db(settings.db_path) as db:
+        recovered = recover_orphans(db)
+        if recovered:
+            typer.echo(f"{recovered} job(s) interrompido(s) voltaram para a fila.")
+        try:
+            watch_serve(
+                db, settings, AlwaysFreeGate(), watch_dir, project, show, max_scans=1 if once else None
+            )
+        except KeyboardInterrupt:
+            typer.echo("Serviço encerrado.")
 
 
 @app.command()

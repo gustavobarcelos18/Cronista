@@ -935,6 +935,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **D2:** contratos Pydantic → JSON Schema/OpenAPI → TypeScript gerado; a seção 5.2 foi atualizada.
 - **D3:** gabarito em CSV (`inicio, fim, classe, nota`) + script de validação e prévia; o Studio não é necessário.
 - **D4:** sem Fase 1.5; a prévia MP4 da 1B cumpre o papel do rough cut só de marcadores.
+- **Serviço do engine (1B, histórico §32):** `cronista serve` observa a pasta de gravação do OBS por consulta periódica e ingere cada gravação quando o diário termina em `recording_stopped`. **Uma gravação = um diário = uma sessão** (a origem da sessão é o diário, não a pasta). Diário aberto e arquivo parado há 4 h = gravação interrompida, ingerida com aviso.
 - **Gravador de marcadores (1B, histórico §31):** `simpleobsws` 1.4.3 (obs-websocket v5) e `pynput` 1.8.2 (hotkeys globais, só Windows); `cronista record`. Teclas padrão F13–F20, configuráveis em `marker_hotkeys`.
 - **FCPXML mínimo (1B, histórico §30):** OTIO → adaptador `fcpx_xml` (pacote `otio-fcpx-xml-adapter`), com
   pós-processamento mínimo e validação estrutural; V1 = master, A1/A2 = WAVs extraídos (jogo e microfone), não as

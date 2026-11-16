@@ -923,6 +923,104 @@ gravação com `MIC_RAW` ativo; anotação do gabarito; no Resolve: relink, HEVC
 
 ---
 
+## 40. Questionário de decisões editoriais v0.1 (2026-11-16)
+
+Documento `Cronista_Questionario_e_Decisoes_Editorias_v0_1.md`: 27 perguntas e as respostas do criador, mais o contexto
+aprovado antes delas. Avaliado contra o plano mestre, o histórico (§36–39) e o `fase-1-fundacao.md`. **Só documentação:
+nenhum código foi alterado, a ordem do roadmap não mudou e a 1B/1C não ganharam nada.** Registrado na branch
+`docs/questionario-editorial`. Os conflitos com decisões anteriores ficaram em aberto no primeiro commit e foram
+**decididos pelo criador na mesma conversa** (bloco "Decisões do criador", abaixo; seção 9 do plano).
+
+**Contexto aprovado (já compatível):** autonomia nível B, editor autônomo supervisionado (a "primeira edição completa" é lida
+como o rough cut rico da seção 6.3: o acabamento continua do criador no Resolve; confirmar se houver divergência);
+narração escrita pelo Cronista e gravada pelo criador; formatos gerais (§36); memória em SQLite (§37); montagem inteligente (§36);
+priorizar o Ollama local para o trabalho frequente e o Claude Pro só onde agrega valor, sem presumir API ilimitada (plano §1 e §6.1).
+
+**Respostas registradas como decisão (plano, seção 6.8 e fases):**
+
+| Q | Resposta | Efeito |
+|---|---|---|
+| 1 | A+B+C+D | Os quatro riscos (cortar o importante, partes monótonas, drama artificial, narrativa desconexa) viram critérios de revisão (6.8) |
+| 2 | B | Preservar o contexto essencial e condensar o lento (já em 6.3) |
+| 3 | C | Suspense por edição e narração, sem distorcer fatos (6.8) |
+| 4 | B | Montagem de tentativas mostrando evolução (6.8; Fases 4, 5A e 6; viabilidade não comprovada) |
+| 5 | C | Reação original e narração combinadas, sem repetir (já em 6) |
+| 6 | C | Acontecimento fora do objetivo: avalia o impacto e cria um pequeno arco se merecer (6.8) |
+| 7 | B+C | Abertura com cena forte e curiosidade sem inventar fatos; cinemática enquanto o criador narra o objetivo. Sem ângulos 3D novos (§6.2) |
+| 8 | A | Final direto; um fracasso real é preservado (6.8, beats) |
+| 11 | C com condição | Cronologia por padrão; antecipação só para gerar desejo ou ilustrar uma narração com cinemática; sempre marcada (6.8) |
+| 12 | C | Humor adaptado ao contexto, preservando a espontaneidade (6.8) |
+| 13 | C | Mantém as partes relevantes da fala longa e a narração complementa, incluindo a mudança de estratégia (6.8) |
+| 14 | A | Evento de mod não confirmado vai para revisão humana, nunca descartado nem afirmado (5A) |
+| 18 | C | Identidade híbrida: brand kit do canal mais estilo declarativo por série (6.4) |
+| 19 | B+C | Efeitos dinâmicos e adaptativos, sem poluição visual (já em 6.4) |
+| 20 | C | Referências, recursos próprios e feedback; só princípios e métricas de ritmo, nunca cópia (6) |
+| 21 | A | Roteiro completo, com estimativa de duração por fala (6.8) |
+| 22 | B+C+D | Tom natural, dinâmico e adaptativo (6.8) |
+| 23 | D | Ganchos combinados conforme a narrativa, sem exagero nem invenção (6.8) |
+| 24 | C | Ritmo dinâmico, respeitando o contexto da Q2 (6) |
+| 25 | D | Legendas só em falas e momentos importantes, com animações pontuais (Fase 8) |
+| 26 | C | Feedback escrito em linguagem natural, dentro do Studio (Fase 7); não é fine-tuning (Fase 7) |
+
+**Respostas que só entram como indício:**
+- **Q15 (resposta livre, sem letra):** "o roteiro é uma base para eu seguir, se ficar mais curto eu corto, se ficar maior eu estendo".
+  Não recebeu A, B ou C. Reforça a dúvida em aberto sobre o ducking pré-aplicado (seção 9, item 9 do plano; o stem cru A6
+  já permite desfazer), sem decidi-la.
+
+**Conflitos com decisões anteriores (propostas feitas ao criador; resolvidos no bloco "Decisões do criador", abaixo):**
+1. *Roteiro inteiramente local* (contexto) × §6.1 e §9 ("sem Claude, o fallback é o `NullProvider`"). Proposta: manter o
+   `NullProvider` e acrescentar um `LocalScriptProvider` experimental, só se passar no benchmark de roteiro.
+2. *Duração como referência, qualidade acima de duração* (Q9 A+B, Q10 A) × "um único vídeo de 30–50 min" (CLAUDE.md, plano
+   §0.1, §1 e §9). Proposta: 30–50 min fica como padrão do formato 100 dias; a duração vira parâmetro e teto do projeto; o
+   painel da série avisa "material insuficiente" sem forçar o preenchimento. Exige alterar o CLAUDE.md.
+3. *Aprendizado só por feedback em texto* (Q26 = C, sem o D) × §3.4, §5.3 e Fase 7 (aceitar/rejeitar recalibra os pesos
+   automaticamente). Falta saber se a recalibração automática continua.
+4. *Música e SFX escolhidos e posicionados pelo Cronista* (Q16 = B) × §6.4 (baixa confiança fica em `sugerir`; piada visual e
+   SFX de meme só como sugestão). Proposta: `aplicar editável` como padrão acima de um limiar, meme em `sugerir`.
+5. *Biblioteca pessoal de efeitos, transições e SFX* (Q17 = C) × §6.4 (só Biblioteca de Áudio do YouTube ou música de IA) e a
+   regra do Resolve gratuito (efeito do Studio ou plugin pago deixa marca d'água). Falta o formato dos arquivos do criador.
+6. *"Modelos gratuitos diferentes"* (contexto): só modelos abertos locais? Serviço gratuito hospedado quebra "custo zero e tudo
+   local" e a privacidade da gameplay e da voz.
+
+**Q27** (o feedback aplica a correção na edição atual ou só registra para as futuras): estava pendente; **decidida** no bloco abaixo.
+
+**Lacunas expostas (seção 9, item 11):**
+- **Revisão humana entre a 5A e a Fase 7.** A Q14 exige revisão, mas o Studio só chega na Fase 7. Proposta: fila de revisão em CSV ou
+  relatório HTML nas Fases 4 a 6, que o Studio absorve depois.
+- **"Tom" ou emoção da cena** não existe como sinal. A Q16 (música conforme a emoção) e a Q19 (efeitos adaptativos ao tom)
+  dependem dele. Viabilidade não comprovada.
+- **Legendas de fala no vídeo longo** (Q25): a trilha "Legendas" da seção 6.3 é o SRT do roteiro, e a legenda gravada só existe nos Shorts.
+
+**Decisões do criador sobre os conflitos e a Q27 (2026-11-16, mesma conversa):**
+1. **Roteiro local:** `LocalScriptProvider` **experimental**, ao lado do `NullProvider`, que continua como fallback. Só vale se
+   passar no benchmark de roteiro da Fase 2. Substitui "o roteiro não cai para o LLM local" (seções 6.1 e 9 do plano).
+2. **Duração:** resposta livre: um vídeo de 25 min, com contexto narrativo interessante e começo, meio e fim definidos, com
+   clímax, deve poder ser postado. O critério de "pronto" é o **arco narrativo completo**, não a minutagem. Registrado como:
+   30–50 min é a duração-alvo e referência do formato 100 dias, **não obrigação**; o painel da série avisa "material
+   insuficiente" sem forçar preenchimento (CLAUDE.md, seções 0.1, 1 e 9 do plano ajustados). Interpretação da resposta livre:
+   não houve decisão sobre se a faixa 30–50 continua como padrão do painel; foi mantida como referência.
+3. **Aprendizado:** os dois canais. Manter/tirar trecho no Studio (aceitar/rejeitar) continua recalibrando os pesos de nota
+   sozinho, e o feedback escrito em texto acrescenta regras explícitas. Mantém a seção 3.4, a 5.3 e a Fase 7 como estavam.
+4. **Música e SFX:** **tudo automático** (Q16 = B), inclusive SFX de meme e piada visual. Substitui "piadas visuais ficam como
+   sugestão" (6.3) e "baixa confiança fica só como sugerir" (6.4). Continuam valendo o orçamento de efeitos por minuto, a
+   intensidade ligada à nota do momento e a reversibilidade (efeito sempre em trilha acima do original). Sem item adequado na
+   biblioteca, nada é aplicado. Risco registrado: o próprio plano apontava a piada visual automática como o que mais denuncia
+   vídeo feito por IA; o orçamento por minuto e a revisão do primeiro corte são a mitigação.
+5. **Biblioteca pessoal:** os efeitos, transições e SFX do criador são **arquivos de áudio e vídeo**, que funcionam no Resolve
+   gratuito sem marca d'água. Passam a ser a fonte prioritária, com inventário e registro de origem e licença; a Biblioteca de
+   Áudio do YouTube e a música de IA ficam como complemento (6.4).
+6. **Modelos gratuitos:** só modelos abertos locais (RTX 3060). Serviços gratuitos hospedados estão fora.
+7. **Q27:** o feedback escrito **aplica a correção na edição atual e registra a preferência** para as próximas. A edição atual é
+   ajustada antes de exportar, com re-execução só das etapas afetadas (cache por hash); o Resolve continua de mão única.
+
+Continuam em aberto desta entrada: critérios de aceite qualitativos para os quatro riscos, o sinal de "tom" da cena e a fila
+de revisão (propostas, ainda sem fase de execução).
+
+**Nota de consistência (fora do escopo desta entrada):** o plano ainda cita a FIFINE como pendente em §0.1, na Fase 1 e no item 2
+de "Em aberto", apesar da decisão do §39. Não foi corrigido aqui.
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

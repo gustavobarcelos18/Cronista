@@ -906,8 +906,8 @@ gravação com `MIC_RAW` ativo; anotação do gabarito.
 Documento `Cronista_Questionario_e_Decisoes_Editorias_v0_1.md`: 27 perguntas e as respostas do criador, mais o contexto
 aprovado antes delas. Avaliado contra o plano mestre, o histórico (§36–39) e o `fase-1-fundacao.md`. **Só documentação:
 nenhum código foi alterado, a ordem do roadmap não mudou e a 1B/1C não ganharam nada.** Registrado na branch
-`docs/questionario-editorial`. Os conflitos com decisões anteriores **não** foram resolvidos: ficam em aberto
-(seção 9, item 11 do plano) até o criador decidir.
+`docs/questionario-editorial`. Os conflitos com decisões anteriores ficaram em aberto no primeiro commit e foram
+**decididos pelo criador na mesma conversa** (bloco "Decisões do criador", abaixo; seção 9 do plano).
 
 **Contexto aprovado (já compatível):** autonomia nível B, editor autônomo supervisionado (a "primeira edição completa" é lida
 como o rough cut rico da seção 6.3: o acabamento continua do criador no Resolve; confirmar se houver divergência);
@@ -945,7 +945,7 @@ priorizar o Ollama local para o trabalho frequente e o Claude Pro só onde agreg
   Não recebeu A, B ou C. Reforça a dúvida em aberto sobre o ducking pré-aplicado (seção 9, item 9 do plano; o stem cru A6
   já permite desfazer), sem decidi-la.
 
-**Conflitos com decisões anteriores (não resolvidos; seção 9, item 11):**
+**Conflitos com decisões anteriores (propostas feitas ao criador; resolvidos no bloco "Decisões do criador", abaixo):**
 1. *Roteiro inteiramente local* (contexto) × §6.1 e §9 ("sem Claude, o fallback é o `NullProvider`"). Proposta: manter o
    `NullProvider` e acrescentar um `LocalScriptProvider` experimental, só se passar no benchmark de roteiro.
 2. *Duração como referência, qualidade acima de duração* (Q9 A+B, Q10 A) × "um único vídeo de 30–50 min" (CLAUDE.md, plano
@@ -960,8 +960,7 @@ priorizar o Ollama local para o trabalho frequente e o Claude Pro só onde agreg
 6. *"Modelos gratuitos diferentes"* (contexto): só modelos abertos locais? Serviço gratuito hospedado quebra "custo zero e tudo
    local" e a privacidade da gameplay e da voz.
 
-**Pendente de resposta:** Q27 (o feedback aplica a correção na edição atual ou só registra para as futuras). Não presumir A nem B.
-Dado de arquitetura, sem decidir: o cache por hash já permitiria re-executar só as etapas afetadas.
+**Q27** (o feedback aplica a correção na edição atual ou só registra para as futuras): estava pendente; **decidida** no bloco abaixo.
 
 **Lacunas expostas (seção 9, item 11):**
 - **Revisão humana entre a 5A e a Fase 7.** A Q14 exige revisão, mas o Studio só chega na Fase 7. Proposta: fila de revisão em CSV ou
@@ -969,6 +968,31 @@ Dado de arquitetura, sem decidir: o cache por hash já permitiria re-executar s�
 - **"Tom" ou emoção da cena** não existe como sinal. A Q16 (música conforme a emoção) e a Q19 (efeitos adaptativos ao tom)
   dependem dele. Viabilidade não comprovada.
 - **Legendas de fala no vídeo longo** (Q25): a trilha "Legendas" da seção 6.3 é o SRT do roteiro, e a legenda gravada só existe nos Shorts.
+
+**Decisões do criador sobre os conflitos e a Q27 (2026-11-16, mesma conversa):**
+1. **Roteiro local:** `LocalScriptProvider` **experimental**, ao lado do `NullProvider`, que continua como fallback. Só vale se
+   passar no benchmark de roteiro da Fase 2. Substitui "o roteiro não cai para o LLM local" (seções 6.1 e 9 do plano).
+2. **Duração:** resposta livre: um vídeo de 25 min, com contexto narrativo interessante e começo, meio e fim definidos, com
+   clímax, deve poder ser postado. O critério de "pronto" é o **arco narrativo completo**, não a minutagem. Registrado como:
+   30–50 min é a duração-alvo e referência do formato 100 dias, **não obrigação**; o painel da série avisa "material
+   insuficiente" sem forçar preenchimento (CLAUDE.md, seções 0.1, 1 e 9 do plano ajustados). Interpretação da resposta livre:
+   não houve decisão sobre se a faixa 30–50 continua como padrão do painel; foi mantida como referência.
+3. **Aprendizado:** os dois canais. Manter/tirar trecho no Studio (aceitar/rejeitar) continua recalibrando os pesos de nota
+   sozinho, e o feedback escrito em texto acrescenta regras explícitas. Mantém a seção 3.4, a 5.3 e a Fase 7 como estavam.
+4. **Música e SFX:** **tudo automático** (Q16 = B), inclusive SFX de meme e piada visual. Substitui "piadas visuais ficam como
+   sugestão" (6.3) e "baixa confiança fica só como sugerir" (6.4). Continuam valendo o orçamento de efeitos por minuto, a
+   intensidade ligada à nota do momento e a reversibilidade (efeito sempre em trilha acima do original). Sem item adequado na
+   biblioteca, nada é aplicado. Risco registrado: o próprio plano apontava a piada visual automática como o que mais denuncia
+   vídeo feito por IA; o orçamento por minuto e a revisão do primeiro corte são a mitigação.
+5. **Biblioteca pessoal:** os efeitos, transições e SFX do criador são **arquivos de áudio e vídeo**, que funcionam no Resolve
+   gratuito sem marca d'água. Passam a ser a fonte prioritária, com inventário e registro de origem e licença; a Biblioteca de
+   Áudio do YouTube e a música de IA ficam como complemento (6.4).
+6. **Modelos gratuitos:** só modelos abertos locais (RTX 3060). Serviços gratuitos hospedados estão fora.
+7. **Q27:** o feedback escrito **aplica a correção na edição atual e registra a preferência** para as próximas. A edição atual é
+   ajustada antes de exportar, com re-execução só das etapas afetadas (cache por hash); o Resolve continua de mão única.
+
+Continuam em aberto desta entrada: critérios de aceite qualitativos para os quatro riscos, o sinal de "tom" da cena e a fila
+de revisão (propostas, ainda sem fase de execução).
 
 **Nota de consistência (fora do escopo desta entrada):** o plano ainda cita a FIFINE como pendente em §0.1, na Fase 1 e no item 2
 de "Em aberto", apesar da decisão do §39. Não foi corrigido aqui.

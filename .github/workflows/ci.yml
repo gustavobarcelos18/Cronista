@@ -25,7 +25,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Instalar FFmpeg (Windows)
         if: runner.os == 'Windows'
-        run: choco install ffmpeg -y --no-progress
+        run: choco install ffmpeg --version=9.0.2 -y --no-progress
       - run: uv sync
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -35,7 +35,7 @@ jobs:
         shell: bash
         working-directory: .
         run: |
-          if grep -rEn 'C:\\Users|/home/[a-z]' config packages/brand-kit 2>/dev/null; then
+          if git grep -nE 'C:\\Users|/home/[a-z]' -- . ':!.github' ':!docs' ':!pnpm-lock.yaml' ':!services/engine/uv.lock'; then
             echo "Caminho pessoal encontrado em arquivo versionado"; exit 1
           fi
 

@@ -7,7 +7,19 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+DEFAULT_HOTKEYS: dict[str, str | None] = {
+    "momento": "<f13>",
+    "novo_dia": "<f14>",
+    "morte_falha": "<f15>",
+    "engracado": "<f16>",
+    "conquista": "<f17>",
+    "construcao": "<f18>",
+    "foto_progresso": "<f19>",
+    "cinematica": "<f20>",
+}
+"""Teclas padrão (sintaxe do pynput). `null` desliga a tecla; `momento` e `novo_dia` são obrigatórias."""
 
 
 class Settings(BaseModel):
@@ -21,8 +33,29 @@ class Settings(BaseModel):
     proxy_height: int = 360
     proxy_crf: int = 28
     video_extensions: list[str] = [".mp4", ".mkv"]
+    preview_encoder: str = "libx264"  # `h264_nvenc` em prod (GPU)
+    preview_crf: int = 20
+    preview_pre_s: float = 20.0
+    preview_post_s: float = 10.0
+    obs_host: str = "localhost"
+    obs_port: int = 4455
+    obs_password: str | None = None  # só em *.local.yaml ou na variável CRONISTA_OBS_PASSWORD
+    marker_hotkeys: dict[str, str | None] = DEFAULT_HOTKEYS
+    watch_dir: Path | None = None  # pasta de gravação do OBS (caminho pessoal: só em *.local.yaml)
+    watch_poll_seconds: float = 5.0
+    settle_seconds: float = 10.0  # arquivo parado há tanto tempo = o OBS terminou de escrever
+    abandoned_after_hours: float = 4.0  # diário aberto e arquivo parado há tanto = gravação interrompida
+    retry_seconds: float = 600.0  # prazo para repetir uma ingestão que falhou (dobra a cada falha)
+    gpu_gate: bool = False  # `dev` não tem GPU nem OBS; `prod` liga
+    gpu_busy_percent: int | None = None  # opcional: GPU >= isso por outro programa = ocupada (nvidia-smi)
     gpu_poll_seconds: float = 5.0
     log_level: str = "INFO"
+
+    @field_validator("marker_hotkeys")
+    @classmethod
+    def _merge_hotkeys(cls, value: dict[str, str | None]) -> dict[str, str | None]:
+        """Trocar uma tecla no YAML não apaga as outras: o que não vem na config fica no padrão."""
+        return {**DEFAULT_HOTKEYS, **value}
 
     @property
     def db_path(self) -> Path:
@@ -72,6 +105,9 @@ def load_settings(env: str | None = None, config_dir: Path | None = None) -> Set
         raise FileNotFoundError(f"Configuração {config_dir / f'{env}.yaml'} não encontrada")
     data = _deep_merge(base, _read_yaml(config_dir / f"{env}.local.yaml"))
     settings = Settings.model_validate(data)
+    password = os.environ.get("CRONISTA_OBS_PASSWORD")
+    if password:
+        settings = settings.model_copy(update={"obs_password": password})
     if not settings.data_dir.is_absolute():
         # Caminhos relativos valem a partir da raiz do repositório (pai da pasta config).
         settings = settings.model_copy(update={"data_dir": (config_dir.parent / settings.data_dir).resolve()})

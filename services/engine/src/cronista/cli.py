@@ -1,7 +1,8 @@
-"""CLI: `cronista ingest <pasta>`, `cronista status`, `cronista fixtures`."""
+"""CLI: `cronista ingest <pasta>`, `status`, `preview <sessão>`, `export <sessão>`, `fixtures`."""
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Annotated
 
@@ -12,9 +13,18 @@ from cronista.config import load_settings
 from cronista.db.models import Job, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
-from cronista.ingest.service import ingest_folder
+from cronista.export.service import export_session
+from cronista.gates import build_gate
+from cronista.ingest.service import SessionConflictError, ingest_folder
 from cronista.logging_setup import setup_logging
-from cronista.pipeline import AlwaysFreeGate, recover_orphans
+from cronista.montage import SessionPlanError
+from cronista.pipeline import recover_orphans
+from cronista.preview import PreviewError, build_preview
+from cronista.recorder.feedback import ConsoleFeedback
+from cronista.recorder.hotkeys import HotkeyConfigError
+from cronista.recorder.run import run_forever
+from cronista.watch import Processed
+from cronista.watch import serve as watch_serve
 
 app = typer.Typer(help="Cronista: gameplay do OBS → timeline do Resolve.", no_args_is_help=True)
 
@@ -31,7 +41,11 @@ def ingest(
         recovered = recover_orphans(db)
         if recovered:
             typer.echo(f"{recovered} job(s) interrompido(s) voltaram para a fila.")
-        report = ingest_folder(db, folder, settings, AlwaysFreeGate(), project)
+        try:
+            report = ingest_folder(db, folder, settings, build_gate(settings), project)
+        except (FileNotFoundError, SessionConflictError) as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
     for path, result in report.files.items():
         typer.echo(f"{path}: executadas={result.executed} em_cache={result.cached}")
         for stage in result.results.values():
@@ -61,6 +75,105 @@ def status() -> None:
                         typer.echo(f"      {job.stage}: {job.status}{extra}")
         if db.scalar(select(RecordingSession.id)) is None and db.scalar(select(MediaFile.id)) is None:
             typer.echo("Nada ingerido ainda.")
+
+
+@app.command()
+def preview(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    out: Annotated[
+        Path | None, typer.Option(help="MP4 de saída (padrão: data/previews/sessao-N.mp4)")
+    ] = None,
+) -> None:
+    """Gera o MP4 de prévia: uma janela (20 s antes, 10 s depois) por marcador, com o áudio do mix."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            report = build_preview(db, session, settings, build_gate(settings), out)
+        except PreviewError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    actual = f"{report.actual_s:.1f}s" if report.actual_s is not None else "?"
+    typer.echo(f"{report.path}: {report.clips} trecho(s), esperado {report.expected_s:.1f}s, gerado {actual}")
+    for warning in report.warnings:
+        typer.echo(f"  aviso: {warning}")
+
+
+@app.command()
+def export(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/export)")] = None,
+) -> None:
+    """Grava a timeline da sessão (V1 + A1/A2, 60 fps) como .fcpxml e .otio para importar no Resolve."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            report = export_session(db, session, settings, out)
+        except SessionPlanError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    typer.echo(f"{report.fcpxml_path}: {report.clips} clipe(s), {report.duration_s:.1f}s")
+    typer.echo(f"{report.otio_path}")
+    for warning in report.warnings:
+        typer.echo(f"  aviso: {warning}")
+    for problem in report.problems:
+        typer.echo(f"  validação: {problem}", err=True)
+    raise typer.Exit(1 if report.problems else 0)
+
+
+@app.command()
+def serve(
+    project: Annotated[str, typer.Option(help="Nome do projeto (série)")] = "default",
+    watch: Annotated[Path | None, typer.Option(help="Pasta de gravação do OBS (padrão: watch_dir)")] = None,
+    once: Annotated[bool, typer.Option("--once", help="Uma varredura e sai")] = False,
+) -> None:
+    """Serviço: ingere cada gravação quando ela termina (diário com recording_stopped). Ctrl+C sai."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    watch_dir = watch or settings.watch_dir
+    if watch_dir is None or not watch_dir.is_dir():
+        typer.echo("erro: defina watch_dir (config/*.local.yaml) ou use --watch com a pasta do OBS", err=True)
+        raise typer.Exit(1)
+
+    def show(item: Processed) -> None:
+        if item.error:
+            typer.echo(f"FALHOU {item.journal.name}: {item.error}", err=True)
+        else:
+            typer.echo(f"{item.journal.name}: sessão {item.session_id}, {len(item.files)} arquivo(s)")
+        for warning in item.warnings:
+            typer.echo(f"  aviso: {warning}")
+
+    typer.echo(f"Observando {watch_dir} (Ctrl+C para sair)")
+    with open_db(settings.db_path) as db:
+        recovered = recover_orphans(db)
+        if recovered:
+            typer.echo(f"{recovered} job(s) interrompido(s) voltaram para a fila.")
+        try:
+            watch_serve(
+                db, settings, build_gate(settings), watch_dir, project, show, max_scans=1 if once else None
+            )
+        except KeyboardInterrupt:
+            typer.echo("Serviço encerrado.")
+
+
+@app.command()
+def record(
+    quiet: Annotated[bool, typer.Option("--quiet", help="Sem sons (só mensagens)")] = False,
+) -> None:
+    """Gravador de marcadores: escuta as hotkeys e registra cada toque no OBS e no diário. Ctrl+C sai."""
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    feedback = ConsoleFeedback(quiet=quiet)
+    try:
+        asyncio.run(run_forever(settings, feedback))
+    except HotkeyConfigError as exc:
+        typer.echo(f"erro nas teclas: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    except KeyboardInterrupt:
+        typer.echo("Gravador encerrado.")
+    finally:
+        feedback.close()
 
 
 @app.command()

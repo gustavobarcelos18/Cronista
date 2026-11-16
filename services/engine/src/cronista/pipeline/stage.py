@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -20,6 +21,8 @@ class StageContext:
     out_dir: Path
     settings: Settings
     inputs: dict[str, StageResult]  # resultados das etapas listadas em `needs`
+    wait_for_gpu: Callable[[], None] = lambda: None
+    """Etapas longas chamam isto entre blocos: bloqueia com o OBS gravando ou jogo em tela cheia."""
 
 
 class Stage(Protocol):

@@ -157,11 +157,30 @@ def test_gpu_stage_waits_until_gate_is_free(db: Session, media: MediaFile, setti
     assert len(sleeps) == 3 and calls["g"] == 1
 
 
-def test_cpu_stage_ignores_gate(db: Session, media: MediaFile, settings: Settings) -> None:
-    class NeverFree:
-        def is_free(self) -> bool:
-            return False
+def test_cpu_stage_also_waits_for_the_gate(db: Session, media: MediaFile, settings: Settings) -> None:
+    """CLAUDE.md: todo processamento pausa com o OBS gravando ou jogo em tela cheia, não só o de GPU."""
 
+    class Busy:
+        def __init__(self) -> None:
+            self.checks = 0
+
+        def is_free(self) -> bool:
+            self.checks += 1
+            return self.checks > 2
+
+    gate, sleeps = Busy(), []  # type: ignore[var-annotated]
     calls: Counter[str] = Counter()
-    run_pipeline(db, media, [FakeStage("x", calls=calls)], settings, NeverFree())
-    assert calls["x"] == 1
+    run_pipeline(db, media, [FakeStage("x", calls=calls)], settings, gate, sleep=sleeps.append)
+    assert len(sleeps) == 2 and calls["x"] == 1
+
+
+def test_cached_stage_does_not_consult_the_gate(db: Session, media: MediaFile, settings: Settings) -> None:
+    calls: Counter[str] = Counter()
+    run_pipeline(db, media, [FakeStage("x", calls=calls)], settings, AlwaysFreeGate())
+
+    class Exploding:
+        def is_free(self) -> bool:
+            raise AssertionError("etapa em cache não roda, logo não espera o gate")
+
+    report = run_pipeline(db, media, [FakeStage("x", calls=calls)], settings, Exploding())
+    assert report.cached == ["x"] and calls["x"] == 1

@@ -18,7 +18,7 @@ from cronista.db.models import Artifact, Job, MediaFile
 from cronista.domain.models import StageResult
 from cronista.logging_setup import log_event
 from cronista.pipeline.cache import compute_key, fingerprint_file
-from cronista.pipeline.gpu import GpuGate
+from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.pipeline.stage import Stage, StageContext
 
 RESULT_FILE = "result.json"
@@ -99,10 +99,17 @@ def run_pipeline(
         job.started_at, job.finished_at = _now(), None
         db.commit()
 
-        if stage.uses_gpu:
-            while not gate.is_free():
-                log_event("gpu_ocupada_aguardando", media_file_id=media.id, stage=stage.name)
-                sleep(settings.gpu_poll_seconds)
+        def wait_for_gpu(working: bool = True, stage_name: str = stage.name) -> None:
+            wait_until_free(
+                gate,
+                settings.gpu_poll_seconds,
+                sleep,
+                working=working,
+                media_file_id=media.id,
+                stage=stage_name,
+            )
+
+        wait_for_gpu(working=False)  # todo processamento pausa com o OBS gravando ou jogo em tela cheia
 
         out_dir = settings.cache_dir / str(media.id) / stage.name / key[:12]
         if out_dir.exists():
@@ -114,6 +121,7 @@ def run_pipeline(
             out_dir=out_dir,
             settings=settings,
             inputs={n: report.results[n] for n in stage.needs},
+            wait_for_gpu=wait_for_gpu,
         )
         log_event("etapa_iniciada", media_file_id=media.id, stage=stage.name, job_id=job.id)
         try:

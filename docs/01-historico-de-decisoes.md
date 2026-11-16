@@ -478,6 +478,274 @@ em 0 s. O primeiro capítulo em 0 s, que eu tinha tomado por artefato do muxer d
 capítulo inicial do próprio OBS; os tempos dos toques reais não sofrem esse deslocamento. **Ainda por verificar:**
 nome com `tipo|id` via `CreateRecordChapter`, e se os capítulos sobrevivem a uma gravação interrompida/ao remux.
 
+## 29. 1B: prévia MP4 (`cronista preview`)
+
+Segundo item da ordem da 1B (§28). Decisões de implementação, todas dentro do que o plano da fase já previa:
+
+- `cronista preview <sessão>` (número da sessão, como em `cronista status`) gera `data/previews/sessao-N.mp4`
+  (ou `--out`). Um trecho por marcador, na ordem (arquivo, tempo): 20 s antes e 10 s depois (`preview_pre_s`,
+  `preview_post_s` na config), recortado aos limites do arquivo. Marcador fora do arquivo ou com trecho < 0,5 s
+  fica de fora com aviso.
+- Janelas que se sobrepõem **não são fundidas**: o critério de aceite pede N trechos para N marcadores. Se isso
+  cansar na revisão (marcadores colados repetem imagem), fundir é uma mudança pequena em `domain/preview.py`.
+- Saída em 1080p60 H.264 yuv420p, áudio só do mix (faixa 1). Encoder por config: `libx264` em `dev` (CPU),
+  `h264_nvenc` em `prod`; só o NVENC espera a `GpuGate`. Os parâmetros do NVENC (`-preset p5 -rc vbr -cq`)
+  ⚠️ vêm de memória, não foram testados sem GPU: conferir na 1C.
+- Corte por trecho (`-ss` antes do `-i`, recodificando) e concatenação sem recodificar (`concat` + `-c copy`).
+  Lê o master já normalizado (remuxado/8-bit) pelo artefato da etapa `normalize`; sessão não ingerida dá erro claro.
+- Não é etapa do orquestrador (sem cache): é barato de refazer e depende do conjunto de marcadores da sessão, que
+  muda a cada ingestão. A pasta de trabalho é apagada ao fim.
+
+## 30. 1B: FCPXML mínimo via OTIO (`cronista export`)
+
+Terceiro item da ordem da 1B. Primeira medição do adaptador FCPXML do OTIO (pendência da seção 9, item 10).
+
+- Dependências: `opentimelineio` 0.18.1 e `otio-fcpx-xml-adapter` 1.0.0 (o adaptador é um pacote à parte, como o
+  plano supunha). Instalam e funcionam em Python 3.12 no Windows.
+- `cronista export <sessão>` grava `data/export/sessao-N.fcpxml` e `.otio` (o Resolve recente importa OTIO,
+  ⚠️ a conferir na 1C). Mesmos trechos da prévia (módulo `montage.py`, compartilhado): um clipe por marcador.
+- **Layout:** V1 = master normalizado; A1 = WAV do jogo (faixa 2); A2 = WAV do microfone (faixa 3). Decisão: a OTIO
+  não consegue dizer "faixa 2 do MP4", então o mínimo já usa os WAVs que a ingestão extrai, que é o plano B previsto
+  na seção 6.3. O teste "o Resolve respeita a faixa embutida?" fica para quando o app precisar das faixas cruas.
+  O mix (faixa 1) não entra: A1/A2 são os stems.
+- Tempos: quadros inteiros de 1/60 s (`RationalTime(frames, 60)`), recortados ao fim do arquivo.
+- **O que o adaptador faz bem (medido):** FCPXML 1.8 com `frameDuration="1/60s"`, um `asset` por arquivo reaproveitado
+  entre clipes, áudio em lanes -1 e -2, duração da sequência = soma dos clipes, tempos na grade de quadros.
+- **Defeitos medidos e corrigidos em `export/fcpxml.py`** (sem mudar a timeline): `asset-clip` soltos na raiz do
+  documento (nada os referencia; posição válida ⚠️ de memória), `format` sem largura/altura (acrescentado 1920x1080) e
+  `uid=""` vazio no projeto.
+- **Limites que ficam:** o `asset` leva o nome do primeiro clipe que o usa (o rótulo do marcador), o que só atrapalha
+  a leitura; áudio vai embrulhado em `<gap>`; faixa vazia é descartada (A3, A4 não saem); versão do FCPXML é a 1.8;
+  não testado: títulos, keyframes, clipes desativados, cor de marcador. Nada disso foi pedido ao mínimo da 1B.
+- **Validação:** não há DTD oficial utilizável offline. `check_fcpxml` confere XML bem formado, `format` a 60 fps
+  exatos, `ref`/`format` que resolvem, tempos na grade de quadros, duração da sequência e lanes de A1/A2; o `export`
+  sai com código 1 se algo falhar. Isso prova coerência interna, **não** que o Resolve importa: a importação real é
+  da 1C. Se ela falhar ou o layout de trilhas vier errado, o plano já prevê escrever o FCPXML direto.
+
+## 31. 1B: gravador de marcadores (`cronista record`)
+
+Quarto item da ordem da 1B. Confirmação das bibliotecas (pedida pelo plano) e decisões de implementação.
+
+**Bibliotecas (conferidas no PyPI e no protocolo oficial em 2026-11-16):**
+- obs-websocket: `simpleobsws` 1.4.3 (MIT, junho de 2025, Python >= 3.9; do IRLToolkit, mesmo autor do protocolo,
+  assíncrona sobre `websockets` e `msgpack`). Descartadas: `obsws-python` (GPL-3.0) e `obs-websocket-py` (parada
+  desde 2023, só protocolo v4 na prática).
+- Hotkeys globais: `pynput` 1.8.2 (LGPL, maio de 2026; F1–F24 no Windows). Descartada: `keyboard` (parada desde
+  2020). Instalada só em Windows (`sys_platform == "win32"`): em Linux sem display o `pynput` nem importa, e a CI
+  roda em Ubuntu. O núcleo e os testes não dependem dele (porta `HotkeySource`).
+- Protocolo (doc oficial): `CreateRecordChapter` (`chapterName` opcional, desde a 5.5.0 = OBS 30.2, só Hybrid MP4);
+  eventos `RecordStateChanged` (`outputState`: STARTED, STOPPED, PAUSED, RESUMED...) e `RecordFileChanged`
+  (`newOutputPath`, 5.5.0); `GetRecordStatus`; `GetRecordDirectory`. Assinatura de eventos `Outputs` = `1 << 6`.
+
+**Achado que mudou o desenho:** o protocolo **não informa o arquivo ao iniciar a gravação**. `outputPath` só vem ao
+parar, e `newOutputPath` só nas divisões. O diário precisa do arquivo desde o início, então o gravador procura o
+vídeo mais novo na pasta de gravação (`GetRecordDirectory`), esperando até 3 s. Se não achar, escreve o caminho
+**vazio** no diário e avisa; a ingestão assume o **primeiro arquivo da sessão**, com aviso (o arquivo desconhecido é
+sempre o primeiro da gravação, porque as divisões chegam com caminho). ⚠️ Validar com o OBS real na 1C: se o OBS
+informar o caminho de outro jeito, a busca na pasta sai.
+
+**Decisões de implementação:**
+- Portas (`recorder/ports.py`): `ObsLink`, `HotkeySource`, `Feedback`. O núcleo (`recorder/core.py`) é testado sem
+  OBS, teclado ou alto-falante; as bibliotecas podem ser trocadas.
+- A cada toque, nesta ordem: linha no diário com o **instante do toque** (carimbo tirado na thread do teclado, não
+  quando a tarefa roda), `CreateRecordChapter` com `tipo|id` (id aleatório de 4 bytes em hex) e feedback. Se o OBS
+  recusar o marcador, o diário ainda tem o toque (os dois registros são independentes, seção 4).
+  `JournalWriter` passou a aceitar o carimbo (`Stamp`) como argumento.
+- Toque durante a busca do arquivo espera o diário abrir, mas mantém o carimbo original.
+- Toque fora de gravação: ignorado com aviso sonoro (nada é escrito).
+- `Construção ▶/■`: o gravador guarda se há construção aberta (som do fim = dois toques; aviso ao parar com ela
+  aberta). O pareamento definitivo continua sendo da ingestão.
+- Diário em `<pasta de gravação>/gravacao-AAAAMMDD-HHMMSS.markers.jsonl`, ao lado do vídeo (a ingestão acha por
+  pasta).
+- **Retomada:** se o gravador abre (ou reconecta) com o OBS já gravando, reabre o diário da gravação em curso
+  (sem repetir `recording_started`; a linha cortada pela queda é tolerada) ou, se não houver, cria um com o início
+  estimado por `outputDuration`. Pausas e divisões ocorridas enquanto ele estava fora do ar não constam; avisa.
+  Ao encerrar (Ctrl+C) com o OBS gravando, **não** escreve `recording_stopped`.
+- Conexão: nova tentativa a cada 3 s (OBS ainda fechado ou conexão perdida); senha do WebSocket em
+  `obs_password` no `*.local.yaml` ou em `CRONISTA_OBS_PASSWORD`, nunca em arquivo versionado.
+- Teclas (config `marker_hotkeys`, sintaxe do `pynput`): padrão F13–F20; mudar uma não apaga as outras; `momento` e
+  `novo_dia` obrigatórias; tecla repetida ou tipo desconhecido dão erro claro. `null` desliga uma opcional.
+- Feedback: tom diferente por tipo (`winsound.Beep`), tom grave para aviso; `--quiet` só imprime.
+- Detalhes da `simpleobsws` que condicionam o código (lidos da fonte): usa o subprotocolo msgpack; cada evento vira
+  uma `Task` separada, então o callback só enfileira, para manter a ordem; não avisa quando a conexão cai, então
+  há um vigia em `ws_open`.
+
+**Testes (27 novos, 103 no total):** servidor obs-websocket **falso** (`tests/fake_obs.py`, protocolo v5 em
+msgpack, com autenticação) contra o adaptador real; núcleo com OBS em memória (gravação completa com pausa e tempos
+conferidos, fora de gravação, construção, marcador recusado, divisão, arquivo desconhecido, espera de arquivo,
+retomada após queda com linha cortada); reconexão do laço principal; validação das teclas; ingestão com caminho vazio.
+
+**Não coberto (1C, com o OBS real):** hotkey com o jogo em tela cheia e elevado; `CreateRecordChapter` com nome
+`tipo|id` e comportamento durante pausa; a busca do arquivo na pasta; formato real dos eventos.
+
+## 32. 1B: serviço do engine (`cronista serve`)
+
+Quinto item da ordem da 1B: o engine dispara o processamento ao ver `recording_stopped` (decisão D1).
+
+**Problema de desenho encontrado:** a sessão da ingestão era "uma pasta", mas o gravador escreve o diário na pasta de
+gravação do OBS, que normalmente é uma só para todas as gravações. Com a sessão por pasta, gravações diferentes
+seriam fundidas e os marcadores de uma apareceriam como "fora da sessão" nas outras. **Decisão: uma gravação = um
+diário = uma sessão.** `RecordingSession.folder` passou a significar a **origem** da sessão: uma pasta (ingestão
+manual, como antes) ou o arquivo de diário (serviço). Sem migração: a coluna e a unicidade continuam servindo.
+`ingest_folder` virou um invólucro de `ingest_files(origin, arquivos)`.
+
+**Como o serviço funciona (`watch.py`):**
+- Consulta `watch_dir` a cada `watch_poll_seconds` (5 s), sem biblioteca de observação de arquivos: igual em disco
+  local, externo e de rede, e não perde evento se o serviço estava fechado (ao abrir, varre tudo).
+- Uma gravação está pronta quando o diário termina em `recording_stopped` **e** o diário e os arquivos estão
+  parados há `settle_seconds` (10 s). ⚠️ Existe porque o OBS ainda finaliza o Hybrid MP4 depois do evento: não
+  verificado com o OBS real (1C).
+- Os arquivos vêm do diário (`recording_started` + `file_changed`), pelo caminho ou, se o disco mudou, pelo nome na
+  pasta. Caminho vazio (o gravador não achou o arquivo, §31) é deduzido pela data de modificação: o vídeo mais
+  antigo que cabe entre o início e o fim da gravação, com aviso.
+- **Gravação interrompida** (OBS fechou, PC caiu): o diário fica aberto. Depois de `abandoned_after_hours` (4 h) sem
+  nada crescer, entra no mesmo caminho com aviso, e o remux da ingestão cobre o arquivo cortado. 4 h porque uma pausa
+  longa também deixa o arquivo parado; se for pouco ou muito, é config.
+- Sessão incompleta (processo morto no meio) é retomada: "completa" = todos os arquivos chegaram à etapa `audio`.
+- Falha: relatada uma vez e só tentada de novo se o diário mudar ou o serviço reiniciar (sem laço quente).
+- `--once` faz uma varredura e sai; `--watch` sobrepõe `watch_dir` (caminho pessoal, só em `*.local.yaml`).
+- Recupera jobs órfãos ao iniciar (como `cronista ingest`). Recebe a `GpuGate` e a repassa, mas a ingestão usa só
+  CPU; a `GpuGate` real (próximo item) importa para as etapas de GPU da Fase 2 em diante e para a prévia com NVENC.
+  **Substituído pelo §35:** o gate vale para toda etapa, de CPU ou GPU (CLAUDE.md: "Processamento pausa enquanto o OBS grava...").
+
+**Testes (11 novos, 114 no total):** gravação encerrada ingerida uma só vez; não ingere antes de parar nem de
+assentar; duas gravações na mesma pasta viram duas sessões sem avisos de marcador fora da sessão; divisão de arquivo;
+arquivo inicial desconhecido; diário abandonado (arquivo interrompido); falha sem laço quente; retomada de sessão
+incompleta; laço do serviço; e um teste que liga o **gravador** ao **serviço** (o diário que um escreve é o que o
+outro consome). Fumaça pela CLI: `serve --once` → `status` → `preview`.
+
+**Não coberto (1C):** o tempo real que o OBS leva para finalizar o arquivo depois do `STOPPED`; pasta de rede;
+comportamento com o OBS gravando em subpastas (o gravador e o serviço olham só o nível superior da pasta).
+
+## 33. 1B: `GpuGate` real
+
+Sexto item da ordem da 1B: a política de GPU da seção 4.1 (pausar com o OBS gravando ou jogo em tela cheia).
+
+**Gates (`gates.py`), compostos por `CompositeGate` (livre só se todos estão livres, motivo = o do primeiro que recusou):**
+- `ObsRecordingGate`: `GetRecordStatus` pelo obs-websocket, uma conexão curta por consulta, em thread própria (o
+  gate é síncrono e pode ser chamado de dentro de um laço asyncio). Antes, uma checagem rápida de porta
+  (0,5 s): **medido neste PC que o Windows leva ~2 s por endereço para recusar uma conexão em `localhost`** (4 s
+  no total); com a checagem, OBS fechado responde em ~1 s. Exige o servidor WebSocket do OBS ligado (já exigido
+  pelo gravador).
+- `FullscreenGate`: `SHQueryUserNotificationState` (shell32, via ctypes), ocupada nos estados 2 (aplicativo em tela
+  cheia), 3 (Direct3D em tela cheia exclusiva) e 4 (modo de apresentação). Chamada real testada neste PC (devolveu
+  5, "aceita notificações"). ⚠️ Valores dos estados de memória; ⚠️ jogo em janela sem borda pode não ser detectado.
+- `GpuLoadGate` (opcional, `gpu_busy_percent`): `nvidia-smi --query-gpu=utilization.gpu`, ocupada com uso >= o limite.
+  Cobre o janela-sem-borda, mas mede a GPU inteira (a consulta é só *antes* de cada etapa, então o próprio
+  processamento não se auto-bloqueia). Neste PC o `nvidia-smi` existe e respondeu 5%.
+- **Substituído pelo §35:** o gate é consultado antes de **toda** etapa que vai rodar (não só as de GPU) e a carga da GPU não vale
+  entre blocos de uma etapa; o gate passou a ter cache curto.
+- Regra comum: sinal ilegível (OBS fechado, sem `nvidia-smi`, sem Windows) conta como "não ocupado"; só se adia por
+  um sinal real. Consequência: se o WebSocket do OBS estiver desligado ou com senha errada, o gate não enxerga a
+  gravação. Mitigação: se a porta do OBS responde mas a conexão falha (senha errada), o gate registra um aviso
+  (`gate_obs_recusou_conexao`) no log, para não ficar cego em silêncio.
+- `build_gate(settings)`: `gpu_gate: false` em `dev` (sem GPU nem OBS), `true` em `prod`. `cronista ingest`,
+  `serve` e `preview` passaram a usar o gate do ambiente.
+
+**Pausa no meio da etapa:** o plano diz "retoma de onde parou", mas o executor só consultava o gate *antes* de cada
+etapa; uma etapa de 10 h de Whisper não pararia quando o jogo abre. `StageContext.wait_for_gpu()` (no-op para etapa
+de CPU) deixa a etapa pausar **entre blocos**; é o contrato para as etapas de GPU da Fase 2 (processar em blocos e
+chamar entre eles; o resultado parcial de cada bloco fica no cache). A prévia com NVENC também consulta entre
+trechos. O auxiliar `wait_until_free` registra o motivo no log a cada espera.
+
+**Testes (20 novos, 134 no total):** estados da tela cheia e limiar de carga; composição e motivo; `build_gate` por
+ambiente; contagem de esperas; gate do OBS contra o servidor falso (grava, para, OBS fechado, senha); etapa de GPU
+que pausa entre blocos quando um "jogo abre" no meio; etapa de CPU que nem consulta o gate. **Não testado:** gate de
+tela cheia com um jogo de verdade, NVENC, e a pausa entre trechos da prévia (precisa de GPU).
+
+## 34. 1B: fixture "com pausa" e verdade-terreno do tempo dos marcadores
+
+Último item da ordem da 1B. A fixture de vídeo "com pausa" estava prevista na 1A (tarefa 7) e não havia sido feita,
+e os testes de tempo (`test_timeline.py`) só conferiam a **aritmética** sobre eventos sintéticos, sem nenhum vídeo.
+O critério da 1B ("erro < 100 ms nos sintéticos") pede mais: provar que o tempo reconstruído cai no **quadro** certo.
+
+**Desenho (`devtools/timecoded.py`):** vídeo 320x180, 60 fps exatos, três faixas de áudio, com o **relógio de parede
+escrito nos quadros**: metade esquerda = rampa lenta (0 a 20 s, resolução ~80 ms), metade direita = dente de serra de
+1 s (resolução ~4 ms, ambígua módulo 1 s); juntas dão o relógio com erro de poucos ms. Uma gravação com pausa é montada
+**recortando** o trecho pausado (`[(0, 4), (9, 14)]` = gravou 0-4 s, pausou até 9 s, gravou até 14 s; o arquivo tem 9 s),
+como o OBS faz. `wall_time_at(arquivo, t_mídia)` é o oráculo: decodifica o quadro nesse instante e devolve o relógio.
+Os valores de brilho ficam em [16, 235] (faixa limitada do H.264), senão o decodificador comprimiria o sinal.
+Medido: erro do oráculo ~18 ms (um quadro de 1/60 s); gerar um vídeo leva < 1 s.
+
+**Testes (`test_timecoded.py`, 6 novos, 140 no total):** o diário diz a que relógio de parede cada toque ocorreu; o tempo
+de mídia que a ingestão reconstrói precisa cair no quadro que mostra esse relógio (< 100 ms) e no arquivo certo.
+Cenários: gravação simples; pausa recortada do arquivo; divisão de arquivo (relógio reinicia no novo); pausa no
+primeiro arquivo que não pode vazar para o segundo; gravação interrompida (MP4 fragmentado e cortado, diário sem
+`recording_stopped`, depois do remux); e um controle negativo do oráculo.
+
+**Teste de mutação (feito uma vez, à mão):** quebrei de propósito `reconstruct_media_times` de três jeitos e confirmei
+que os testes falham: pausa não descontada (2 testes), divisão que não reinicia o relógio (2), pausa que vaza para o
+arquivo novo (1, só o teste combinado pausa+divisão pega, então ele é necessário). O arquivo foi restaurado.
+
+**Limite honesto:** o vídeo é gerado pelo FFmpeg e a pausa é recortada por nós, então prova que a **conta** do diário
+bate com o conteúdo sob a premissa de que o OBS recorta a pausa do arquivo e restaura o relógio na divisão. Essa
+premissa vem do plano e da documentação do OBS; verificá-la com uma gravação real com pausa é item da 1C.
+
+## 35. 1B: correções da revisão de código (10 achados)
+
+`/code-review` sobre os 6 commits à frente do `origin/main` (o `main` local estava desatualizado; o PR #2 da 1B inicial já
+estava no `origin/main`). Os 10 achados foram corrigidos, cada um com teste; os mais sutis foram conferidos por mutação.
+
+**Decisões que mudam o que foi escrito antes (§32 e §33 ficam como história):**
+- **Todo processamento pausa, não só o de GPU.** O CLAUDE.md diz "Processamento pausa enquanto o OBS grava ou um jogo
+  em tela cheia está aberto", e eu tinha restringido o gate às etapas com `uses_gpu`. Pior caso real: parar a gravação
+  e começar a próxima, e o serviço fazer proxy e WAV de horas de vídeo (CPU/disco) durante o jogo. Agora `run_pipeline`
+  espera o gate antes de **toda** etapa que vai rodar (etapa em cache não espera), e a prévia também (CPU ou NVENC).
+  O `uses_gpu` ficou só informativo.
+- **Dois modos de consulta.** `is_free()` = pode começar; `is_free_while_working()` = continuar entre blocos de uma
+  etapa. O `GpuLoadGate` só vale no primeiro: no meio da etapa a carga medida é a da própria etapa, que esperaria por
+  si mesma para sempre (o que a docstring antiga negava). Gates sem o segundo método usam o primeiro.
+- **Cache curto do gate (`CachedGate`, 3 s).** Cada sonda do OBS custava ~1 s com o OBS fechado, e a prévia consulta por
+  trecho (200 marcadores = 200 s só de sondas). O TTL (3 s) é menor que o intervalo de espera (5 s), então esperar por
+  um gate ocupado sempre reconsulta. A checagem de porta caiu de 0,5 s para 0,25 s (localhost responde em ms).
+
+**Serviço (`watch.py`):**
+- Um arquivo já pertencente a outra sessão (ex.: a pasta do OBS ingerida à mão antes) agora é erro claro
+  (`SessionConflictError`), checado **antes** de criar projeto ou sessão. Antes criava uma sessão sem arquivos, que
+  era reingerida a cada varredura e quebrava `preview`/`export`. `cronista ingest` também mostra o erro de forma limpa.
+- Cada diário é tratado isolado: erro inesperado (arquivo que some, banco) vira o resultado daquele diário, com
+  `rollback()` (a `Session` vive o laço inteiro), sem derrubar a varredura. Pasta de gravação inacessível é avisada uma vez.
+- Falha tem prazo de nova tentativa que dobra (`retry_seconds` = 600 s, teto de 6 h), e é tentada de novo na hora se o
+  diário mudou. Antes só reiniciando o serviço.
+- **Diário que cresce depois da ingestão** (ex.: tratado como abandonado após 4 h parado, e o criador retoma e para):
+  a sessão guarda `source_signature` = tamanho do diário na ingestão (migração 0003; o diário só cresce). Mudou =
+  reingere (as etapas em cache não refazem nada). Só o tamanho, não a data, para backup/antivírus não disparar nada.
+
+**Gravador:**
+- `_begin` nunca deixa o gravador travado ou caído: `OSError` (sem permissão, disco cheio) vira aviso, `_ready` é sempre
+  liberado (`finally`) e os toques seguem só no marcador do OBS. Escritas do diário (toque, pausa, divisão, parada)
+  que falham viram aviso em vez de exceção.
+- Retomada reconcilia o estado de pausa: se o diário reaberto termina pausado e o OBS já retomou, escreve `unpaused`
+  (e o contrário). Antes os marcadores seguintes saíam presos no ponto da pausa, com aviso falso.
+- O tom (`winsound.Beep`, síncrono) toca em uma thread própria, na ordem: bloqueava o laço por até 350 ms e atrasava o
+  carimbo dos eventos do OBS (pausa, divisão), estourando os 100 ms do critério.
+- Falha numa tarefa de toque agora avisa ("toque NÃO registrado") em vez de sumir.
+
+**Ainda aberto (não está nos 10):** `_open_journal` repete a lógica de `watch.inspect_journal` (duplicação pequena);
+`watch` consulta o banco por diário a cada varredura (barato em SQLite, mas cresce com a série); `gates` importa o relógio
+de `recorder.core`. Ficam para quando incomodarem.
+
+**Testes (160 no total, 26 novos):** um por achado (gate em etapa de CPU e em etapa em cache, modo "trabalhando" sem
+auto-bloqueio, `CachedGate`, conflito de sessão, rollback, prazo com recuo, diário que cresce, `_begin` com pasta
+inválida, escrita de diário falhando, retomada com pausa nos 4 cruzamentos, beep fora do laço, toque que falha).
+**Mutação manual:** desfazer cada correção faz o teste correspondente falhar.
+
+**Adendo (CI e SonarCloud, PR #3):**
+- **Ubuntu:** o `mypy` falhou em `winsound.Beep` (módulo só do Windows) e a CI parou antes dos testes. Agora a função
+  tem a guarda `sys.platform != "win32"`, que o mypy entende. `uv run mypy --platform linux` passou a fazer parte da
+  verificação local, porque é o que reproduz a CI sem ter um Linux.
+- **SonarCloud (Security Rating E, 2 vulnerabilidades):** (1) *path traversal* "via conteúdo de arquivo" em
+  `make_timecoded`, que lia e regravava o mesmo caminho: agora trunca no lugar (`truncate`), sem ler nada;
+  (2) `ws://` em texto claro: o OBS não oferece TLS, então o gravador **só conversa com o OBS deste PC** (host
+  loopback; outro host é recusado com erro claro), o que já era premissa (ele procura o arquivo da gravação no disco
+  local). O `ws://` loopback é o único que o OBS entrega. O Sonar **não honrou** `# NOSONAR` nessa regra (S5332 vem como
+  vulnerabilidade), então o esquema virou a constante documentada `OBS_WS_SCHEME`; a mitigação real é a recusa de host
+  que não seja loopback. Se o Sonar ainda acusar o texto claro, é falso positivo a marcar como "Safe" na interface
+  do SonarCloud (decisão do criador), não algo a esconder no código.
+  Achado no teste: IPv6 (`::1`) gerava URL inválida; agora leva colchetes.
+- **Consequência assumida:** OBS em outro PC não é suportado pelo gravador nem pelo `GpuGate`. Se um dia for preciso,
+  exige outro jeito de achar o arquivo da gravação (hoje é o disco local) e TLS/túnel.
+
 ---
 
 ## Decisões em aberto

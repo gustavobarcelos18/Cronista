@@ -9,6 +9,10 @@ dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "typer>=0.12",
+    "opentimelineio>=0.18.1",
+    "otio-fcpx-xml-adapter>=1.0.0",
+    "simpleobsws>=1.4.3",
+    "pynput>=1.8.2 ; sys_platform == 'win32'",
 ]
 
 [project.scripts]
@@ -20,6 +24,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "types-PyYAML",
+    "websockets>=17.4",
 ]
 
 [build-system]
@@ -32,6 +37,7 @@ packages = ["src/cronista"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-m 'not gpu and not media'"
+filterwarnings = ["ignore:Testing an element's truth value:DeprecationWarning"]
 markers = [
     "gpu: exige GPU (roda só em prod)",
     "media: exige mídia real (roda só em prod)",
@@ -51,3 +57,11 @@ strict = true
 files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 exclude = ["src/cronista/db/migrations/versions/"]
+
+[[tool.mypy.overrides]]
+module = ["opentimelineio", "opentimelineio.*"]
+ignore_missing_imports = true  # a OTIO não publica tipos
+
+[[tool.mypy.overrides]]
+module = ["simpleobsws", "pynput", "pynput.*", "msgpack"]
+ignore_missing_imports = true  # sem tipos publicados

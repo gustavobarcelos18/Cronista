@@ -7,7 +7,7 @@ crescer entre uma ingestão e outra, e ler capítulos é barato. Cada execução
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from sqlalchemy import delete, func, select
@@ -53,6 +53,12 @@ class _Row:
     phase: str | None = None
 
 
+def session_journals(session: RecordingSession) -> list[Path]:
+    """Diários da sessão: o próprio arquivo (sessão do serviço) ou todos os da pasta (ingestão manual)."""
+    origin = Path(session.folder)
+    return [origin] if origin.is_file() else find_journals(origin)
+
+
 def ingest_markers(
     db: Session, session: RecordingSession, files: Sequence[IngestedFile], settings: Settings
 ) -> MarkerReport:
@@ -61,12 +67,22 @@ def ingest_markers(
         return report
 
     journal_markers: list[JournalMarker] = []
-    for journal_path in find_journals(Path(session.folder)):
+    for journal_path in session_journals(session):
         events, warnings = read_journal(journal_path)
         report.warnings += warnings
         rebuilt = reconstruct_media_times(events)
         journal_markers += rebuilt.markers
         report.warnings += [f"{journal_path.name}: {w}" for w in rebuilt.warnings]
+
+    # O OBS não informa o arquivo ao iniciar a gravação; se o gravador não o achou, o diário traz caminho
+    # vazio. Esse arquivo é sempre o primeiro da gravação, então assume-se o primeiro da sessão (com aviso).
+    first_name = Path(min(files, key=lambda f: f.media.ordinal).media.path).name
+    unknown = [m for m in journal_markers if not m.file_name]
+    if unknown:
+        report.warnings.append(
+            f"{len(unknown)} marcador(es) do diário sem arquivo conhecido: assumido {first_name!r}"
+        )
+        journal_markers = [m if m.file_name else replace(m, file_name=first_name) for m in journal_markers]
 
     known = {file_key(f.media.path) for f in files}
     for marker in journal_markers:

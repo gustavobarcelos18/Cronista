@@ -235,7 +235,7 @@ A versão mínima do OBS e o nome exato da API de marcadores serão confirmados 
 de capítulo") que funciona sem instalar nada, mas é **uma tecla só e não guarda o tipo**: todo toque viraria
 `Momento`, e o `Novo dia` ficaria indistinguível. Para ter o tipo, algo precisa criar o marcador com nome:
 - **A (escolhida): programa do Cronista ao lado do OBS, via obs-websocket.** Cria o marcador do OBS com nome
-  (⚠️ requisição `CreateRecordChapter`; versão mínima a confirmar), escreve o diário a partir dos eventos de
+  (requisição `CreateRecordChapter`, parâmetro opcional `chapterName`: **confirmada no protocolo oficial, obs-websocket 5.5.0 = OBS 30.2+**, só Hybrid MP4; ⚠️ comportamento com o OBS real a validar na 1C), escreve o diário a partir dos eventos de
   gravação, pausa e troca de arquivo do próprio OBS, sabe se há uma construção aberta e escuta num lugar só as hotkeys
   globais, as teclas F13–F24 e a FIFINE (MIDI/HID). Precisa estar aberto durante a gravação.
 - **B: script Lua dentro do OBS.** Não exige instalar nada. ⚠️ Confirmar se a função de marcador com nome está
@@ -715,7 +715,7 @@ for instalado, e obrigatoriamente antes da Fase 6):
 - Se o desempenho for ruim, gerar mídia intermediária só dos trechos usados.
 - Conferir em quais trilhas o Resolve põe os clipes do FCPXML (layout V1–V5 / A1–A7 da seção 6.3) e se dá para criar
   trilhas vazias (A3, A4); se não, o script interno cria e organiza.
-- Gerar o FCPXML de teste pelo mesmo caminho que o app vai usar (OTIO → FCPXML). ⚠️ De memória: o adaptador FCPXML do
+- Gerar o FCPXML de teste pelo mesmo caminho que o app vai usar (OTIO → FCPXML; a 1B já tem esse caminho em `cronista export`, medições no histórico §30). ⚠️ De memória: o adaptador FCPXML do
   OTIO é um plugin à parte e limitado; se ele não cobrir títulos, keyframes, clipes desativados e áudio por faixa, o
   app escreve o FCPXML direto.
 - Rodar o script interno sem janela própria. ⚠️ De memória: versões recentes do gratuito (19.1+) teriam restringido
@@ -935,6 +935,12 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **D2:** contratos Pydantic → JSON Schema/OpenAPI → TypeScript gerado; a seção 5.2 foi atualizada.
 - **D3:** gabarito em CSV (`inicio, fim, classe, nota`) + script de validação e prévia; o Studio não é necessário.
 - **D4:** sem Fase 1.5; a prévia MP4 da 1B cumpre o papel do rough cut só de marcadores.
+- **`GpuGate` real (1B, histórico §33 e §35):** composição de OBS gravando (obs-websocket), aplicativo em tela cheia (Windows) e, opcional, carga da GPU (`nvidia-smi`); ligada só em `prod` (`gpu_gate`). **Todo processamento pausa** (etapa de CPU ou GPU, prévia, serviço), conforme o CLAUDE.md. Etapas longas pausam entre blocos com `ctx.wait_for_gpu()`, e a carga da GPU não vale nesse momento (seria a da própria etapa).
+- **Serviço do engine (1B, histórico §32):** `cronista serve` observa a pasta de gravação do OBS por consulta periódica e ingere cada gravação quando o diário termina em `recording_stopped`. **Uma gravação = um diário = uma sessão** (a origem da sessão é o diário, não a pasta; um arquivo só pode estar em uma sessão). Diário aberto e arquivo parado há 4 h = gravação interrompida, ingerida com aviso.
+- **Gravador de marcadores (1B, histórico §31):** `simpleobsws` 1.4.3 (obs-websocket v5) e `pynput` 1.8.2 (hotkeys globais, só Windows); `cronista record`. Teclas padrão F13–F20, configuráveis em `marker_hotkeys`. Só conversa com o OBS **neste PC** (`ws://` sem TLS; outro host é recusado, histórico §35).
+- **FCPXML mínimo (1B, histórico §30):** OTIO → adaptador `fcpx_xml` (pacote `otio-fcpx-xml-adapter`), com
+  pós-processamento mínimo e validação estrutural; V1 = master, A1/A2 = WAVs extraídos (jogo e microfone), não as
+  faixas embutidas. Também grava `.otio`.
 - Marcador que existe só no arquivo (e não no diário): tratado como `Momento`, com aviso no relatório da sessão.
 - Primeira sessão do projeto sem `Novo dia`: abre um dia implícito no início, sem número.
 - Marcadores na ingestão: passo idempotente da sessão (não etapa com cache por arquivo); `Construção ▶/■` pareada pela ordem dos toques, com `■` sintético se ficar aberta; dia implícito como marcador sintético (histórico §28).
@@ -958,7 +964,9 @@ Só se avança com os critérios da fase anterior cumpridos.
    - Retenção × relink: liberar os masters quebra o projeto do Resolve que aponta para eles.
    - Termos de uso do `claude -p` automatizado; licenças do Remotion e dos modelos; macros do Fusion.
    - Faixa 2 com "Captura de áudio de aplicativo" no OBS (o áudio do desktop pega notificações, Discord, música).
-   - Importar o teste também como `.otio` no spike; pausar o processamento pelo uso da GPU em vez de detectar tela cheia.
+   - Importar o teste também como `.otio` no spike; ~~pausar o processamento pelo uso da GPU em vez de detectar tela
+     cheia~~: **os dois existem** (histórico §33); o padrão é OBS + tela cheia, e a carga da GPU é opcional
+     (`gpu_busy_percent`). Qual vale com os jogos da série fica para a 1C.
 8. Dúvidas levantadas na terceira revisão (histórico §21), sem resposta ainda:
    - ~~Primeira sessão do projeto sem `Novo dia`: abre o primeiro dia implicitamente?~~ **Decidido**: sim.
    - `Construção ▶` sem `■` é fechada no fim da sessão, mas um dia pode atravessar sessões: a construção também
@@ -974,6 +982,9 @@ Só se avança com os critérios da fase anterior cumpridos.
      no proxy. Uma fonte única de microfone, sem filtro, nas faixas 1 e 3 seria mais simples (seção 2).
    - Como o criador sabe que o toque foi registrado com o jogo em tela cheia? Na tecla de construção, que alterna, um
      toque perdido inverte tudo dali em diante. E se o programa de marcadores não estiver aberto? (seção 4)
+     **Parcialmente tratado na 1B (histórico §31):** som por tipo a cada toque (dois toques para o fim da
+     construção), aviso sonoro de toque perdido, e o gravador reassume uma gravação em andamento se for reaberto
+     ou cair. Continua em aberto: toque com o programa fechado, e o jogo em tela cheia (teste na 1C).
    - ~~Marcador que existe só no arquivo e não no diário~~: **decidido**, `Momento` com aviso (seção 4).
    - `Cinemática` e `Foto de progresso`: a tomada é antes ou depois do toque? O lookback de 60–90 s só faz sentido
      para `Momento`, `Morte/Falha`, `Engraçado` e `Conquista` (seção 4).
@@ -989,7 +1000,8 @@ Só se avança com os critérios da fase anterior cumpridos.
    - ~~Ferramenta de anotação do gabarito~~: **decidido** (D3), CSV + script de validação.
 10. Dúvidas levantadas na quinta revisão (histórico §24), sem resposta ainda:
    - ⚠️ O adaptador FCPXML do OTIO dá conta de títulos, keyframes, clipes desativados e áudio por faixa, ou o app
-     escreve o FCPXML direto? (spike, seção 6.5)
+     escreve o FCPXML direto? (spike, seção 6.5) **Parcialmente medido na 1B (histórico §30):** cobre tempos em
+     quadros, cortes e áudio em lanes; falta medir o resto (títulos, keyframes, desativados) e a importação real.
    - ⚠️ O FCPXML garante o layout fixo de trilhas e cria trilhas vazias, ou isso fica com o script interno? (spike)
    - ⚠️ O script interno (Rota B) funciona no gratuito recente sem interface gráfica própria? (spike)
    - Timelapse de farm na Fase 6: o áudio do jogo é removido e a música só chega na Fase 8. Fica em silêncio até lá

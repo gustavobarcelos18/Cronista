@@ -140,7 +140,7 @@ def test_check_accepts_a_good_document() -> None:
         ('start="1/2s"', 'start="1/7s"', "fora da grade"),
         ('sequence duration="2/1s"', 'sequence duration="3/1s"', "duração da sequência"),
         ('<clip lane="-2" offset="0s" duration="2/1s"/>', "", "lanes de áudio"),
-        ("<project", '<asset-clip name="x" ref="r2" format="r1"/><project', "solto na raiz"),
+        ("<library>", '<asset-clip name="x" ref="r2" format="r1"/><library>', "solto na raiz"),
         ('offset="0s" duration="2/1s" start', 'offset="zero" duration="2/1s" start', "não é um tempo"),
     ],
 )

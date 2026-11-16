@@ -37,12 +37,12 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
             del project.attrib["uid"]
     # O Resolve recusa `<project>` solto na raiz (erro "inherited value for key 'library'", 2026-11-16):
     # o esquema exige <library><event><project>, como nos arquivos do kit que importam.
-    project = root.find("project")
-    if project is not None:
-        root.remove(project)
+    loose = root.find("project")
+    if loose is not None:
+        root.remove(loose)
         library = ET.SubElement(root, "library")
         event = ET.SubElement(library, "event", {"name": "Cronista"})
-        event.append(project)
+        event.append(loose)
 
     ET.indent(root, space="  ")
     return _XML_HEAD + ET.tostring(root, encoding="unicode") + "\n"

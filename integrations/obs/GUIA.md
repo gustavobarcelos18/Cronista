@@ -39,7 +39,14 @@ Regras:
 - A análise usa só as faixas 2 e 3. Teclado e respiração ficam atenuados pelo RNNoise: se a detecção dessas classes
   falhar no benchmark da Fase 2, a alternativa é uma fonte crua na faixa 4 (decisão a reabrir).
 - Como configurar no OBS: apague a fonte `MIC_RAW`; renomeie `MIC_MIX` para `MIC`, aponte para o microfone que você
-  vai usar, em Propriedades de áudio avançadas marque as trilhas **1 e 3** (e só elas) e confira o filtro RNNoise.
+  vai usar, em Propriedades de áudio avançadas marque as trilhas **1 e 3** (e só elas).
+- **Supressão de ruído: uma só, na origem.** No PC de casa é o **ClearCast AI do Sonar** (dispositivo *SteelSeries Sonar -
+  Microphone*), ~50%, com o gate e o compressor do Sonar desligados. Não ponha RNNoise no OBS por cima (dois removedores
+  empilhados deixam a voz robótica). Se trocar de microfone sem Sonar, use RNNoise no OBS (filtro Supressão de ruído).
+- **Limitador no `MIC`** (Filtros → Limitador): limite −6 dB, liberação 60 ms (de memória, os padrões do filtro); só segura
+  gritos. Evite compressor forte: o app usa a diferença entre gritar e falar normal (plano, seção 3).
+- Teste de nível: 10 s de fala normal, 10 s de grito, silêncio. Alvo na faixa 3: fala com pico de −18 a −12 dB e grito sem
+  passar de −3 dB (medir com `ffmpeg -af volumedetect`).
 
 **Estado do PC de casa em 2026-11-16 (lido do arquivo de cena às 13:16, não da tela; o OBS só grava as cenas ao fechar):**
 `MIC_RAW` nas trilhas 3 (+7/8) e **mudo**; `MIC_MIX` na trilha 1, **sem filtros** e em **outro dispositivo** (o da FIFINE

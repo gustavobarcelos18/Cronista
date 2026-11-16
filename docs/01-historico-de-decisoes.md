@@ -1057,6 +1057,12 @@ Os trechos de §39 que citam `MIC_RAW` descrevem o estado antes desta decisão.
 e a gravação de 10 s `2026-11-16 18-40-07.mp4` mediu: faixa 1 −26,1 dB, faixa 2 (jogo) −43,1 dB, faixa 3 (microfone)
 −26,2 dB (pico −8,5): a faixa 3 tem sinal. O jogo estava baixo; combinado subir o ganho dele em vez de abaixar a voz.
 
+**Ferramenta de supressão de ruído (2026-11-16):** o criador não usa RNNoise no OBS; a limpeza do microfone é o **ClearCast
+AI do SteelSeries Sonar** (dispositivo virtual de entrada), ajustado para ~50% (era ~75%; ⚠️ o limite de ~50% vem de uma guia
+de terceiros, não da SteelSeries), com gate e compressor do Sonar desligados e um **Limitador** no OBS (−6 dB, liberação 60 ms,
+de memória) para gritos. Onde esta decisão e o plano dizem "RNNoise", leia "supressão de ruído na origem" (ClearCast ou RNNoise,
+**um só, nunca os dois**). A configuração do Sonar fica fora do repositório: registrar os valores neste histórico se mudarem.
+
 **Marcação com teclado de 60% (2026-11-16):** o criador usa teclado 60%, sem F13–F24, e disse que programar e decorar
 vários comandos seria difícil. **Decisão para a gravação de teste de 30 min: só a tecla nativa do OBS** ("Adicionar marcador
 de capítulo", ligada à tecla Menu), sem o gravador do app. Resultado esperado: capítulos "Sem nome N" que o ingest já

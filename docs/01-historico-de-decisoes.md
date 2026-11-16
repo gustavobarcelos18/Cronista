@@ -1073,6 +1073,23 @@ tecla de dia; marcar por voz). O gravador do app e a conexão com o OBS (WebSock
 
 ---
 
+## 42. Plano de execução da Fase 2 (2026-11-16)
+
+Origem: com a 1C na `main` (PR #6), o criador pediu para seguir as fases; a Fase 2 ainda não tinha `docs/fase-2-*.md`.
+
+**Decisão:** a Fase 2 é dividida em **2A** (lacunas técnicas 2–4, sinais de energia/novidade/periodicidade em CPU, portas de
+VAD/transcrição/eventos com fakes, relatório HTML; roda em `dev` e `prod`), **2B** (ambiente de ML, adaptadores reais e
+benchmark de desempenho; só `prod`) e **2C** (qualidade contra o gabarito, escolha dos modelos e benchmark de roteiro do
+`LocalScriptProvider`; **bloqueada pelo gabarito anotado**). Motivo: separar o que é verificável sem gabarito do que depende
+dele, para não parar a fase inteira esperando as 2–3 h de anotação. Plano em [fase-2-analise-de-audio.md](fase-2-analise-de-audio.md).
+
+**Propostas dentro do plano, ainda não decididas pelo criador:** formato dos sinais (`.npy` float32 no cache, grade de 6
+quadros = 10 Hz, sem tabela no banco); tabela `event` com a evidência embutida (a 5A a normaliza); coluna `variant` em
+`artifact` e `job`; números de corte da 2C (WER ≤ 15%, no máximo 1 evento falso de teclado/respiração a cada 10 min, ≥ 70% das
+rotinas detectadas). Os cortes precisam ser validados com o criador antes do benchmark final (item 8 de "Em aberto").
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

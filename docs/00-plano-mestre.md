@@ -873,6 +873,10 @@ Só se avança com os critérios da fase anterior cumpridos.
   a partir dos marcadores, CI verde.
 
 ### Fase 2 — Análise de áudio
+> **Dividida em 2A (fundação e sinais numéricos, CPU), 2B (modelos reais e benchmark de desempenho) e 2C (qualidade contra o
+> gabarito).** O plano de execução está em [fase-2-analise-de-audio.md](fase-2-analise-de-audio.md); a lista abaixo continua
+> valendo como escopo total. A 2C depende do gabarito anotado pelo criador.
+
 - **Benchmarks de modelos na RTX 3060** (primeiras tarefas da fase): desempenho (velocidade, VRAM, convivência de CUDA; antes movido da 1C) e **qualidade** contra o gabarito (WER do Whisper com e sem DeepFilterNet). Os modelos da fase são escolhidos por esses números.
 - Lacunas técnicas 2–4 da seção 9 (provenance, unicidade de artefato por variante, formato de sinais) são resolvidas no início da fase, antes do primeiro benchmark.
 - Microfone: (DeepFilterNet, se aprovado no benchmark) → Silero VAD → faster-whisper (com timestamps por palavra) → picos relativos. Risada e grito vêm do classificador de eventos sonoros, que roda também no microfone (seção 3).

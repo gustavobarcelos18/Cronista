@@ -8,7 +8,7 @@ Para cada passo grava OK ou FALHOU (com o motivo) em `resultado-script.txt`, ao 
 Passar a pasta do kit em `KIT_DIR` (variável de ambiente) ou editar a constante abaixo.
 
 ⚠️ Os nomes da API (CreateProject, ImportMedia, ImportTimelineFromFile, AddMarker, SetLUT...) vêm de memória e da
-documentação do `README.txt` de scripting do Resolve; este script existe para conferir quais existem no gratuito.
+documentação do `README.md` de scripting do Resolve 21.2 (cópia em docs/referencias/); este script existe para conferir quais existem no gratuito.
 """
 
 from __future__ import annotations
@@ -75,19 +75,17 @@ def main() -> None:
 
     @step("configurar 1920x1080 a 60 fps")
     def _():
-        ok = [
-            project.SetSetting("timelineResolutionWidth", "1920"),
-            project.SetSetting("timelineResolutionHeight", "1080"),
-            project.SetSetting("timelineFrameRate", "60"),
-        ]
-        return f"SetSetting={ok}; fps lido={project.GetSetting('timelineFrameRate')}"
+        ok = project.SetSettings(
+            {"timelineResolutionWidth": "1920", "timelineResolutionHeight": "1080", "timelineFrameRate": "60"}
+        )
+        return f"SetSettings={ok}; fps lido={project.GetSetting('timelineFrameRate')}"
 
     pool = project.GetMediaPool()
 
     @step("importar mídia (H.264, HEVC, overlay com alfa)")
     def _():
         names = ["A_h264.mp4", "B_h264.mp4", "C_hevc.mp4", "overlay_alfa.mov"]
-        items = pool.ImportMedia([str(KIT_DIR / "clips" / n) for n in names])
+        items = pool.ImportMedia([{"FilePath": str(KIT_DIR / "clips" / n)} for n in names])
         state["items"] = items or []
         if not items:
             raise RuntimeError("ImportMedia não devolveu nenhum item")
@@ -97,7 +95,7 @@ def main() -> None:
     def _():
         timeline = pool.CreateEmptyTimeline("kit-script")
         state["timeline"] = timeline
-        appended = pool.AppendToTimeline(state["items"][:1])
+        appended = pool.AppendToTimeline([{"mediaPoolItem": c} for c in state["items"][:1]])
         return f"timeline={bool(timeline)}, anexados={len(appended or [])}"
 
     @step("marcadores coloridos com nome e nota (AddMarker)")
@@ -111,6 +109,7 @@ def main() -> None:
 
     @step("LUT no primeiro clipe do timeline (SetLUT)")
     def _():
+        project.RefreshLUTList()  # o README: SetLUT só aceita LUTs que o Resolve já descobriu
         clip = state["timeline"].GetItemListInTrack("video", 1)[0]
         ok = clip.SetLUT(1, str(KIT_DIR / "teste.cube"))
         return f"SetLUT={ok}"
@@ -127,7 +126,7 @@ def main() -> None:
 
     @step("importar legenda SRT na timeline atual")
     def _():
-        ok = pool.ImportMedia([str(KIT_DIR / "roteiro.srt")])
+        ok = pool.ImportMedia([{"FilePath": str(KIT_DIR / "roteiro.srt")}])
         return f"ImportMedia(srt)={bool(ok)} (o Resolve trata SRT como item de legenda; conferir na página Edit)"
 
     finish()

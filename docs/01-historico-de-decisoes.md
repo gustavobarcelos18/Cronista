@@ -730,6 +730,19 @@ auto-bloqueio, `CachedGate`, conflito de sessão, rollback, prazo com recuo, di�
 inválida, escrita de diário falhando, retomada com pausa nos 4 cruzamentos, beep fora do laço, toque que falha).
 **Mutação manual:** desfazer cada correção faz o teste correspondente falhar.
 
+**Adendo (CI e SonarCloud, PR #3):**
+- **Ubuntu:** o `mypy` falhou em `winsound.Beep` (módulo só do Windows) e a CI parou antes dos testes. Agora a função
+  tem a guarda `sys.platform != "win32"`, que o mypy entende. `uv run mypy --platform linux` passou a fazer parte da
+  verificação local, porque é o que reproduz a CI sem ter um Linux.
+- **SonarCloud (Security Rating E, 2 vulnerabilidades):** (1) *path traversal* "via conteúdo de arquivo" em
+  `make_timecoded`, que lia e regravava o mesmo caminho: agora trunca no lugar (`truncate`), sem ler nada;
+  (2) `ws://` em texto claro: o OBS não oferece TLS, então o gravador **só conversa com o OBS deste PC** (host
+  loopback; outro host é recusado com erro claro), o que já era premissa (ele procura o arquivo da gravação no disco
+  local). O `ws://` loopback é o único que o OBS entrega, então a linha leva `NOSONAR` com a justificativa.
+  Achado no teste: IPv6 (`::1`) gerava URL inválida; agora leva colchetes.
+- **Consequência assumida:** OBS em outro PC não é suportado pelo gravador nem pelo `GpuGate`. Se um dia for preciso,
+  exige outro jeito de achar o arquivo da gravação (hoje é o disco local) e TLS/túnel.
+
 ---
 
 ## Decisões em aberto

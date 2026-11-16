@@ -65,9 +65,9 @@ def make_timecoded(
     finally:
         for part in parts:
             part.unlink(missing_ok=True)
-    if interrupted:
-        data = out.read_bytes()
-        out.write_bytes(data[: int(len(data) * 0.85)])
+    if interrupted:  # corta o final no lugar, sem ler o conteúdo: é a "queda"
+        with out.open("r+b") as handle:
+            handle.truncate(int(out.stat().st_size * 0.85))
 
 
 def wall_time_at(settings: Settings, video: Path, media_s: float) -> float:

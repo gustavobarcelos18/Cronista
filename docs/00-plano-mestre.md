@@ -937,7 +937,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **D4:** sem Fase 1.5; a prévia MP4 da 1B cumpre o papel do rough cut só de marcadores.
 - **`GpuGate` real (1B, histórico §33 e §35):** composição de OBS gravando (obs-websocket), aplicativo em tela cheia (Windows) e, opcional, carga da GPU (`nvidia-smi`); ligada só em `prod` (`gpu_gate`). **Todo processamento pausa** (etapa de CPU ou GPU, prévia, serviço), conforme o CLAUDE.md. Etapas longas pausam entre blocos com `ctx.wait_for_gpu()`, e a carga da GPU não vale nesse momento (seria a da própria etapa).
 - **Serviço do engine (1B, histórico §32):** `cronista serve` observa a pasta de gravação do OBS por consulta periódica e ingere cada gravação quando o diário termina em `recording_stopped`. **Uma gravação = um diário = uma sessão** (a origem da sessão é o diário, não a pasta; um arquivo só pode estar em uma sessão). Diário aberto e arquivo parado há 4 h = gravação interrompida, ingerida com aviso.
-- **Gravador de marcadores (1B, histórico §31):** `simpleobsws` 1.4.3 (obs-websocket v5) e `pynput` 1.8.2 (hotkeys globais, só Windows); `cronista record`. Teclas padrão F13–F20, configuráveis em `marker_hotkeys`.
+- **Gravador de marcadores (1B, histórico §31):** `simpleobsws` 1.4.3 (obs-websocket v5) e `pynput` 1.8.2 (hotkeys globais, só Windows); `cronista record`. Teclas padrão F13–F20, configuráveis em `marker_hotkeys`. Só conversa com o OBS **neste PC** (`ws://` sem TLS; outro host é recusado, histórico §35).
 - **FCPXML mínimo (1B, histórico §30):** OTIO → adaptador `fcpx_xml` (pacote `otio-fcpx-xml-adapter`), com
   pós-processamento mínimo e validação estrutural; V1 = master, A1/A2 = WAVs extraídos (jogo e microfone), não as
   faixas embutidas. Também grava `.otio`.

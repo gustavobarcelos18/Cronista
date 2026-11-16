@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import ipaddress
 from typing import Any
 
 import simpleobsws
@@ -19,6 +20,15 @@ from cronista.recorder.ports import Clock, ObsError, ObsEvent, RecordFile, Recor
 
 EVENT_SUBSCRIPTION_OUTPUTS = 1 << 6  # `EventSubscription::Outputs` (protocolo 5.x)
 WATCH_INTERVAL_S = 0.5
+
+
+def _is_loopback(host: str) -> bool:
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
 
 
 class SimpleObsLink:
@@ -31,7 +41,10 @@ class SimpleObsLink:
         *,
         identify_timeout_s: float = 10.0,
     ) -> None:
-        self._url = f"ws://{host}:{port}"
+        self._host = host
+        bare = host.strip("[]")
+        netloc = f"[{bare}]" if ":" in bare else bare  # IPv6 na URL leva colchetes
+        self._url = f"ws://{netloc}:{port}"  # NOSONAR: só loopback (`_require_local`); o OBS não oferece TLS
         self._password = password or ""
         self._clock = clock
         self._identify_timeout_s = identify_timeout_s
@@ -39,7 +52,18 @@ class SimpleObsLink:
         self._queue: asyncio.Queue[ObsEvent | None] = asyncio.Queue()
         self._watch_task: asyncio.Task[None] | None = None
 
+    def _require_local(self) -> None:
+        """O obs-websocket só fala `ws://` (sem TLS). A senha não trafega (desafio e resposta), mas os eventos
+        e comandos sim, então o gravador só conversa com o OBS **deste PC**, o que ele já precisa de qualquer
+        jeito (procura o arquivo da gravação no disco local, `recorder/files.py`)."""
+        if not _is_loopback(self._host):
+            raise ObsError(
+                f"o gravador só conversa com o OBS neste PC (host '{self._host}' recusado): o WebSocket "
+                "do OBS não é cifrado e o arquivo da gravação precisa estar no disco local"
+            )
+
     async def connect(self) -> None:
+        self._require_local()
         ws = simpleobsws.WebSocketClient(
             url=self._url,
             password=self._password,

@@ -727,3 +727,27 @@ def test_a_press_that_crashes_is_reported_not_swallowed(
 
     asyncio.run(scenario())
     assert any("momento" in w and "disco cheio" in w for w in feedback.warnings)
+
+
+@pytest.mark.parametrize("host", ["192.168.0.10", "obs.exemplo.com", "10.0.0.2", "::2"])
+def test_obs_link_refuses_hosts_that_are_not_this_pc(host: str) -> None:
+    link = SimpleObsLink(host, 4455, None, FakeClock())
+    with pytest.raises(ObsError, match="neste PC"):
+        asyncio.run(link.connect())
+
+
+@pytest.mark.parametrize(
+    ("host", "url"),
+    [
+        ("localhost", "ws://localhost:4455"),
+        ("LOCALHOST", "ws://LOCALHOST:4455"),
+        ("127.0.0.1", "ws://127.0.0.1:4455"),
+        ("127.0.0.2", "ws://127.0.0.2:4455"),
+        ("::1", "ws://[::1]:4455"),  # IPv6 na URL leva colchetes
+        ("[::1]", "ws://[::1]:4455"),
+    ],
+)
+def test_obs_link_accepts_loopback_hosts_and_builds_a_valid_url(host: str, url: str) -> None:
+    link = SimpleObsLink(host, 4455, None, FakeClock())
+    link._require_local()  # não levanta
+    assert link._url == url

@@ -1188,6 +1188,9 @@ tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadr
      antes de afirmar "Fairlight completo" (seção 6.5).
    - Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público?
 9. Dúvidas levantadas na quarta revisão (histórico §22), sem resposta ainda:
+   - **Marcação com teclado de 60% (histórico §41):** o criador não tem F13–F24 e não quer decorar vários atalhos. Nos
+     testes usa só a tecla nativa do OBS (capítulos sem tipo). Em aberto: como marcar o início do dia (`novo_dia`,
+     obrigatório hoje) e os tipos com uma ou duas teclas; decidir antes da Fase 3.
    - ~~Para que serve o mix com RNNoise?~~ **Resolvida em 2026-11-16 (histórico §41):** o criador descartou o
      `MIC_RAW`; uma fonte única `MIC`, com RNNoise, nas faixas 1 e 3.
    - Como o criador sabe que o toque foi registrado com o jogo em tela cheia? Na tecla de construção, que alterna, um

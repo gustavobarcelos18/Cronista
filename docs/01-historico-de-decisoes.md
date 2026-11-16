@@ -1053,6 +1053,18 @@ dispositivo). As gravações de teste atuais (faixa 3 vazia) continuam inúteis 
 Documentos ajustados: `CLAUDE.md`, plano (seções 2, 6.4, 9 e listas), `integrations/obs/GUIA.md`, fase 1.
 Os trechos de §39 que citam `MIC_RAW` descrevem o estado antes desta decisão.
 
+**Confirmado depois (mesmo dia):** o criador configurou o OBS no arranjo de 3 faixas (`AUDIO_GAME` em 1 e 2, `MIC` em 1 e 3)
+e a gravação de 10 s `2026-11-16 18-40-07.mp4` mediu: faixa 1 −26,1 dB, faixa 2 (jogo) −43,1 dB, faixa 3 (microfone)
+−26,2 dB (pico −8,5): a faixa 3 tem sinal. O jogo estava baixo; combinado subir o ganho dele em vez de abaixar a voz.
+
+**Marcação com teclado de 60% (2026-11-16):** o criador usa teclado 60%, sem F13–F24, e disse que programar e decorar
+vários comandos seria difícil. **Decisão para a gravação de teste de 30 min: só a tecla nativa do OBS** ("Adicionar marcador
+de capítulo", ligada à tecla Menu), sem o gravador do app. Resultado esperado: capítulos "Sem nome N" que o ingest já
+converte em `momento` com aviso; **sem `novo_dia` e sem tipos** (o dia fica implícito). Isso contradiz a regra de que
+`novo_dia` é obrigatória (`CLAUDE.md`, plano seção 4) e fica **em aberto** (plano, seção 9): como marcar o início do dia e os
+tipos de momento com poucas teclas, sem decorar atalhos (ex.: uma tecla só e o tipo decidido depois na revisão; uma
+tecla de dia; marcar por voz). O gravador do app e a conexão com o OBS (WebSocket) continuam funcionando e testados.
+
 ---
 
 ## Decisões em aberto

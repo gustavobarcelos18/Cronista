@@ -863,6 +863,42 @@ por ser decisão de renderização e não evidência.
 
 ---
 
+## 39. 1C: primeira passada no PC de casa (2026-11-16)
+
+O PC de casa (`prod`: RTX 3060, driver 610.88, OBS 33.0.1, FFmpeg 9.0.2) foi usado pela primeira vez. Branch
+`fase/1c-pc-de-casa`. **O DaVinci Resolve não está instalado** neste PC: tudo que depende dele ficou como kit pronto.
+
+**Decisões:**
+- **Classes do gabarito** (proposta inicial, em `docs/gabarito.md` e `cronista/gabarito.py`): `fala`, `risada`, `grito`,
+  `teclado`, `respiracao`, `farm`, `momento`, `menu`, `loading`, `idle`, `cinematica`, `construcao`, `objetivo`,
+  `estado`. Sobreposição entre classes diferentes é permitida; o validador recusa classe fora da lista (crescer a lista é
+  decisão). Tempo anotado em segundos e guardado em quadros a 60 fps (§38). Comando `cronista gabarito` com
+  `--video` (confere duração) e `--previa` (um MP4 curto por anotação).
+- **Kit do Resolve em três FCPXML separados** (`cronista resolve-kit`): básico, recursos e áudio; um erro de importação
+  aponta o recurso culpado. FCPXML versão 1.9 com `asset src=`; UIDs de título/transição e EDL de marcadores de memória (⚠️).
+  Roteiro de checagem em `integrations/resolve/ROTEIRO.md`; script interno em `integrations/resolve/cronista_kit_teste.py`
+  (relata OK/FALHOU por passo).
+
+**Medido no `prod`:**
+- Gravações reais do OBS (`Cronista_Teste.mp4`, `testeia.mp4`): `cronista ingest` sem aviso de formato (H.264 High,
+  yuv420p, bt709, 60/1, 3 faixas); 5 marcadores (capítulos `Sem nome N` viram `Momento` com aviso, como previsto);
+  `cronista preview` com `h264_nvenc`: 5 trechos, 117,1 s esperados e 117,1 s gerados, em ~39 s; `cronista export` sem
+  problema estrutural. A interrupção/remux e a gravação com o gravador continuam por fazer (guia do OBS, seção 6).
+- **CUDA** (`integrations/cuda/check_cuda.py`, ambiente descartável): torch 2.11.0+cu128 e ctranslate2 4.9.0 convivem
+  nas duas ordens de importação; cuDNN 9.19; `faster-whisper tiny` em float16 rodou na GPU (~1,2 GB de VRAM).
+  Limite do teste: as duas ordens importam o torch antes de rodar o Whisper, então não prova o CTranslate2 sozinho.
+- **OBS (lido dos arquivos de configuração):** perfil conforme o plano (Hybrid MP4, NVENC H.264, 60 comum, NV12, 709,
+  trilhas 1–3). Falhas: servidor WebSocket **desligado**; `MIC_RAW` **mudo** (explica a faixa 3 vazia); `MIC_MIX` sem
+  RNNoise e em dispositivo diferente do `MIC_RAW`. Registrado em `integrations/obs/GUIA.md`.
+- **FIFINE SC3** (VID 3142, PID 0C33): o Windows a mostra com duas interfaces HID (controle de mídia e uma de fabricante,
+  `0xff00`) e nenhuma entrada MIDI. 90 s de escuta sem eventos: **inconclusivo** (não se sabe se os botões foram apertados);
+  repetir com o criador apertando botão por botão.
+
+**Pendente (precisa do criador):** instalar o Resolve e preencher o roteiro; teste físico da FIFINE; ajustes do OBS acima;
+gravação com `MIC_RAW` ativo; anotação do gabarito.
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

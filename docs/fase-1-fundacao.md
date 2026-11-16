@@ -3,7 +3,7 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 1).
 Decisão de dividir a fase: [histórico §25](01-historico-de-decisoes.md).
 
-Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine, GpuGate real e fixture com pausa prontos, histórico §29–35, com o `/code-review` feito e os 10 achados corrigidos; tarefa 7 (tempo em quadros, histórico §38) feita na branch `fase/1b-quadros`, a ser integrada à `main`; PR #3 já integrado, com CI verde. 1C pendente (PC de casa)) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
+Status: 1A feita; 1B em andamento (diário, reconstrução, reconciliação e ingestão de marcadores prontos; prévia MP4, FCPXML mínimo, gravador, serviço do engine, GpuGate real e fixture com pausa prontos, histórico §29–35, com o `/code-review` feito e os 10 achados corrigidos; tarefa 7 (tempo em quadros, histórico §38) feita na branch `fase/1b-quadros`, a ser integrada à `main`; PR #3 já integrado, com CI verde. tarefa 7 já integrada (PR #4). 1C em andamento na branch `fase/1c-pc-de-casa` (histórico §39): kit do Resolve, guia do OBS, teste de CUDA, formato do gabarito e validação de ingestão/prévia/exportação em `prod` prontos; faltam o Resolve (não instalado), o teste físico da FIFINE e a gravação com `MIC_RAW`) · aprovado (D1–D4 confirmadas, histórico §26) · Branch: `fase/1-fundacao` (sub-etapas em commits/PRs menores, ver "Fluxo git").
 
 ## Divisão
 
@@ -112,7 +112,9 @@ Unitários do cache por hash e da máquina de estados dos jobs; integração da 
 - [ ] Roteiro de checagem do Resolve preenchido (itens que o plano marca como ⚠️ ganham resposta e são movidos para a seção 6.5).
 - [ ] Resultado da FIFINE registrado (qual dos três caminhos vale).
 - [ ] Guia do OBS seguido do zero produz uma gravação que passa na validação da ingestão.
-- [ ] Teste de instalação CUDA (item 4) registrado; o resultado alimenta o benchmark da Fase 2.
+- [x] Teste de instalação CUDA (item 4) registrado (histórico §39: torch + CTranslate2 convivem); alimenta o benchmark da Fase 2.
+- [x] Formato do gabarito e script de validação prontos (`docs/gabarito.md`, `cronista gabarito`); a anotação é do criador.
+- [x] Kit do Resolve e roteiro prontos (`integrations/resolve/`); falta instalar o Resolve e preencher o roteiro.
 
 ## Aceite da Fase 1 (do plano mestre)
 

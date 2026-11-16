@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from pathlib import Path
 
+from pydantic import TypeAdapter
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from cronista.db.models import Event
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
+from cronista.domain.models import StageResult
 
 
 def replace_events(
@@ -89,3 +92,24 @@ def load_events(
         )
         for row in rows
     ]
+
+
+EVENTS_KEY = "events"
+"""Chave em `StageResult.data` com o caminho do `events.json` de uma etapa que produz eventos."""
+
+_EVENT_LIST = TypeAdapter(list[AnalysisEvent])
+
+
+def write_events_file(out_dir: Path, events: Sequence[AnalysisEvent]) -> str:
+    """Grava os eventos de uma etapa em `events.json` (a etapa é pura: o banco é atualizado depois)."""
+    path = out_dir / "events.json"
+    path.write_bytes(_EVENT_LIST.dump_json(list(events), indent=1))
+    return str(path)
+
+
+def events_from_result(result: StageResult) -> list[AnalysisEvent] | None:
+    """Eventos produzidos por uma etapa, ou `None` se ela não produz eventos."""
+    path = result.data.get(EVENTS_KEY)
+    if not path:
+        return None
+    return _EVENT_LIST.validate_json(Path(str(path)).read_bytes())

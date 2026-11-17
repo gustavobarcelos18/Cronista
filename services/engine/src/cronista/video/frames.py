@@ -97,3 +97,67 @@ def _iter_raw(
             err.seek(0)
             stderr = err.read().decode(errors="replace")
             raise StageError(f"ffmpeg falhou ({code}) ao ler quadros: {stderr.strip()[-500:]}")
+
+
+def iter_frames_every(
+    settings: Settings,
+    video: Path,
+    *,
+    every_s: float,
+    width: int = 1280,
+    height: int = 720,
+    start_s: float = 0.0,
+    end_s: float | None = None,
+) -> Iterator[tuple[float, npt.NDArray[np.uint8]]]:
+    """`(segundo, quadro RGB (altura, largura, 3))` a cada `every_s` segundos, de `start_s` até `end_s`.
+
+    Para o OCR do HUD: lê o **master** (no proxy 360p o texto fica ilegível), um quadro por vez.
+    """
+    if every_s <= 0:
+        raise ValueError("every_s precisa ser positivo")
+    cmd = [settings.ffmpeg, "-hide_banner", "-loglevel", "error"]
+    if start_s > 0:
+        cmd += ["-ss", f"{start_s:.3f}"]
+    if end_s is not None:
+        cmd += ["-t", f"{max(end_s - start_s, 0):.3f}"]
+    cmd += [
+        "-i", str(video), "-an",
+        "-vf", f"fps=1/{every_s:g},scale={width}:{height}:flags=area,format=rgb24",
+        "-f", "rawvideo", "-",
+    ]  # fmt: skip
+    size = width * height * 3
+    with tempfile.TemporaryFile() as err:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
+        assert proc.stdout is not None
+        index = 0
+        try:
+            while True:
+                data = proc.stdout.read(size)
+                if len(data) < size:
+                    break
+                yield start_s + index * every_s, np.frombuffer(data, dtype=np.uint8).reshape(height, width, 3)
+                index += 1
+        finally:
+            proc.stdout.close()
+            code = proc.wait()
+        if code != 0:
+            err.seek(0)
+            detail = err.read().decode(errors="replace").strip()[-500:]
+            raise StageError(f"ffmpeg falhou ({code}) ao ler o master: {detail}")
+
+
+def read_rgb_frame(
+    settings: Settings, video: Path, frame: int, width: int, height: int
+) -> npt.NDArray[np.uint8]:
+    """Um quadro RGB `(altura, largura, 3)` do quadro `frame` (60 fps), esticado para `width` x `height`."""
+    cmd = [
+        settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", f"{frame / FPS:.3f}", "-i", str(video),
+        "-frames:v", "1", "-vf", f"scale={width}:{height}:flags=area,format=rgb24", "-f", "rawvideo", "-",
+    ]  # fmt: skip
+    try:
+        proc = subprocess.run(cmd, capture_output=True, check=False, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise StageError(f"não consegui ler o quadro {frame} de {video}: {exc}") from exc
+    if proc.returncode != 0 or len(proc.stdout) != width * height * 3:
+        raise StageError(f"ffmpeg não devolveu o quadro {frame} de {video}")
+    return np.frombuffer(proc.stdout, dtype=np.uint8).reshape(height, width, 3)

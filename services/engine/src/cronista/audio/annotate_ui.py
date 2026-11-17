@@ -9,22 +9,35 @@ de `gabarito.py`. Nada de servidor: abre direto no navegador.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 from cronista.domain.frames import FPS, frame_to_seconds
 from cronista.gabarito import CLASSES
 
-CLASSES_UI = ["fala", "risada", "exclamacao", "teclado", "respiracao", "farm"]
+AUDIO_CLASSES_UI = ["fala", "risada", "exclamacao", "teclado", "respiracao", "farm"]
+VISUAL_CLASSES_UI = ["menu", "loading", "idle", "hud_oculto"]
+CLASSES_UI = AUDIO_CLASSES_UI + VISUAL_CLASSES_UI
 
 
-def build_suggestions(events: list[tuple[str, int, int, float, str | None]]) -> list[dict[str, object]]:
-    """(tipo, início, fim, confiança, texto) → sugestões em segundos, só as classes anotáveis."""
+def build_suggestions(
+    events: list[tuple[str, int, int, float, str | None]],
+    classes: list[str] | None = None,
+    thumbs: Callable[[int], str | None] | None = None,
+) -> list[dict[str, object]]:
+    """(tipo, início, fim, confiança, texto) → sugestões em segundos, só as classes anotáveis.
+
+    `thumbs(quadro)` devolve a miniatura (data URI) do meio de um candidato visual; sem ela não há miniatura.
+    """
+    allowed = classes if classes is not None else AUDIO_CLASSES_UI
     out: list[dict[str, object]] = []
     for kind, start, end, conf, quote in events:
-        if kind not in CLASSES_UI or (kind != "fala" and conf < 0.3):
+        if kind not in allowed or (kind != "fala" and kind not in VISUAL_CLASSES_UI and conf < 0.3):
             continue
+        thumb = thumbs((start + max(end, start)) // 2) if thumbs and kind in VISUAL_CLASSES_UI else None
         out.append(
             {
+                **({"thumb": thumb} if thumb else {}),
                 "cls": kind,
                 "start": round(frame_to_seconds(start), 2),
                 "end": round(frame_to_seconds(max(end, start + FPS // 2)), 2),
@@ -97,7 +110,7 @@ function draw(){
   rows.forEach((r,i)=>{
     const d=document.createElement("div");d.className="row"+(r.sug&&!r.ok?" sug":"")+(r.ok?" done":"");
     const sel=D.classes.map(c=>`<option ${c==r.cls?"selected":""}>${c}</option>`).join("");
-    d.innerHTML=`<div class="top"><span class="t" data-i="${i}">${fmt(r.start)} → ${fmt(r.end)}</span>
+    d.innerHTML=`<div class="top"><span class="t" data-i="${i}">${fmt(r.start)} → ${fmt(r.end)}</span>${r.thumb?`<img src="${r.thumb}" style="height:48px;border-radius:4px">`:""}
       <select data-c="${i}">${sel}</select>${r.sug?`<span class="mut">sugestão${r.conf?" ("+Math.round(r.conf*100)+"%)":""}</span>`:""}
       <span style="flex:1"></span><button data-k="${i}">✓</button><button data-x="${i}">✕</button></div>
       <input type="text" data-n="${i}" placeholder="${r.cls=="fala"?"o que você disse, palavra por palavra":"nota (opcional)"}" value="${(r.note||"").replace(/"/g,"&quot;")}">`;
@@ -120,10 +133,10 @@ function add(cls){if(mark.s!=null&&mark.e==null)mark.e=mark.s+1;
   const near=D.sug.find(x=>x.cls=="fala"&&x.start<mark.e&&x.end>mark.s);
   rows.push({cls,start:mark.s,end:mark.e,note:cls=="fala"&&near?near.note:"",ok:true});mark={s:null,e:null};show();draw();}
 $("bi").onclick=setI;$("bo").onclick=setO;
-D.classes.forEach((c,i)=>{const b=document.createElement("button");b.title=DESC[c];b.innerHTML=c+' <span class="kbd">'+(i+1)+'</span>';b.onclick=()=>add(c);$("cls").appendChild(b)});
+D.classes.forEach((c,i)=>{const b=document.createElement("button");b.title=DESC[c];b.innerHTML=c+(i<9?' <span class="kbd">'+(i+1)+'</span>':'');b.onclick=()=>add(c);$("cls").appendChild(b)});
 document.addEventListener("keydown",e=>{if(["INPUT","SELECT","TEXTAREA"].includes(e.target.tagName))return;
   if(e.key=="i"||e.key=="I")setI();else if(e.key=="o"||e.key=="O")setO();
-  else if(e.key>="1"&&e.key<=String(D.classes.length))add(D.classes[+e.key-1]);
+  else if(/^[1-9]$/.test(e.key)&&+e.key<=D.classes.length)add(D.classes[+e.key-1]);
   else if(e.key==" "){e.preventDefault();v.paused?v.play():v.pause()}
   else if(e.key=="ArrowLeft")v.currentTime-=e.shiftKey?.5:5;else if(e.key=="ArrowRight")v.currentTime+=e.shiftKey?.5:5;
   else if(e.key==",")v.currentTime-=.1;else if(e.key==".")v.currentTime+=.1;

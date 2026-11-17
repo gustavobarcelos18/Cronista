@@ -33,6 +33,7 @@ from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
 from cronista.pipeline import recover_orphans
 from cronista.preview import PreviewError, build_preview
+from cronista.profiles import build_models_with_profile
 from cronista.recorder.feedback import ConsoleFeedback
 from cronista.recorder.hotkeys import HotkeyConfigError
 from cronista.recorder.run import run_forever
@@ -141,7 +142,7 @@ def analyze(
                 build_gate(settings),
                 build_models(settings),
                 only.value if only else None,
-                build_video_models(settings),
+                build_models_with_profile(settings),
             )
         except AnalysisError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -633,16 +634,137 @@ def bench_quality(
         typer.echo("aviso: a análise ainda não grava eventos `rotina`; revocação de farm não é confiável")
 
 
+@app.command("relevance")
+def relevance(
+    session: Annotated[int, typer.Argument(help="Sessão analisada (`cronista analyze`)")],
+    top: Annotated[int, typer.Option(help="Quantos candidatos mostrar por arquivo")] = 15,
+) -> None:
+    """Segmenta a sessão, dá nota explicável a cada trecho e grava os segmentos (Fase 4)."""
+    from cronista.relevance.quality import top_candidates
+    from cronista.relevance.service import RelevanceError, relevance_session
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            results = relevance_session(db, session)
+        except RelevanceError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    for res in results:
+        counts: dict[str, int] = {}
+        for s in res.segments:
+            counts[s.classe] = counts.get(s.classe, 0) + 1
+        summary = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+        typer.echo(f"{res.name}: {len(res.segments)} segmentos ({summary})")
+        for s in sorted(top_candidates(res.segments, top), key=lambda x: -x.score):
+            a, b = int(s.start_s), int(s.end_s)
+            typer.echo(
+                f"  {a // 60}:{a % 60:02d}-{b // 60}:{b % 60:02d} {s.classe:<10} nota {s.score:.2f}  "
+                + "; ".join(s.razoes)
+            )
+
+
+@app.command("bench-relevance")
+def bench_relevance(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    gabarito: Annotated[Path, typer.Argument(help="CSV do gabarito deste arquivo")],
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    top: Annotated[int, typer.Option(help="Tamanho do topo de candidatos")] = 30,
+) -> None:
+    """Momentos do gabarito no topo, farm como farm e compressão (meta: 85% dos momentos no topo)."""
+    from cronista.relevance.quality import evaluate_relevance, render_quality
+    from cronista.relevance.service import load_segments
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    report = validate_gabarito(gabarito)
+    if not report.ok:
+        for err in report.errors:
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        item = _pick_media(db, session, file)
+        segments = load_segments(db, item.id)
+    if not segments:
+        typer.echo("erro: sem segmentos no banco; rode `cronista relevance` antes", err=True)
+        raise typer.Exit(1)
+    typer.echo(render_quality(evaluate_relevance(report.annotations, segments, top)))
+
+
+@app.command("series")
+def series() -> None:
+    """Painel da série: horas gravadas e minutos estimados de produto por sessão, e o acumulado."""
+    from cronista.relevance.service import series_panel
+
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        rows = series_panel(db)
+    typer.echo(f"{'sessão':>7}{'gravado (h)':>13}{'produto (min)':>15}{'acumulado (min)':>17}")
+    for r in rows:
+        typer.echo(f"{r['sessao']:>7}{r['gravado_h']:>13}{r['produto_min']:>15}{r['acumulado_min']:>17}")
+    typer.echo(
+        "estimativa: trechos relevantes (até 45 s cada) + farm em timelapse; alvo do vídeo: 30 a 50 min"
+    )
+
+
+@app.command("bench-video-quality")
+def bench_video_quality(
+    session: Annotated[int, typer.Argument(help="Sessão analisada (`cronista analyze`)")],
+    gabarito: Annotated[Path, typer.Argument(help="CSV do gabarito deste arquivo")],
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    tolerance: Annotated[float, typer.Option(help="Tolerância das bordas, em segundos")] = 2.0,
+) -> None:
+    """Compara menu, loading, idle e HUD oculto do banco com o gabarito (precisão, revocação, bordas)."""
+    from cronista.audio.events import load_stored_events
+    from cronista.video.quality import VIDEO_CLASSES, evaluate_video, render_video_quality
+    from cronista.video.report import is_video_event
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    report = validate_gabarito(gabarito)
+    if not report.ok:
+        for err in report.errors:
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        item = _pick_media(db, session, file)
+        stored = [s for s in load_stored_events(db, item.id) if is_video_event(s)]
+    if not stored:
+        typer.echo("erro: sem eventos de vídeo no banco; rode `cronista analyze` antes", err=True)
+        raise typer.Exit(1)
+    predicted: dict[str, list[tuple[int, int]]] = {}
+    for s in stored:
+        if s.event.kind in VIDEO_CLASSES:
+            ev = s.event.evidence
+            predicted.setdefault(s.event.kind, []).append((ev.start_frame, ev.end_frame))
+    total = max(
+        [a.end_frame for a in report.annotations] + [iv[1] for ivs in predicted.values() for iv in ivs],
+        default=0,
+    )
+    typer.echo(
+        render_video_quality(evaluate_video(report.annotations, predicted, total, tolerance), tolerance)
+    )
+    typer.echo(
+        "aviso: 'falsos/30min' só vale se o gabarito cobre a sessão toda; "
+        "previstos fora dos trechos anotados contam como falsos"
+    )
+
+
 @app.command("gabarito-ui")
 def gabarito_ui(
     session: Annotated[int, typer.Argument(help="Sessão analisada")],
     file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
     out: Annotated[Path | None, typer.Option(help="HTML de saída")] = None,
+    visual: Annotated[
+        bool,
+        typer.Option("--visual", help="Candidatos visuais (menu, loading, idle, HUD oculto) com miniatura"),
+    ] = False,
 ) -> None:
     """Gera uma página para anotar o gabarito vendo o vídeo, com sugestões da análise já preenchidas."""
-    from cronista.audio.annotate_ui import build_suggestions, render_annotator
+    from cronista.audio.annotate_ui import VISUAL_CLASSES_UI, build_suggestions, render_annotator
     from cronista.audio.events import load_stored_events
-    from cronista.video.report import is_video_event
+    from cronista.video.report import is_video_event, thumbnail
 
     settings = load_settings()
     setup_logging(settings.log_level)
@@ -661,14 +783,20 @@ def gabarito_ui(
         events = [
             (e.kind, e.evidence.start_frame, e.evidence.end_frame, e.evidence.confidence, e.evidence.quote)
             for s in load_stored_events(db, item.id)
-            if not is_video_event(s)  # o anotador é de áudio; cenas e menus não são sugestões
+            if is_video_event(s) == visual  # sem `--visual` o anotador é de áudio; com, só os estados de tela
             for e in [s.event]
         ]
-    page = render_annotator(proxy_path, build_suggestions(events), Path(item.path).name)
+    if visual:
+        suggestions = build_suggestions(
+            events, VISUAL_CLASSES_UI, lambda frame: thumbnail(settings, proxy_path, frame)
+        )
+    else:
+        suggestions = build_suggestions(events)
+    page = render_annotator(proxy_path, suggestions, Path(item.path).name)
     target = out or settings.data_dir / "gabarito" / f"anotar-{session}.html"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(page, encoding="utf-8")
-    typer.echo(f"{target}\n{len(events)} eventos viraram sugestões; abra o arquivo no navegador.")
+    typer.echo(f"{target}\n{len(suggestions)} sugestões; abra o arquivo no navegador.")
 
 
 @app.command("broll-search")

@@ -16,10 +16,12 @@ from cronista.pipeline.stage import Stage, StageContext, StageError
 from cronista.video import frames as vframes
 from cronista.video.context_stages import BrollStage, ContextNoveltyStage, ContextsStage, EmbeddingsStage
 from cronista.video.hud import HudStage, IdleStage
+from cronista.video.hud_text import HudTextStage
 from cronista.video.menus import MenuTypesStage
 from cronista.video.ports import VideoModels
 from cronista.video.screen_state import ScreenParams, detect
 from cronista.video.signals import SIGNAL_NAMES, FloatArray, SignalParams, block_signals
+from cronista.video.vlm import MenuNamesStage
 
 MODEL = "video-heuristica"
 
@@ -123,13 +125,18 @@ def video_stages(models: VideoModels | None = None, *, with_audio: bool = True) 
     com `with_audio` também a `novelty_ctx`, que precisa dos sinais de áudio.
     """
     stages: list[Stage] = [VideoSignalsStage(), VideoScenesStage(), HudStage(), IdleStage()]
+    with_text = models is not None and models.hud_reader is not None and bool(models.hud_regions)
+    if models is not None and models.hud_reader is not None and models.hud_regions:
+        stages.append(HudTextStage(models.hud_reader, models.hud_regions))
     if models is not None and models.embedder is not None:
         stages += [
             EmbeddingsStage(models.embedder),
             ContextsStage(),
-            BrollStage(models.embedder),
+            BrollStage(models.embedder, with_hud_text=with_text),
             MenuTypesStage(),
         ]
+        if models.vlm is not None:
+            stages.append(MenuNamesStage(models.vlm))
         if with_audio:
             stages.append(ContextNoveltyStage())
     return stages

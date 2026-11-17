@@ -25,6 +25,9 @@ VIDEO_STAGES = (
     "video_contexts",
     "video_broll",
     "video_hud",
+    "video_idle",
+    "video_hud_text",
+    "video_menu_names",
     "video_menu_types",
 )
 STATE_KINDS = ("loading", "menu", "idle")

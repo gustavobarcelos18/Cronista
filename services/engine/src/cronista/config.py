@@ -52,11 +52,15 @@ class Settings(BaseModel):
     audio_models: bool = (
         False  # liga os modelos reais de áudio (grupo `ml`, só prod); dev usa só os sinais de CPU
     )
+    profiles_dir: Path | None = None  # padrão: `profiles/` na raiz do repositório
     models_dir: Path | None = None  # padrão: data/models (fora do git)
     audio_language: str = "pt"
     whisper_model: str = "large-v3-turbo"
     whisper_compute_type: str = "int8_float16"
     sound_model: str = "MIT/ast-finetuned-audioset-10-10-0.4593"
+    profile: str = ""  # perfil de jogo (`profiles/<nome>.yaml`); vazio = genérico
+    vlm_model: str = ""  # checkpoint do VLM local (3C-4), ex.: Qwen/Qwen3-VL-4B-Instruct; vazio = desligado
+    vlm_4bit: bool = False
     video_embedder: str = ""  # checkpoint de embeddings de quadro (3B); vazio = desligado, sem baixar nada
     log_level: str = "INFO"
 

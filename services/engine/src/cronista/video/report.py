@@ -224,7 +224,7 @@ def broll_table(
         )
     return (
         f"<h3>B-roll candidato: {len(clips)} melhores</h3>"
-        "<table><tr><th>Início</th><th>Duração</th><th>Movimento</th><th>Utilidade</th><th>Tags</th>"
+        "<table><tr><th>Início</th><th>Duração</th><th>Movimento</th><th>Clima</th><th>Utilidade</th><th>Tags</th>"
         f"<th>Capa</th></tr>{''.join(rows)}</table>"
     )
 

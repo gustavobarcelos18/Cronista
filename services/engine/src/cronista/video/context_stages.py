@@ -219,7 +219,7 @@ class BrollStage:
     """Biblioteca de B-roll: eventos `broll` (câmera parada/panorâmica) com utilidade, tags e capa."""
 
     name = "video_broll"
-    version = "2"
+    version = "3"
     needs: tuple[str, ...] = ("video_scenes", "video_embeddings")
     uses_gpu = False
 

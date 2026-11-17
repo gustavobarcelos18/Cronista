@@ -46,6 +46,13 @@ VOCAB = (
     "a dark underground tunnel",
     "a field of crops",
 )
+CLIMAS: dict[str, tuple[str, ...]] = {
+    "bonito": ("a beautiful scenic landscape", "a peaceful sunny meadow with a lake"),
+    "sombrio": ("a dark gloomy cave", "a creepy dark place at night"),
+    "perigoso": ("a dangerous monster enemy attacking", "a fight against hostile creatures"),
+    "calmo": ("a cozy quiet home interior", "a peaceful village"),
+}
+"""Clima da tomada (zero-shot): a abertura pede variedade de clima; narração de perigo, só os sombrios."""
 BLOCKED = frozenset({"menu", "loading", "pausa", "idle"})
 
 
@@ -107,7 +114,12 @@ def score_candidate(
     vocab = _unit(embedder.embed_text([f"a photo of {v}" for v in VOCAB]))
     sims = _unit(seg.mean(axis=0, keepdims=True))[0] @ vocab.T
     order = np.argsort(-sims)[: params.top_tags]
+    climas = {
+        name: float((seg.mean(axis=0) @ _unit(embedder.embed_text(list(prompts))).T).max())
+        for name, prompts in CLIMAS.items()
+    }
     return {
+        "clima": max(climas, key=lambda k: climas[k]),
         "movimento": c.movement,
         "utilidade": float(per.mean()),
         "tags": [VOCAB[int(i)] for i in order],

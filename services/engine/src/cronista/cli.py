@@ -708,6 +708,106 @@ def series() -> None:
     )
 
 
+@app.command("story")
+def story(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/story/<sessão>)")] = None,
+) -> None:
+    """Capítulos, beats, objetivos e `story-pack.json` para o roteiro (Fases 5 e 5A)."""
+    from cronista.profiles import load_settings_profile
+    from cronista.story.service import StoryError, build_story, write_pack
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    profile = load_settings_profile(settings)
+    with open_db(settings.db_path) as db:
+        try:
+            result = build_story(db, session, target_min * 60, (profile.objetivos, profile.regras))
+        except StoryError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    target = out or settings.data_dir / "story" / str(session)
+    pack_path, voice_path = write_pack(target, result)
+    for c in result.chapters:
+        beats = ", ".join(f"{i.beat.value}" for i in c.items[:8])
+        typer.echo(f"capítulo {c.number}: {len(c.items)} trechos, {c.allocated_s:.0f} s alocados ({beats})")
+    d = result.discovery
+    typer.echo(
+        f"objetivos: {d.confirmed} confirmados, {d.hypotheses} hipóteses, {d.rejected} citações rejeitadas"
+    )
+    typer.echo(f"{pack_path}\n{voice_path}\nAgora rode /roteirizar no Claude Code com este pacote.")
+
+
+@app.command("revisao")
+def revisao(
+    project: Annotated[int, typer.Argument(help="Projeto (veja `cronista status`)")] = 1,
+    out: Annotated[Path | None, typer.Option(help="CSV de saída")] = None,
+) -> None:
+    """Fila de revisão: objetivos propostos ou incertos (nunca afirmados nem descartados)."""
+    from cronista.story.objectives import export_review_csv, review_queue
+
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        items = review_queue(db, project)
+        target = export_review_csv(items, out or settings.data_dir / "story" / f"revisao-{project}.csv")
+    typer.echo(f"{len(items)} itens para revisar: {target}")
+
+
+@app.command("roteiro-import")
+def roteiro_import(
+    session: Annotated[int, typer.Argument(help="Sessão do story-pack usado")],
+    script: Annotated[Path, typer.Argument(help="roteiro.json escrito pelo /roteirizar")],
+) -> None:
+    """Valida o roteiro (segmento, espaço livre, antecipação justificada, sinais de IA) e gera o SRT."""
+    from cronista.story.script import load_script, to_srt, validate_script
+    from cronista.story.service import segment_index
+
+    settings = load_settings()
+    folder = settings.data_dir / "story" / str(session)
+    pack_path = folder / "story-pack.json"
+    if not pack_path.is_file():
+        typer.echo("erro: rode `cronista story` antes", err=True)
+        raise typer.Exit(1)
+    try:
+        loaded = load_script(script)
+    except ValueError as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    index = segment_index(json.loads(pack_path.read_text(encoding="utf-8")))
+    report = validate_script(loaded, index)
+    for err in report.errors:
+        typer.echo(f"erro: {err}", err=True)
+    for warn in report.warnings:
+        typer.echo(f"aviso: {warn}")
+    if not report.ok:
+        raise typer.Exit(1)
+    starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
+    loaded = loaded.model_copy(update={"lines": report.lines})
+    (folder / "roteiro.json").write_text(loaded.model_dump_json(indent=1), encoding="utf-8")
+    (folder / "roteiro.srt").write_text(to_srt(report.lines, starts), encoding="utf-8")
+    total = sum(line.est_s or 0 for line in report.lines)
+    typer.echo(f"{len(report.lines)} falas, ~{total:.0f} s de narração; {folder / 'roteiro.srt'}")
+
+
+@app.command("roteiro-lint")
+def roteiro_lint(text: Annotated[Path, typer.Argument(help="Arquivo de texto ou roteiro.json")]) -> None:
+    """Aponta sinais de texto de IA (padrões do /humanizar) numa narração."""
+    from cronista.story.script import lint_text
+
+    raw = text.read_text(encoding="utf-8-sig")
+    pieces = (
+        [line["text"] for line in json.loads(raw)["lines"]] if text.suffix == ".json" else raw.splitlines()
+    )
+    found = 0
+    for n, piece in enumerate(pieces, start=1):
+        flags = lint_text(piece)
+        if flags:
+            found += 1
+            typer.echo(f"{n}: {', '.join(flags)} | {piece[:80]}")
+    typer.echo(f"{found} de {len(pieces)} falas com sinais de IA")
+
+
 @app.command("bench-video-quality")
 def bench_video_quality(
     session: Annotated[int, typer.Argument(help="Sessão analisada (`cronista analyze`)")],

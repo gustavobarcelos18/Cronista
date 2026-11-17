@@ -7,7 +7,7 @@ import itertools
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
 from cronista.domain.frames import FPS
 from cronista.gabarito import Annotation
-from cronista.relevance.engine import MarkerRef, RelevanceParams, build_segments, speech_blocks
+from cronista.relevance.engine import MarkerRef, RelevanceParams, Segment, build_segments, speech_blocks
 from cronista.relevance.quality import evaluate_relevance, render_quality
 from cronista.relevance.service import events_to_segments, product_seconds, segments_to_events
 
@@ -29,7 +29,7 @@ def talk(a: int, b: int) -> list[AnalysisEvent]:
     return [ev("fala", s, s + 2) for s in range(a, b, 2)]
 
 
-def by_class(segs: list, classe: str) -> list:
+def by_class(segs: list[Segment], classe: str) -> list[Segment]:
     return [s for s in segs if s.classe == classe]
 
 

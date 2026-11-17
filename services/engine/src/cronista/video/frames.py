@@ -144,3 +144,20 @@ def iter_frames_every(
             err.seek(0)
             detail = err.read().decode(errors="replace").strip()[-500:]
             raise StageError(f"ffmpeg falhou ({code}) ao ler o master: {detail}")
+
+
+def read_rgb_frame(
+    settings: Settings, video: Path, frame: int, width: int, height: int
+) -> npt.NDArray[np.uint8]:
+    """Um quadro RGB `(altura, largura, 3)` do quadro `frame` (60 fps), esticado para `width` x `height`."""
+    cmd = [
+        settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", f"{frame / FPS:.3f}", "-i", str(video),
+        "-frames:v", "1", "-vf", f"scale={width}:{height}:flags=area,format=rgb24", "-f", "rawvideo", "-",
+    ]  # fmt: skip
+    try:
+        proc = subprocess.run(cmd, capture_output=True, check=False, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise StageError(f"não consegui ler o quadro {frame} de {video}: {exc}") from exc
+    if proc.returncode != 0 or len(proc.stdout) != width * height * 3:
+        raise StageError(f"ffmpeg não devolveu o quadro {frame} de {video}")
+    return np.frombuffer(proc.stdout, dtype=np.uint8).reshape(height, width, 3)

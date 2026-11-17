@@ -59,6 +59,8 @@ class Settings(BaseModel):
     whisper_compute_type: str = "int8_float16"
     sound_model: str = "MIT/ast-finetuned-audioset-10-10-0.4593"
     profile: str = ""  # perfil de jogo (`profiles/<nome>.yaml`); vazio = genérico
+    vlm_model: str = ""  # checkpoint do VLM local (3C-4), ex.: Qwen/Qwen3-VL-4B-Instruct; vazio = desligado
+    vlm_4bit: bool = False
     video_embedder: str = ""  # checkpoint de embeddings de quadro (3B); vazio = desligado, sem baixar nada
     log_level: str = "INFO"
 

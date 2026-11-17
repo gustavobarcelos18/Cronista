@@ -16,8 +16,13 @@ def build_video_models(settings: Settings) -> VideoModels:
         return VideoModels()
     from cronista.video.adapters.siglip import SiglipEmbedder
 
+    vlm = None
+    if settings.vlm_model:
+        from cronista.video.adapters.qwen_vl import QwenVL
+
+        vlm = QwenVL(settings.models_path / "vlm", settings.vlm_model, settings.vlm_4bit)
     return VideoModels(
-        embedder=SiglipEmbedder(settings.models_path / "siglip", model_id=settings.video_embedder)
+        embedder=SiglipEmbedder(settings.models_path / "siglip", model_id=settings.video_embedder), vlm=vlm
     )
 
 

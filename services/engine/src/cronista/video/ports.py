@@ -8,14 +8,19 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import numpy as np
 import numpy.typing as npt
 
+if TYPE_CHECKING:
+    from cronista.video.vlm import ScreenVLM
+
 Pause = Callable[[], None]
 RgbFrames = npt.NDArray[np.uint8]
 """`(n, altura, largura, 3)`, RGB."""
+RgbImage = npt.NDArray[np.uint8]
+"""`(altura, largura, 3)`, RGB: um quadro só."""
 Embeddings = npt.NDArray[np.float32]
 """`(n, dim)`, cada linha com norma 1."""
 
@@ -71,4 +76,5 @@ class VideoModels:
 
     embedder: FrameEmbedder | None = None
     hud_reader: HudReader | None = None
+    vlm: ScreenVLM | None = None
     hud_regions: tuple[HudRegionSpec, ...] = ()

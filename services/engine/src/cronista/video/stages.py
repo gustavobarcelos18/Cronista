@@ -21,6 +21,7 @@ from cronista.video.menus import MenuTypesStage
 from cronista.video.ports import VideoModels
 from cronista.video.screen_state import ScreenParams, detect
 from cronista.video.signals import SIGNAL_NAMES, FloatArray, SignalParams, block_signals
+from cronista.video.vlm import MenuNamesStage
 
 MODEL = "video-heuristica"
 
@@ -134,6 +135,8 @@ def video_stages(models: VideoModels | None = None, *, with_audio: bool = True) 
             BrollStage(models.embedder, with_hud_text=with_text),
             MenuTypesStage(),
         ]
+        if models.vlm is not None:
+            stages.append(MenuNamesStage(models.vlm))
         if with_audio:
             stages.append(ContextNoveltyStage())
     return stages

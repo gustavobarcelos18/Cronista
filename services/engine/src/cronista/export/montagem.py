@@ -23,7 +23,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 from cronista.assembly.plan import Card, EditPlan, Mode, Track
 from cronista.domain.frames import FPS
@@ -325,7 +326,7 @@ def check_plan_fcpxml(xml: str, plan: EditPlan) -> list[str]:
     )
     for a in assets.values():
         parsed = urlparse(a.get("src", ""))
-        if not Path(unquote(parsed.path).lstrip("/")).is_file():
+        if not Path(url2pathname(parsed.path)).is_file():
             problems.append(f"asset {a.get('name')}: arquivo não existe ({a.get('src')})")
     for clip in root.iter("asset-clip"):
         asset = assets.get(clip.get("ref", ""))

@@ -56,12 +56,12 @@ Até lá, 2A e 2B entregam tudo o que é verificável sem gabarito, e os modelos
 
 ### Critérios de aceite (2A)
 
-- [~] `uv run pytest`, `ruff`, `mypy` (e `mypy --platform linux`) passam sem GPU e sem modelo baixado; CI verde em Ubuntu **e** Windows. *(local: 255 testes, ruff e mypy nas duas plataformas; falta rodar a CI no GitHub.)*
+- [~] `uv run pytest`, `ruff`, `mypy` (e `mypy --platform linux`) passam sem GPU e sem modelo baixado; CI verde em Ubuntu **e** Windows. *(local: 264 testes, ruff e mypy nas duas plataformas; CI do GitHub: Sonar passou; conferir o resultado final no PR.)*
 - [x] Duas variantes da mesma etapa coexistem para o mesmo arquivo, sem se sobrescrever; mudar o parâmetro de uma invalida só ela e as seguintes.
 - [x] A migração `0005`/`0006` aplica sobre um banco existente (inclusive o de `data/prod`) sem perder linhas.
 - [x] Sobre sinais sintéticos: trem de cliques regular tem `periodicity` alta e `novelty` baixa; uma explosão no meio de ruído estável gera pico de `novelty` e `periodicity` baixa; silêncio não gera eventos.
-- [~] WAV RF64 (> 4 GB, gerado sintético ou por `-rf64 always` em arquivo curto) é lido em blocos sem erro; memória não cresce com a duração. *(RF64 testado num arquivo pequeno; > 4 GB e consumo de memória em sessão de horas não medidos.)*
-- [~] Reexecutar a análise não duplica eventos; retomada após interrupção refaz só a etapa interrompida. *(reexecução sem duplicar: testada; retomada após interrupção: só a cobertura geral do orquestrador, sem teste específico da análise.)*
+- [~] WAV RF64 (> 4 GB, gerado sintético ou por `-rf64 always` em arquivo curto) é lido em blocos sem erro; memória não cresce com a duração. *(RF64 testado num arquivo pequeno; leitura e periodicidade em blocos (memória constante por construção); > 4 GB real e pico de memória em sessão de horas não medidos.)*
+- [x] Reexecutar a análise não duplica eventos; retomada após interrupção refaz só a etapa interrompida. *(teste de morte no meio de `audio_signals` + `recover_orphans`; o gate de GPU também é testado entre blocos.)*
 - [x] O relatório HTML abre sem rede e mostra sinais, marcadores e fala da fixture sintética. *(conferido também com a gravação real de 37 min.)*
 
 ### Testes (2A)

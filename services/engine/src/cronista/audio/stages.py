@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +22,7 @@ from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 from cronista.domain.frames import seconds_to_frame
 from cronista.domain.models import StageResult
-from cronista.pipeline.stage import Stage, StageContext, StageError
+from cronista.pipeline.stage import Stage, StageContext, StageError, make_variant
 
 
 class AudioSignalsStage:
@@ -85,11 +84,6 @@ class AudioSignalsStage:
         )
 
 
-def slug(text: str) -> str:
-    """Nome seguro para variante (pasta no cache): letras, números, `.`, `_` e `-`."""
-    return re.sub(r"[^A-Za-z0-9._-]+", "-", text).strip("-") or "x"
-
-
 def _checked(start_s: float, end_s: float, what: str) -> None:
     if end_s < start_s:
         raise StageError(f"{what} com intervalo invertido ({start_s:.2f}s..{end_s:.2f}s): erro do adaptador")
@@ -105,7 +99,7 @@ class SpeechStage:
 
     def __init__(self, detector: SpeechDetector, transcriber: Transcriber) -> None:
         self.detector, self.transcriber = detector, transcriber
-        self.variant = slug(f"{detector.name}+{transcriber.name}")
+        self.variant = make_variant(f"{detector.name}+{transcriber.name}")
 
     def params(self, settings: Settings) -> dict[str, Any]:
         return {
@@ -186,7 +180,7 @@ class SoundEventsStage:
         if track not in (GAME_TRACK, MIC_TRACK):
             raise ValueError(f"faixa desconhecida: {track}")
         self.classifier, self.track, self.min_score = classifier, track, min_score
-        self.variant = slug(f"{track}-{classifier.name}")
+        self.variant = make_variant(f"{track}-{classifier.name}")
 
     def params(self, settings: Settings) -> dict[str, Any]:
         return {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -26,7 +27,22 @@ class StageContext:
     """Etapas longas chamam isto entre blocos: bloqueia com o OBS gravando ou jogo em tela cheia."""
 
 
-_VARIANT_RE = re.compile(r"[A-Za-z0-9._-]{1,100}")
+_VARIANT_MAX = 100
+_VARIANT_RE = re.compile(rf"[A-Za-z0-9._-]{{1,{_VARIANT_MAX}}}")
+
+
+def make_variant(text: str) -> str:
+    """Nome de variante seguro a partir de um texto livre (nome de modelo, por exemplo).
+
+    Troca o que não é letra, número, `.`, `_` ou `-` por `-` e, se passar de 100 caracteres, corta e
+    acrescenta um hash curto do texto original, para dois nomes longos parecidos não colidirem.
+    É a única fonte da regra: `stage_variant` valida com a mesma expressão.
+    """
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", text).strip("-") or "x"
+    if len(cleaned) > _VARIANT_MAX:
+        digest = hashlib.sha256(text.encode()).hexdigest()[:8]
+        cleaned = f"{cleaned[: _VARIANT_MAX - 9].rstrip('-')}-{digest}"
+    return cleaned
 
 
 def stage_variant(stage: Stage) -> str:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 from cronista.audio.events import events_from_result, load_events
 from cronista.audio.ports import AudioModels, SoundEventSpan, SpeechSpan, Utterance
 from cronista.audio.service import AnalysisError, analyze_session
-from cronista.audio.stages import SoundEventsStage, SpeechStage, analysis_stages, slug
+from cronista.audio.stages import SoundEventsStage, SpeechStage, analysis_stages
 from cronista.config import Settings
 from cronista.db.models import Artifact, Event, MediaFile, RecordingSession
 from cronista.domain.models import StageResult
@@ -95,7 +96,6 @@ def test_threshold_and_models_are_part_of_the_cache_key(settings: Settings) -> N
     a = SoundEventsStage(FakeClassifier(), "game", 0.3).params(settings)
     assert a != SoundEventsStage(FakeClassifier(), "game", 0.5).params(settings)
     assert a != SoundEventsStage(FakeClassifier(), "mic", 0.3).params(settings)
-    assert slug("silero vad+large-v3/turbo") == "silero-vad-large-v3-turbo"
 
 
 def test_analysis_stages_depend_on_the_available_models() -> None:
@@ -113,8 +113,8 @@ def test_analysis_stages_depend_on_the_available_models() -> None:
 
 def test_pause_is_requested_by_the_models(ctx: StageContext) -> None:
     paused: list[int] = []
-    object.__setattr__(ctx, "wait_for_gpu", lambda: paused.append(1))
-    SpeechStage(FakeDetector(), FakeTranscriber()).run(ctx)
+    paused_ctx = dataclasses.replace(ctx, wait_for_gpu=lambda: paused.append(1))
+    SpeechStage(FakeDetector(), FakeTranscriber()).run(paused_ctx)
     assert len(paused) == 2  # uma vez no VAD, outra na transcrição
 
 
@@ -197,3 +197,20 @@ def test_missing_master_is_a_clear_per_file_failure(db: Session, settings: Setti
     db.commit()
     report = analyze_session(db, session.id, settings, AlwaysFreeGate())
     assert not report.ok and "arquivo não encontrado" in report.failures["apagado.mp4"]
+
+
+def test_long_model_names_become_a_valid_distinct_variant(ctx: StageContext) -> None:
+    from cronista.pipeline.stage import make_variant, stage_variant
+
+    long_a = "silero-vad-v5.1-onnx+faster-whisper-large-v3-turbo-int8-float16-ct2-pt-br-" + "x" * 80
+    long_b = long_a + "-b"
+    a, b = make_variant(long_a), make_variant(long_b)
+    assert len(a) <= 100 and len(b) <= 100 and a != b  # o hash separa nomes longos parecidos
+    assert make_variant("silero vad+large-v3/turbo") == "silero-vad-large-v3-turbo"
+    assert make_variant("///") == "x"
+
+    class LongName(FakeTranscriber):
+        name = long_a
+
+    stage = SpeechStage(FakeDetector(), LongName())
+    assert stage_variant(stage) == stage.variant and len(stage.variant) <= 100

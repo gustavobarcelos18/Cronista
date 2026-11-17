@@ -13,11 +13,10 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from cronista.audio.events import load_events
+from cronista.audio.events import StoredEvent, load_stored_events
 from cronista.audio.signals import FloatArray, Signal, load_signal, signal_metas
 from cronista.config import Settings
 from cronista.db.models import Artifact, Marker, MediaFile, RecordingSession
-from cronista.domain.evidence import AnalysisEvent
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 
@@ -131,19 +130,35 @@ def line_chart(
     )
 
 
-def event_lanes(events: list[AnalysisEvent], markers: list[Marker], total_frames: int) -> str:
-    kinds = sorted({e.kind for e in events})
-    if not kinds:
+def _lane_names(events: list[StoredEvent]) -> dict[int, str]:
+    """Nome da faixa de cada evento: o tipo; com mais de um produtor para o mesmo tipo, `tipo (produtor)`."""
+    producers: dict[str, set[str]] = {}
+    for stored in events:
+        producers.setdefault(stored.event.kind, set()).add(stored.producer)
+    return {
+        i: stored.event.kind
+        if len(producers[stored.event.kind]) == 1
+        else f"{stored.event.kind} ({stored.producer})"
+        for i, stored in enumerate(events)
+    }
+
+
+def event_lanes(events: list[StoredEvent], markers: list[Marker], total_frames: int) -> str:
+    names = _lane_names(events)
+    lanes = sorted(set(names.values()))
+    if not lanes:
         return '<p class="muted">Nenhum evento de áudio gravado (sem modelos nesta máquina ou nada detectado).</p>'
     lane_h = 16
-    height = PAD_T + PAD_B + lane_h * len(kinds)
+    height = PAD_T + PAD_B + lane_h * len(lanes)
     rows = []
-    for row, kind in enumerate(kinds):
+    for row, lane in enumerate(lanes):
         y = PAD_T + row * lane_h
         rows.append(
-            f'<text x="{PAD_L - 6}" y="{y + 12}" font-size="10" fill="var(--muted)" text-anchor="end">{html.escape(kind)}</text>'
+            f'<text x="{PAD_L - 6}" y="{y + 12}" font-size="10" fill="var(--muted)" text-anchor="end">{html.escape(lane)}</text>'
         )
-        for e in (e for e in events if e.kind == kind):
+        for i in (i for i, name in names.items() if name == lane):
+            e = events[i].event
+            kind = e.kind
             ev = e.evidence
             x0, x1 = _x(ev.start_frame, total_frames), _x(ev.end_frame, total_frames)
             quote = f": {ev.quote[:80]}" if ev.quote else ""
@@ -190,7 +205,7 @@ def _media_section(db: Session, media: MediaFile) -> str:
     markers = list(
         db.scalars(select(Marker).where(Marker.media_file_id == media.id).order_by(Marker.media_frame))
     )
-    events = load_events(db, media.id)
+    events = load_stored_events(db, media.id)
     signals: dict[str, Signal] = {}
     result = _result_of(db, media, "audio_signals")
     if result is not None:
@@ -198,7 +213,7 @@ def _media_section(db: Session, media: MediaFile) -> str:
 
     total = max(
         [s.end_frame for s in signals.values()]
-        + [e.evidence.end_frame for e in events]
+        + [s.event.evidence.end_frame for s in events]
         + [m.media_frame for m in markers]
         + [1]
     )
@@ -213,15 +228,21 @@ def _media_section(db: Session, media: MediaFile) -> str:
             parts.append(line_chart(signals[name], title, markers, total, fixed))
     parts.append(event_lanes(events, markers, total))
 
-    speech = [e for e in events if e.kind == "fala"]
-    if speech:
+    speech_by_producer: dict[str, list[StoredEvent]] = {}
+    for stored in events:
+        if stored.event.kind == "fala":
+            speech_by_producer.setdefault(stored.producer, []).append(stored)
+    for producer, group in speech_by_producer.items():
+        suffix = f" ({html.escape(producer)})" if len(speech_by_producer) > 1 else ""
         rows = "".join(
-            f'<tr><td class="num">{fmt_time(e.evidence.start_frame)}</td><td>{html.escape(e.evidence.quote or "")}</td>'
-            f'<td class="num">{e.evidence.confidence:.2f}</td><td>{html.escape(e.evidence.model)}</td></tr>'
-            for e in speech
+            f'<tr><td class="num">{fmt_time(s.event.evidence.start_frame)}</td>'
+            f"<td>{html.escape(s.event.evidence.quote or '')}</td>"
+            f'<td class="num">{s.event.evidence.confidence:.2f}</td><td>{html.escape(s.event.evidence.model)}</td></tr>'
+            for s in group
         )
         parts.append(
-            f"<h3>Fala transcrita</h3><table><tr><th>Início</th><th>Texto</th><th>Conf.</th><th>Modelo</th></tr>{rows}</table>"
+            f"<h3>Fala transcrita{suffix}</h3>"
+            f"<table><tr><th>Início</th><th>Texto</th><th>Conf.</th><th>Modelo</th></tr>{rows}</table>"
         )
     if markers:
         rows = "".join(

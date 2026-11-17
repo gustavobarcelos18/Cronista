@@ -10,7 +10,6 @@ import soundfile as sf
 
 from cronista.audio import dsp
 from cronista.audio.signals import (
-    Signal,
     frame_to_index,
     index_to_frame,
     load_signal,
@@ -175,5 +174,23 @@ def test_rf64_wav_is_read_in_blocks(tmp_path: Path) -> None:
     assert len(base.energy_db) == 30
 
 
-def test_signal_type_is_importable() -> None:
-    assert Signal is not None
+def test_hop_frames_must_divide_the_60fps_grid() -> None:
+    assert dsp.DspParams(hop_frames=10).per_second == 6 and dsp.DspParams().per_second == 10
+    for bad in (0, -6, 7, 8):
+        with pytest.raises(ValueError, match="precisa dividir"):
+            dsp.DspParams(hop_frames=bad)
+
+
+def test_windows_follow_the_grid_for_a_non_default_hop(tmp_path: Path) -> None:
+    """Com hop de 12 quadros (5 amostras/s) a janela de 300 s tem 1500 amostras, não um valor arredondado."""
+    params = dsp.DspParams(hop_frames=12)
+    base = dsp.analyze_track(write_wav(tmp_path / "h.wav", click_train(60, 0.8)), params, with_onset=True)
+    assert len(base.energy_db) == 300  # 60 s a 5 Hz
+    assert len(dsp.novelty(base.onset, params)) == 300
+
+
+def test_periodicity_chunks_give_the_same_result(tmp_path: Path) -> None:
+    base = dsp.analyze_track(write_wav(tmp_path / "c.wav", click_train(90, 0.8)), PARAMS, with_onset=True)
+    np.testing.assert_allclose(
+        dsp.periodicity(base.onset, PARAMS, chunk=7), dsp.periodicity(base.onset, PARAMS), atol=1e-6
+    )

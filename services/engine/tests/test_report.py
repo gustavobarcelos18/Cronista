@@ -120,3 +120,29 @@ def test_cli_analyze_and_report(
     assert runner.invoke(cli.app, ["report", "99"]).exit_code == 1
     status = runner.invoke(cli.app, ["status"])
     assert "audio_signals: done" in status.output
+
+
+def test_report_keeps_each_producer_apart(db: Session, tmp_path: Path) -> None:
+    """Dois transcritores no benchmark: uma tabela de fala por modelo e faixas separadas, nunca misturadas."""
+    from cronista.audio.events import replace_events
+    from cronista.db.models import Project
+    from tests.test_events import make_event
+
+    project = Project(name="p")
+    db.add(project)
+    db.flush()
+    session = RecordingSession(project_id=project.id, folder="x")
+    db.add(session)
+    db.flush()
+    media = MediaFile(session_id=session.id, path=str(tmp_path / "a.mp4"))
+    db.add(media)
+    db.commit()
+    replace_events(db, media.id, "speech", "vad-asr-a", [make_event("fala", 60, 120, quote="texto A")])
+    replace_events(db, media.id, "speech", "vad-asr-b", [make_event("fala", 60, 120, quote="texto B")])
+    replace_events(db, media.id, "sound_events", "mic-sed", [make_event("risada", 200, 260)])
+
+    page = render_session_report(db, session.id)
+    assert page.count("<h3>Fala transcrita") == 2
+    assert "Fala transcrita (speech:vad-asr-a)" in page and "Fala transcrita (speech:vad-asr-b)" in page
+    assert "fala (speech:vad-asr-a)" in page and "fala (speech:vad-asr-b)" in page  # faixas separadas
+    assert ">risada<" in page  # tipo com um produtor só mantém o nome simples

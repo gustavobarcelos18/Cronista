@@ -20,6 +20,8 @@ from cronista.domain.frames import FPS
 
 DB_FLOOR = -120.0
 EPS = 1e-9
+PERIODICITY_CHUNK = 2000
+"""Janelas de periodicidade por vez (2000 x 200 x 8 B = 3 MB), para a memória ficar constante."""
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,19 @@ class DspParams:
     periodicity_min_lag_s: float = 0.3
     periodicity_max_lag_s: float = 4.0
     block_s: float = 60.0
+
+    def __post_init__(self) -> None:
+        # A grade de sinais precisa cair em segundos inteiros de amostras: as janelas (em segundos) viram
+        # contagens de amostras por `per_second`, e um hop que não divide 60 as deixaria em segundos errados.
+        if self.hop_frames <= 0 or FPS % self.hop_frames:
+            raise ValueError(
+                f"hop_frames={self.hop_frames} precisa dividir {FPS} (1, 2, 3, 4, 5, 6, 10, 12…)"
+            )
+
+    @property
+    def per_second(self) -> int:
+        """Amostras de sinal por segundo (exato: `hop_frames` divide 60)."""
+        return FPS // self.hop_frames
 
     def as_dict(self) -> dict[str, float | int]:
         return dict(self.__dict__)
@@ -119,7 +134,7 @@ def analyze_track(
     hop = 0
     for block, rate in iter_mono_blocks(path, params.block_s):
         between_blocks()
-        if flux is None:
+        if hop == 0:  # primeiro bloco: a taxa de amostragem só é conhecida aqui
             hop = hop_samples(rate, params.hop_frames)
             if with_onset:
                 flux = _FluxExtractor(rate, params.n_fft, params.flux_rate_hz)
@@ -182,7 +197,7 @@ def novelty(onset: FloatArray, params: DspParams) -> FloatArray:
 
     Passos e ruído de fundo repetitivos ficam perto de 0; um som novo (explosão, grito, impacto) dispara.
     """
-    per_second = round(1.0 / params.hop_s)
+    per_second = params.per_second
     window = int(params.baseline_s * per_second)
     step = max(int(params.baseline_step_s * per_second), 1)
     med, mad = rolling_median_mad(onset, window, step)
@@ -193,20 +208,20 @@ def novelty(onset: FloatArray, params: DspParams) -> FloatArray:
 
 def energy_above_baseline(energy_db: FloatArray, params: DspParams) -> FloatArray:
     """dB acima da mediana móvel da sessão (pode ser negativo: o criador está mais quieto que o normal)."""
-    per_second = round(1.0 / params.hop_s)
+    per_second = params.per_second
     med, _ = rolling_median_mad(
         energy_db, int(params.baseline_s * per_second), max(int(params.baseline_step_s * per_second), 1)
     )
     return (energy_db - med).astype(np.float32)
 
 
-def periodicity(onset: FloatArray, params: DspParams) -> FloatArray:
+def periodicity(onset: FloatArray, params: DspParams, chunk: int = PERIODICITY_CHUNK) -> FloatArray:
     """Força da repetição regular (de 0 a 1): maior pico da autocorrelação do `onset` em janelas de ~20 s.
 
     Passos, mineração e corte de árvore repetem em ritmo constante (lag de 0,3 a 4 s). É sinal de rotina, não
     de acontecimento. Janela sem variação (silêncio ou ruído estável demais) vale 0.
     """
-    per_second = round(1.0 / params.hop_s)
+    per_second = params.per_second
     window = int(params.periodicity_window_s * per_second)
     stride = max(int(params.periodicity_stride_s * per_second), 1)
     min_lag = max(round(params.periodicity_min_lag_s * per_second), 1)
@@ -218,14 +233,18 @@ def periodicity(onset: FloatArray, params: DspParams) -> FloatArray:
         return np.zeros(n, dtype=np.float32)
 
     starts = np.arange(0, n - window + 1, stride)
-    windows = sliding_window_view(onset.astype(np.float64), window)[starts]
-    windows = windows - windows.mean(axis=1, keepdims=True)
-    energy = np.sum(windows * windows, axis=1)
-    best = np.zeros(len(starts))
-    for lag in range(min_lag, max_lag + 1):
-        ac = np.sum(windows[:, :-lag] * windows[:, lag:], axis=1)
-        best = np.maximum(best, ac)
-    flat = energy < 1e-6 * window
-    strength = np.where(flat, 0.0, np.clip(best / np.maximum(energy, EPS), 0.0, 1.0))
+    view = sliding_window_view(onset.astype(np.float64), window)
+    strength = np.empty(len(starts))
+    for first in range(0, len(starts), chunk):  # blocos de janelas: a memória não cresce com a duração
+        windows = view[starts[first : first + chunk]]
+        windows = windows - windows.mean(axis=1, keepdims=True)
+        energy = np.sum(windows * windows, axis=1)
+        best = np.zeros(len(windows))
+        for lag in range(min_lag, max_lag + 1):
+            best = np.maximum(best, np.sum(windows[:, :-lag] * windows[:, lag:], axis=1))
+        flat = energy < 1e-6 * window
+        strength[first : first + chunk] = np.where(
+            flat, 0.0, np.clip(best / np.maximum(energy, EPS), 0.0, 1.0)
+        )
     centers = starts + window // 2
     return np.interp(np.arange(n), centers, strength).astype(np.float32)

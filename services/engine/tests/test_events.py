@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from cronista.audio.events import load_events, replace_events
+from cronista.audio.events import load_events, load_stored_events, replace_events
 from cronista.db.models import Event, MediaFile, Project, RecordingSession
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 
@@ -103,3 +103,25 @@ def test_filters_by_kind_and_overlapping_window(db: Session, media_id: int) -> N
     assert [e.evidence.start_frame for e in window] == [0, 150]  # sobreposição, não só contidos
     assert load_events(db, media_id, start_frame=200, end_frame=300) == []  # bordas exclusivas
     assert [e.evidence.start_frame for e in load_events(db, media_id)] == [0, 150, 300]
+
+
+def test_point_event_at_the_window_start_is_included_but_not_at_its_end(db: Session, media_id: int) -> None:
+    replace_events(
+        db, media_id, "s", "", [make_event("momento", 600, 600), make_event("momento", 1200, 1200)]
+    )
+    inside = load_events(db, media_id, start_frame=600, end_frame=1200)
+    assert [e.evidence.start_frame for e in inside] == [600]  # janela [600, 1200): inclui 600, exclui 1200
+    assert [e.evidence.start_frame for e in load_events(db, media_id, start_frame=601, end_frame=1300)] == [
+        1200
+    ]
+    assert load_events(db, media_id, start_frame=0, end_frame=600) == []
+
+
+def test_stored_events_say_which_execution_produced_them(db: Session, media_id: int) -> None:
+    replace_events(db, media_id, "speech", "turbo", [make_event("fala", 0, 60)])
+    replace_events(db, media_id, "sound_events", "", [make_event("risada", 30, 90)])
+    stored = load_stored_events(db, media_id)
+    assert [(s.producer, s.event.kind) for s in stored] == [
+        ("speech:turbo", "fala"),
+        ("sound_events", "risada"),
+    ]

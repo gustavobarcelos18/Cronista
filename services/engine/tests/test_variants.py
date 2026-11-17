@@ -123,3 +123,27 @@ def test_unique_constraint_is_per_variant(tmp_path: Path) -> None:
     with pytest.raises(Exception, match="UNIQUE"), engine.begin() as conn:
         conn.execute(insert, {"v": "turbo"})
     engine.dispose()
+
+
+def test_montage_and_watch_only_read_the_unvaried_artifact(
+    db: Session,
+    media: MediaFile,  # noqa: F811
+    tmp_path: Path,
+) -> None:
+    from cronista.montage import _artifact_result
+
+    for variant, who in (("benchmark", "da variante"), ("", "sem variante")):
+        result_path = tmp_path / f"{variant or 'base'}.json"
+        result_path.write_text(StageResult(data={"quem": who}).model_dump_json(), encoding="utf-8")
+        db.add(
+            Artifact(
+                media_file_id=media.id,
+                stage="audio",
+                variant=variant,
+                cache_key="k",
+                result_path=str(result_path),
+            )
+        )
+    db.commit()  # a variante entra primeiro (id menor): a consulta não pode pegá-la
+    result = _artifact_result(db, media, "audio")
+    assert result is not None and result.data["quem"] == "sem variante"

@@ -17,7 +17,6 @@ from cronista.audio.ports import (
     SpeechDetector,
     Transcriber,
 )
-from cronista.audio.scream import ScreamHeuristic
 from cronista.audio.signals import HOP_FRAMES, SIGNALS_KEY, SignalMeta, write_signal
 from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
@@ -238,8 +237,6 @@ def analysis_stages(models: AudioModels) -> list[Stage]:
         stages.append(SoundEventsStage(models.classifier, GAME_TRACK))
         # Microfone: corte baixo porque risada curta dilui na janela de 10 s do AST (medido na 2C: 0,12).
         stages.append(SoundEventsStage(models.classifier, MIC_TRACK, min_score=0.1))
-    # Grito por energia e altura da voz: CPU, sem modelo (o AST não pontuou gritos na 2C).
-    stages.append(SoundEventsStage(ScreamHeuristic(), MIC_TRACK, min_score=0.0))
     return stages
 
 

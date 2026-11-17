@@ -99,18 +99,16 @@ def test_threshold_and_models_are_part_of_the_cache_key(settings: Settings) -> N
 
 
 def test_analysis_stages_depend_on_the_available_models() -> None:
-    # dev: só CPU (sinais + detector de grito por energia, que não usa modelo)
-    assert [s.name for s in analysis_stages(AudioModels())] == ["audio_signals", "sound_events"]
+    assert [s.name for s in analysis_stages(AudioModels())] == ["audio_signals"]  # dev: só CPU
     full = AudioModels(FakeDetector(), FakeTranscriber(), FakeClassifier())
     assert [s.name for s in analysis_stages(full)] == [
         "audio_signals",
         "speech",
         "sound_events",
         "sound_events",
-        "sound_events",
     ]
     only_vad = AudioModels(detector=FakeDetector())  # VAD sem transcritor não roda fala
-    assert [s.name for s in analysis_stages(only_vad)] == ["audio_signals", "sound_events"]
+    assert [s.name for s in analysis_stages(only_vad)] == ["audio_signals"]
 
 
 def test_pause_is_requested_by_the_models(ctx: StageContext) -> None:
@@ -139,8 +137,7 @@ def test_service_stores_events_once_and_keeps_variants_apart(
 
     first = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
     assert first.ok and not first.skipped
-    # fala, risada no jogo e risada no microfone (+ o detector de grito, que não achou nada)
-    assert sorted(first.events.values()) == [0, 1, 1, 1]
+    assert sorted(first.events.values()) == [1, 1, 1]  # fala, risada no jogo e risada no microfone
     again = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
     assert not again.files[Path(media.path).name].executed  # tudo em cache
     assert db.scalar(select(func.count()).select_from(Event)) == 3  # nada duplicado
@@ -177,7 +174,7 @@ def test_without_models_only_cpu_signals_run_and_the_report_says_what_was_skippe
     ingest_folder(db, fixture_folders["normal"], settings, AlwaysFreeGate())
     session_id = db.scalars(select(RecordingSession.id)).one()
     report = analyze_session(db, session_id, settings, AlwaysFreeGate())
-    assert report.ok and len(report.skipped) == 2 and not any(report.events.values())
+    assert report.ok and len(report.skipped) == 2 and report.events == {}
     (file_report,) = report.files.values()
     assert "audio_signals" in file_report.executed
 

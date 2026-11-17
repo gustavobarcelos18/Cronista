@@ -1,4 +1,5 @@
-"""Detector de grito por energia e altura da voz (sem modelo, só CPU), 2C.
+"""Detector de grito por energia e altura da voz (sem modelo, só CPU), 2C. EXPERIMENTO, desligado da análise:
+reprovado no segundo teste (0 de 8 gritos; fala aguda e grito têm a mesma altura e nível).
 
 Por que existe: o AST (janela de 10 s) não pontuou nenhum grito do criador. O que separa grito de
 fala empolgada, medido no teste de voz de 2026-11-17, é a altura da voz: grito 330 a 410 Hz, fala

@@ -57,10 +57,27 @@ def _edge_density(frames: GrayFrames, threshold: int) -> FloatArray:
     return ((dx + dy) > threshold).reshape(len(frames), -1).mean(axis=1).astype(np.float32)
 
 
+SHIFT_CHUNK = 100
+"""Quadros por pedaço na FFT: o rfft2 devolve complex128 e um bloco inteiro (1500) passaria de 1 GB."""
+
+
 def _global_shift(
     prev: GrayFrames, cur: GrayFrames, flat: npt.NDArray[np.bool_]
 ) -> tuple[FloatArray, FloatArray]:
     """Deslocamento global entre quadros por correlação de fase: (módulo em px, confiança de 0 a 1)."""
+    parts = [
+        _chunk_shift(prev[i : i + SHIFT_CHUNK], cur[i : i + SHIFT_CHUNK], flat[i : i + SHIFT_CHUNK])
+        for i in range(0, len(cur), SHIFT_CHUNK)
+    ]
+    return (
+        np.concatenate([m for m, _ in parts]).astype(np.float32),
+        np.concatenate([c for _, c in parts]).astype(np.float32),
+    )
+
+
+def _chunk_shift(
+    prev: GrayFrames, cur: GrayFrames, flat: npt.NDArray[np.bool_]
+) -> tuple[FloatArray, FloatArray]:
     a = prev.astype(np.float32) - prev.mean(axis=(1, 2), keepdims=True)
     b = cur.astype(np.float32) - cur.mean(axis=(1, 2), keepdims=True)
     cross = np.fft.rfft2(b) * np.conj(np.fft.rfft2(a))

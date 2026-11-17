@@ -127,3 +127,29 @@ def test_idle_vem_desligado_e_cena_escura_com_hud_nao_e_loading() -> None:
     dark[:, 150:170, 20:200] = 90  # HUD
     dark = np.clip(dark + rng.integers(-2, 3, size=dark.shape), 0, 255).astype(np.uint8)
     assert not [sp for sp in detect(_signals(dark, 30), ScreenParams()) if sp.kind == "loading"]
+
+
+def test_camera_parada_nao_dispara_em_menu_nem_em_quadro_liso() -> None:
+    frames, truth = build()
+    spans = detect(_signals(frames, 40), ScreenParams(idle_enabled=True))
+    parked = [(sp.start / 5, sp.end / 5) for sp in spans if sp.payload.get("tipo") == "parada"]
+    for item in truth:
+        if item.kind in ("menu", "loading", "idle"):
+            assert not any(_overlap(p, (item.start_s, item.end_s)) > 0.5 for p in parked), item.kind
+
+    flat = np.full((60, 90, 160), 200, dtype=np.uint8)  # tela branca lisa
+    assert not [sp for sp in detect(_signals(flat, 30), ScreenParams()) if sp.kind == "movimento_camera"]
+
+
+def test_shift_em_pedacos_igual_ao_bloco_inteiro() -> None:
+    from cronista.video import signals as vsignals
+
+    frames, _ = build()
+    small = frames[:, ::2, ::2]
+    whole = block_signals(small, None, SignalParams()).values["shift"]
+    vsignals.SHIFT_CHUNK = 7
+    try:
+        chunked = block_signals(small, None, SignalParams()).values["shift"]
+    finally:
+        vsignals.SHIFT_CHUNK = 100
+    assert np.allclose(whole, chunked)

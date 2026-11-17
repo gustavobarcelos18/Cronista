@@ -23,6 +23,7 @@ class ScreenParams:
     # claude_teste.mp4, conferido de olho pelo criador); por isso 0,03 e movimento quase nulo.
     dark_luma: float = 0.03
     dark_motion: float = 0.004
+    # PROVISÓRIO: limiares calibrados só no claude_teste.mp4; a 3C os valida em dois gêneros.
     # `idle` desligado: com bordas e parada não se separa personagem parado de página de texto escura
     # (conferido de olho no claude_teste.mp4). Volta na 3B, com embeddings.
     idle_enabled: bool = False
@@ -36,6 +37,7 @@ class ScreenParams:
     still_shift_px: float = 0.5
     camera_min_s: float = 2.0
     cut_hist: float = 0.5  # distância de histograma de um corte de cena
+    flat_std: float = 0.02  # quadro liso (tela branca, fade): não há câmera para medir
     merge_gap_s: float = 0.6  # lacunas menores que isso não quebram um trecho
 
 
@@ -99,7 +101,9 @@ def detect(signals: Mapping[str, FloatArray], params: ScreenParams) -> list[Scre
         out.append(
             ScreenSpan("movimento_camera", a, b, 0.6, {"tipo": "panoramica", "shift_px": mean(shift, a, b)})
         )
-    held = (shift < params.still_shift_px) & (motion < 0.02) & ~dark
+    # Câmera parada com a cena viva: tela estática (menu, pausa, leitura) e quadro liso não contam.
+    textured = signals["luma_std"] >= params.flat_std
+    held = (shift < params.still_shift_px) & (motion < 0.02) & ~static & textured & ~dark
     for a, b in _runs(held, camera_len, gap):
         out.append(
             ScreenSpan("movimento_camera", a, b, 0.6, {"tipo": "parada", "shift_px": mean(shift, a, b)})

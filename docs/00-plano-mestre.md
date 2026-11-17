@@ -1054,6 +1054,9 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Fluxo git: branch por fase, commits no nome do criador, revisão com Opus, CI no GitHub Actions.
 - O "dia" é fictício (unidade de progresso); hotkey `Novo dia` obrigatória (seção 4).
 - Fala ao vivo tem prioridade; o roteiro é complemento explicativo (seção 6).
+- Studio (Fase 7, histórico §56): decisões do criador só por inserção e presas à janela do segmento; roteiro, montagem e
+  Shorts usam os segmentos com as decisões aplicadas; escrita da API só da origem do Studio; recalibração de pesos só vale
+  depois de aceita; feedback em texto fica guardado sem interpretação até o benchmark do LLM local.
 - Contêiner Hybrid MP4; marcadores do OBS dentro do arquivo + diário de eventos, com reconciliação (seções 2 e 4).
 - Sem facecam (seções 6.6 e 6.7).
 - Produto: **um único vídeo de 30–50 min** por série, montado a partir de sessões de duração variável (3 h, 6 h, 10 h…) (seções 0.1, 1 e 2).

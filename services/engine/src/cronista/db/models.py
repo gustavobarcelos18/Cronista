@@ -227,6 +227,8 @@ class SegmentDecision(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     media_file_id: Mapped[int] = mapped_column(ForeignKey("media_file.id"))
     seg_start_s: Mapped[int] = mapped_column(Integer)
+    seg_end_s: Mapped[int | None] = mapped_column(Integer, default=None)
+    """Fim do segmento no momento da decisão; prende a decisão àquela janela (nulo = só pelo início)."""
     decision: Mapped[str] = mapped_column(String(12))  # aceito | rejeitado | ajustado
     start_s: Mapped[float | None] = mapped_column(Float, default=None)
     end_s: Mapped[float | None] = mapped_column(Float, default=None)

@@ -46,3 +46,8 @@ Plano de execução (detalhes do produto na seção "Fase 7" do [plano mestre](0
   a partir do feedback depende dessa interpretação). Novo sinal `novidade` nas `features` do segmento (segmentos antigos contam 0
   até rodar `cronista relevance` de novo). **Falta:** benchmark e interpretação do feedback; perfis de jogo YAML gerados do
   aprendizado; validar com decisões reais.
+- **Correções do `/code-review` (PR 20):** prompt cancelado do Ajustar não vira 0; decisão presa à janela do segmento
+  (migração 0010) e ajuste validado contra duração e vizinhos; escrita da API só da origem do Studio (CSRF); SSE assíncrono,
+  sem migrar a cada tick e com teto de duração; `save_script` grava em temporário antes de trocar. **Ficam abertas:** o
+  story-pack pode estar defasado em relação às decisões (rode `cronista story` de novo antes de editar o roteiro) e o estado
+  do re-export só existe em memória.

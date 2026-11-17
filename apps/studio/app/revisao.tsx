@@ -80,7 +80,8 @@ export default function Revisao() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      setError(`decisão: ${res.status}`);
+      const body = (await res.json().catch(() => null)) as { detail?: unknown } | null;
+      setError(typeof body?.detail === "string" ? body.detail : `decisão: ${res.status}`);
       return;
     }
     const updated = (await res.json()) as Segment;
@@ -88,10 +89,17 @@ export default function Revisao() {
   }
 
   function adjust(g: Segment) {
-    const start = Number(prompt("Novo início (s do arquivo)", String(g.adj_start_s ?? g.start_s)));
-    const end = Number(prompt("Novo fim (s do arquivo)", String(g.adj_end_s ?? g.end_s)));
+    // Cancelar (null) ou deixar vazio não pode virar 0: aborta o ajuste inteiro.
+    const askedStart = prompt("Novo início (s do arquivo)", String(g.adj_start_s ?? g.start_s));
+    if (askedStart === null || askedStart.trim() === "") return;
+    const askedEnd = prompt("Novo fim (s do arquivo)", String(g.adj_end_s ?? g.end_s));
+    if (askedEnd === null || askedEnd.trim() === "") return;
+    const start = Number(askedStart.replace(",", "."));
+    const end = Number(askedEnd.replace(",", "."));
     if (Number.isFinite(start) && Number.isFinite(end)) {
       void decide(g, { decision: "ajustado", start_s: start, end_s: end });
+    } else {
+      setError("Ajuste cancelado: informe números em segundos.");
     }
   }
 

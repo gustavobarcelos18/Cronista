@@ -147,13 +147,18 @@ def save_script(folder: Path, script: Script) -> ValidationReport:
     if not report.ok:
         raise ScriptSaveError("roteiro inválido", report.errors)
     current = folder / "roteiro.json"
+    saved = script.model_copy(update={"lines": report.lines})
+    starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
+    # Grava o novo em arquivos temporários ANTES de mexer no atual: se a escrita falhar, o roteiro vigente
+    # continua no lugar e o histórico não fica com buraco.
+    tmp_json, tmp_srt = folder / "roteiro.json.tmp", folder / "roteiro.srt.tmp"
+    tmp_json.write_text(saved.model_dump_json(indent=1), encoding="utf-8")
+    tmp_srt.write_text(to_srt(report.lines, starts), encoding="utf-8")
     if current.is_file():
         n = 1
         while (folder / f"roteiro.v{n}.json").exists():
             n += 1
         current.replace(folder / f"roteiro.v{n}.json")
-    saved = script.model_copy(update={"lines": report.lines})
-    starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
-    current.write_text(saved.model_dump_json(indent=1), encoding="utf-8")
-    (folder / "roteiro.srt").write_text(to_srt(report.lines, starts), encoding="utf-8")
+    tmp_json.replace(current)
+    tmp_srt.replace(folder / "roteiro.srt")
     return report

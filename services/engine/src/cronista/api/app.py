@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractContextManager
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -23,8 +26,10 @@ from cronista.db.models import Artifact, Feedback, Job, Marker, MediaFile, Proje
 from cronista.db.session import open_db
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
+from cronista.montage import SessionPlanError, _load_source
+from cronista.relevance.service import STAGE as RELEVANCE_STAGE
 from cronista.relevance.service import load_segments
-from cronista.review.decisions import current_decisions, record_decision
+from cronista.review.decisions import current_decisions, decision_for, record_decision
 from cronista.review.learning import MIN_DECISIONS, WEIGHT_NAMES, accept, params_for_project, propose
 from cronista.review.panel import SeriesPanelOut, series_panel_full
 from cronista.review.reexport import ProfileLoader, ReexportJobs
@@ -161,16 +166,43 @@ def _envelope(values: np.ndarray, points: int) -> list[float]:
     return [round(float(b.max()), 1) for b in buckets]
 
 
+MAX_STREAM_S = 6 * 3600.0
+"""Teto de um fluxo SSE: um job "running" órfão (processo morto) não prende a conexão para sempre."""
+
+
+def _media_duration(db: Session, media_id: int) -> float | None:
+    media = db.get(MediaFile, media_id)
+    try:
+        return _load_source(db, media).duration_s if media else None
+    except SessionPlanError:
+        return None  # ainda não ingerido: sem duração para conferir
+
+
 def create_app(
     settings: Settings, origins: list[str] | None = None, profile_loader: ProfileLoader | None = None
 ) -> FastAPI:
     app = FastAPI(title="Cronista Engine", version="0.1.0")
+    allowed = origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins or ["http://localhost:3000", "http://127.0.0.1:3000"],
-        allow_methods=["GET", "POST", "PUT"],
-        allow_headers=["*"],
+        CORSMiddleware, allow_origins=allowed, allow_methods=["GET", "POST", "PUT"], allow_headers=["*"]
     )
+
+    @app.middleware("http")
+    async def block_foreign_writes(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Escrita só da origem do Studio: POST sem corpo é "requisição simples" e o CORS não o barra, então
+        qualquer site aberto no navegador poderia disparar exportação ou aceite de pesos em 127.0.0.1."""
+        origin = request.headers.get("origin")
+        if request.method not in ("GET", "HEAD", "OPTIONS") and origin is not None and origin not in allowed:
+            return JSONResponse({"detail": "origem não autorizada"}, status_code=403)
+        return await call_next(request)
+
+    with open_db(settings.db_path):  # migra uma vez; as requisições reabrem o banco sem rodar o Alembic
+        pass
+
+    def _connect() -> AbstractContextManager[Session]:
+        return open_db(settings.db_path, migrate=False)
 
     jobs = ReexportJobs(settings, profile_loader)
     app.state.reexport = jobs
@@ -182,7 +214,7 @@ def create_app(
     @app.post("/sessions/{session_id}/export", response_model=ExportStatusOut, status_code=202)
     def start_export(session_id: int, target_min: float = Query(40.0, gt=0, le=240)) -> ExportStatusOut:
         """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou."""
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             if db.get(RecordingSession, session_id) is None:
                 raise HTTPException(404, "sessão não encontrada")
         if not jobs.start(session_id, target_min * 60):
@@ -190,7 +222,7 @@ def create_app(
         return ExportStatusOut(**asdict(jobs.status(session_id)))
 
     def _progress(session_id: int) -> ProgressOut:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             rows = db.execute(
                 select(Job.status, Job.stage)
                 .join(MediaFile, Job.media_file_id == MediaFile.id)
@@ -208,21 +240,26 @@ def create_app(
         return _progress(session_id)
 
     @app.get("/sessions/{session_id}/progress/stream")
-    def progress_stream(session_id: int, interval_s: float = Query(1.0, ge=0.05, le=10)) -> StreamingResponse:
+    def progress_stream(
+        request: Request, session_id: int, interval_s: float = Query(1.0, ge=0.05, le=10)
+    ) -> StreamingResponse:
         """SSE: um evento `progress` a cada mudança; encerra quando não há mais job pendente ou rodando."""
 
-        def events() -> Iterator[str]:
+        async def events() -> AsyncIterator[str]:
             last: str | None = None
-            while True:
-                snap = _progress(session_id)
+            started = time.monotonic()
+            while time.monotonic() - started < MAX_STREAM_S:
+                if await request.is_disconnected():
+                    return  # aba fechada: libera a conexão em vez de esperar o job acabar
+                snap = await run_in_threadpool(_progress, session_id)
                 data = snap.model_dump_json()
                 if data != last:
                     last = data
                     yield f"event: progress\ndata: {data}\n\n"
                 if not snap.active:
-                    yield "event: end\ndata: {}\n\n"
-                    return
-                time.sleep(interval_s)
+                    break
+                await asyncio.sleep(interval_s)
+            yield "event: end\ndata: {}\n\n"
 
         return StreamingResponse(
             events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
@@ -244,7 +281,7 @@ def create_app(
 
     @app.get("/projects/{project_id}/learning", response_model=LearningOut)
     def get_learning(project_id: int) -> LearningOut:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             if db.get(Project, project_id) is None:
                 raise HTTPException(404, "projeto não encontrado")
             return _learning(db, project_id)
@@ -252,7 +289,7 @@ def create_app(
     @app.post("/projects/{project_id}/learning/accept", response_model=LearningOut)
     def accept_learning(project_id: int) -> LearningOut:
         """Aceita a proposta atual: vira calibração do projeto (só inserção); vale na próxima relevância."""
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             if db.get(Project, project_id) is None:
                 raise HTTPException(404, "projeto não encontrado")
             proposal = propose(db, project_id)
@@ -267,7 +304,7 @@ def create_app(
         text = body.text.strip()
         if not text:
             raise HTTPException(422, "feedback vazio")
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             media = db.get(MediaFile, media_id)
             if media is None:
                 raise HTTPException(404, "arquivo não encontrado")
@@ -283,7 +320,7 @@ def create_app(
 
     @app.get("/series", response_model=SeriesPanelOut)
     def series() -> SeriesPanelOut:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             return series_panel_full(db)
 
     @app.get("/health")
@@ -292,13 +329,13 @@ def create_app(
 
     @app.get("/sessions", response_model=list[SessionOut])
     def list_sessions() -> list[SessionOut]:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             rows = db.scalars(select(RecordingSession).order_by(RecordingSession.id)).all()
             return [_session_out(s) for s in rows]
 
     @app.get("/sessions/{session_id}", response_model=SessionOut)
     def get_session(session_id: int) -> SessionOut:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             row = db.get(RecordingSession, session_id)
             if row is None:
                 raise HTTPException(404, "sessão não encontrada")
@@ -306,7 +343,7 @@ def create_app(
 
     @app.get("/sessions/{session_id}/jobs", response_model=list[JobOut])
     def session_jobs(session_id: int) -> list[JobOut]:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             rows = db.scalars(
                 select(Job)
                 .join(MediaFile, Job.media_file_id == MediaFile.id)
@@ -328,7 +365,7 @@ def create_app(
 
     @app.get("/sessions/{session_id}/markers", response_model=list[MarkerOut])
     def session_markers(session_id: int) -> list[MarkerOut]:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             rows = db.scalars(
                 select(Marker).where(Marker.session_id == session_id).order_by(Marker.media_frame)
             ).all()
@@ -363,7 +400,7 @@ def create_app(
 
     @app.get("/media/{media_id}/segments", response_model=list[SegmentOut])
     def media_segments(media_id: int) -> list[SegmentOut]:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             if db.get(MediaFile, media_id) is None:
                 raise HTTPException(404, "arquivo não encontrado")
             decisions = current_decisions(db, media_id)
@@ -376,7 +413,7 @@ def create_app(
                     razoes=g.razoes,
                     markers=g.markers,
                     features=g.features,
-                    decision=d.decision if (d := decisions.get(g.start_s)) else None,
+                    decision=d.decision if (d := decision_for(decisions, g)) else None,
                     adj_start_s=d.start_s if d else None,
                     adj_end_s=d.end_s if d else None,
                 )
@@ -386,14 +423,23 @@ def create_app(
     @app.post("/media/{media_id}/segments/{seg_start_s}/decision", response_model=SegmentOut)
     def decide_segment(media_id: int, seg_start_s: int, body: DecisionIn) -> SegmentOut:
         """Aceita, rejeita ou ajusta os limites de um segmento. Só insere (histórico preservado)."""
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             if db.get(MediaFile, media_id) is None:
                 raise HTTPException(404, "arquivo não encontrado")
             seg = next((g for g in load_segments(db, media_id) if g.start_s == seg_start_s), None)
             if seg is None:
                 raise HTTPException(404, "segmento não encontrado")
             try:
-                d = record_decision(db, media_id, seg_start_s, body.decision, body.start_s, body.end_s)
+                d = record_decision(
+                    db,
+                    media_id,
+                    seg_start_s,
+                    body.decision,
+                    body.start_s,
+                    body.end_s,
+                    seg_end_s=seg.end_s,
+                    duration_s=_media_duration(db, media_id),
+                )
             except ValueError as e:
                 raise HTTPException(422, str(e)) from e
             return SegmentOut(
@@ -412,7 +458,7 @@ def create_app(
     @app.get("/media/{media_id}/events", response_model=list[EventOut])
     def media_events(media_id: int) -> list[EventOut]:
         """Eventos de áudio (fala, sons, grito) em ordem de tempo; a relevância fica de fora."""
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             if db.get(MediaFile, media_id) is None:
                 raise HTTPException(404, "arquivo não encontrado")
             return [
@@ -427,12 +473,12 @@ def create_app(
                     quote=s.event.evidence.quote,
                 )
                 for s in load_stored_events(db, media_id)
-                if s.stage != "relevance"
+                if s.stage != RELEVANCE_STAGE
             ]
 
     @app.get("/media/{media_id}/waveform", response_model=WaveformOut)
     def media_waveform(media_id: int, points: int = Query(800, ge=10, le=4000)) -> WaveformOut:
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             if db.get(MediaFile, media_id) is None:
                 raise HTTPException(404, "arquivo não encontrado")
             artifact = db.scalar(
@@ -460,7 +506,7 @@ def create_app(
     @app.get("/media/{media_id}/video")
     def media_video(media_id: int) -> FileResponse:
         """Master normalizado (H.264 MP4); o FileResponse atende `Range`, então o player pode buscar."""
-        with open_db(settings.db_path) as db:
+        with _connect() as db:
             artifact = db.scalar(
                 select(Artifact).where(
                     Artifact.media_file_id == media_id,

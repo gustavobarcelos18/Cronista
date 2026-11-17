@@ -265,3 +265,84 @@ def test_api_painel_da_serie(settings: Settings, db: Session) -> None:
 
     record_decision(db, 1, 60, "rejeitado")  # rejeitar baixa a estimativa
     assert client.get("/series").json()["total_min"] == 0.5
+
+
+def test_decisao_presa_a_janela_e_ajuste_validado(settings: Settings, db: Session) -> None:
+    from cronista.audio.events import replace_events
+    from cronista.relevance.engine import RelevanceParams, Segment
+    from cronista.relevance.service import segments_to_events
+    from cronista.review.decisions import load_effective_segments
+
+    _seed(db)
+    params = RelevanceParams()
+    replace_events(
+        db, 1, "relevance", "",
+        segments_to_events([Segment(10, 20, "momento", 0.8), Segment(30, 40, "momento", 0.7)], params),
+    )  # fmt: skip
+    client = TestClient(create_app(settings))
+    assert client.post("/media/1/segments/10/decision", json={"decision": "rejeitado"}).status_code == 200
+    assert [s.start_s for s in load_effective_segments(db, 1)] == [30]
+
+    # relevância recalculada: outro trecho no mesmo segundo, com outra janela; a rejeição não vale para ele
+    replace_events(db, 1, "relevance", "", segments_to_events([Segment(10, 25, "momento", 0.6)], params))
+    assert [s.start_s for s in load_effective_segments(db, 1)] == [10]
+    assert client.get("/media/1/segments").json()[0]["decision"] is None
+
+    replace_events(
+        db, 1, "relevance", "",
+        segments_to_events([Segment(10, 20, "momento", 0.8), Segment(30, 40, "momento", 0.7)], params),
+    )  # fmt: skip
+    over = client.post(
+        "/media/1/segments/10/decision", json={"decision": "ajustado", "start_s": 12, "end_s": 35}
+    )
+    assert over.status_code == 422 and "invade" in over.json()["detail"]
+    ok = client.post(
+        "/media/1/segments/10/decision", json={"decision": "ajustado", "start_s": 12, "end_s": 28}
+    )
+    assert ok.status_code == 200
+
+
+def test_api_recusa_escrita_de_origem_estranha(settings: Settings, db: Session) -> None:
+    _seed(db)
+    client = TestClient(create_app(settings))
+    evil = {"Origin": "https://site-qualquer.example"}
+    assert client.post("/sessions/1/export", headers=evil).status_code == 403
+    assert client.post("/projects/1/learning/accept", headers=evil).status_code == 403
+    assert client.get("/sessions", headers=evil).status_code == 200  # leitura segue regida pelo CORS
+    studio = {"Origin": "http://localhost:3000"}
+    assert client.post("/projects/1/learning/accept", headers=studio).status_code == 409  # passou do filtro
+
+
+def test_salvar_roteiro_falha_sem_perder_o_atual(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    from cronista.story import service
+    from cronista.story.models import Script, ScriptLine
+
+    folder = settings.data_dir / "story" / "1"
+    folder.mkdir(parents=True)
+    pack = {
+        "capitulos": [
+            {
+                "beats": [
+                    {
+                        "segmento_id": "s-1",
+                        "inicio_s": 1,
+                        "fim_s": 30,
+                        "lacunas": [{"inicio_s": 1, "fim_s": 20}],
+                    }
+                ]
+            }
+        ]
+    }
+    (folder / "story-pack.json").write_text(json.dumps(pack), encoding="utf-8")
+    service.save_script(folder, Script(lines=[ScriptLine(segment_id="s-1", text="Primeira versão.")]))
+
+    def boom(*_a: object, **_k: object) -> str:
+        raise OSError("disco cheio")
+
+    monkeypatch.setattr(service, "to_srt", boom)
+    with pytest.raises(OSError):
+        service.save_script(folder, Script(lines=[ScriptLine(segment_id="s-1", text="Segunda versão.")]))
+    assert "Primeira" in (folder / "roteiro.json").read_text(encoding="utf-8")  # o atual ficou intacto
+    assert not (folder / "roteiro.v1.json").exists()

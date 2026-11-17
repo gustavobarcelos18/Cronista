@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from cronista.db.models import MediaFile, RecordingSession, WeightCalibration
 from cronista.relevance.engine import RelevanceParams
 from cronista.relevance.service import load_segments
-from cronista.review.decisions import current_decisions
+from cronista.review.decisions import current_decisions, decision_for
 
 FEATURES = ("marcador", "emocao", "fala", "novidade", "pausa")
 WEIGHT_NAMES = ("w_marker", "w_emotion", "w_speech", "w_novelty", "w_pause")
@@ -65,7 +65,7 @@ def collect_labeled(db: Session, project_id: int) -> tuple[np.ndarray, np.ndarra
         if not decisions:
             continue
         for seg in load_segments(db, media_id):
-            d = decisions.get(seg.start_s)
+            d = decision_for(decisions, seg)
             if d is None:
                 continue
             rows.append([float(seg.features.get(f, 0.0)) for f in FEATURES])
@@ -106,6 +106,10 @@ def propose(db: Session, project_id: int) -> Proposal | None:
         delta = weights[n] - base[n]
         verb = "sobe" if delta > 0.01 else "desce" if delta < -0.01 else "fica"
         explanation.append(f"{LABELS[n]}: {verb} ({base[n]:.2f} → {weights[n]:.2f})")
+    explanation.append(
+        f"Base: {kept} mantidos e {removed} tirados. Só entram trechos decididos; revisar também os do "
+        "meio da nota evita que a sugestão só reforce a nota atual."
+    )
     return Proposal(weights, len(y), kept, removed, explanation)
 
 

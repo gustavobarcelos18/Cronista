@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from cronista.audio.events import load_events, replace_events
+from cronista.audio.events import load_active_events, load_events, replace_events
 from cronista.db.models import Marker, MediaFile, RecordingSession
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 from cronista.domain.frames import FPS, frame_to_seconds
@@ -80,7 +80,7 @@ def relevance_session(
 
 
 def _one_file(db: Session, media: MediaFile, params: RelevanceParams) -> FileRelevance:
-    events = [e for e in load_events(db, media.id) if e.kind != "segmento"]
+    events = [e for e in load_active_events(db, media.id) if e.kind != "segmento"]
     markers = [
         MarkerRef(m.marker_id, m.kind, frame_to_seconds(m.media_frame))
         for m in db.scalars(select(Marker).where(Marker.media_file_id == media.id))

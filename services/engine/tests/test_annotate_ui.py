@@ -22,3 +22,23 @@ def test_pagina_embute_dados_sem_quebrar_script(tmp_path: Path) -> None:
         tmp_path / "p.mp4", [{"cls": "fala", "start": 0, "end": 1, "note": "</script>"}], "x"
     )
     assert "</script>" not in page.split("const D=")[1].split("\n")[0]
+
+
+def test_saved_rows_key_depends_on_mode_and_suggestions(tmp_path: Path) -> None:
+    import re
+
+    from cronista.audio.annotate_ui import render_annotator
+
+    video = tmp_path / "v.mp4"
+    sug_a: list[dict[str, object]] = [{"cls": "menu", "start": 1.0, "end": 5.0, "note": "", "conf": 0.5}]
+    sug_b: list[dict[str, object]] = [{"cls": "menu", "start": 2.0, "end": 6.0, "note": "", "conf": 0.5}]
+
+    def key(page: str) -> str:
+        match = re.search(r'"key": "([^"]+)"', page)
+        assert match
+        return match.group(1)
+
+    audio = key(render_annotator(video, sug_a, "t", "audio"))
+    visual = key(render_annotator(video, sug_a, "t", "visual"))
+    regenerated = key(render_annotator(video, sug_b, "t", "visual"))
+    assert len({audio, visual, regenerated}) == 3

@@ -259,11 +259,14 @@ def broll_table(
     rows = []
     for ev, data in zip(clips, thumbs, strict=True):
         image = f'<img src="{data}" alt="B-roll" width="160">' if data else ""
-        tags = ", ".join(str(t) for t in ev.payload.get("tags", []))
+        tags = html.escape(", ".join(str(t) for t in ev.payload.get("tags", [])))
         rows.append(
             f'<tr><td class="num">{ev.evidence.start_frame / FPS:.0f} s</td>'
             f'<td class="num">{(ev.evidence.end_frame - ev.evidence.start_frame) / FPS:.0f} s</td>'
-            f'<td>{ev.payload.get("movimento", "")}</td><td class="num">{ev.evidence.confidence:.2f}</td>'
+            f"<td>{html.escape(str(ev.payload.get('movimento', '')))}</td>"
+            f"<td>{html.escape(str(ev.payload.get('clima', '')))}</td>"
+            f"<td>{html.escape(str(ev.payload.get('hud', '')))}</td>"
+            f'<td class="num">{ev.evidence.confidence:.2f}</td>'
             f"<td>{tags}</td><td>{image}</td></tr>"
         )
     return (

@@ -17,7 +17,9 @@ import os
 import traceback
 from pathlib import Path
 
-KIT_DIR = Path(os.environ.get("KIT_DIR", r"D:\EditorVideo\data\prod\kit-resolve"))
+# `KIT_DIR` (variável de ambiente) aponta a pasta do kit; sem ela vale a pasta do repositório, se o script
+# estiver nele. Dentro do Resolve o script é copiado para fora do repositório, então a variável é obrigatória.
+KIT_DIR = Path(os.environ.get("KIT_DIR") or Path(__file__).resolve().parents[2] / "data" / "prod" / "kit-resolve")
 PROJECT = "Cronista-kit-teste"
 RESULTS: list[str] = []
 

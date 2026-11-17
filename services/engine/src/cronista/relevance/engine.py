@@ -290,7 +290,7 @@ def _score(
     if penalty > 0.005:
         reasons.append(f"menu/loading/idle -{penalty:.2f}")
 
-    if pa >= p.pause_frac:
+    if pa >= p.pause_frac and not kinds:  # o voto do criador (marcador) nunca perde para o descarte
         dominant = max(pause_by_kind, key=lambda k: float(pause_by_kind[k][a:b].sum()))
         classe = "descartavel"
         reasons.append(f"tela dominante: {dominant}")

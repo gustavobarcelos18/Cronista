@@ -171,6 +171,8 @@ def set_state(
         raise EvidenceError("estado vindo da fala precisa de citação literal")
     if origin == "auto" and source == "humano":
         raise EvidenceError("fonte humana exige origem humana")
+    if source not in ("transcricao", "humano") and (end_frame < start_frame or end_frame == 0):
+        raise EvidenceError(f"estado vindo de '{source}' precisa do intervalo de quadros da evidência")
     prior = current_state(db, objective_id, session_id)
     row = ObjectiveState(
         objective_id=objective_id,
@@ -206,6 +208,7 @@ def discover(
     speech: Sequence[AnalysisEvent],
     extractor: ObjectiveExtractor,
     corroboration: Sequence[tuple[int, int]] = (),
+    failure_corroboration: Sequence[tuple[int, int]] = (),
 ) -> DiscoveryReport:
     """Roda o extrator e grava. Citação que não confere é descartada; declaração fica `proposto` (hipótese).
 
@@ -219,10 +222,16 @@ def discover(
             continue
         obj = add_objective(db, project_id, cand.title, cand.kind)
         state = cand.state
-        if state is ObjState.CONCLUIDO and not any(
-            a - 30 * FPS <= cand.end_frame and cand.start_frame <= b + 30 * FPS for a, b in corroboration
+        marks = {ObjState.CONCLUIDO: corroboration, ObjState.FALHOU: failure_corroboration}.get(state)
+        if marks is not None and not any(
+            a - 30 * FPS <= cand.end_frame and cand.start_frame <= b + 30 * FPS for a, b in marks
         ):
-            state = ObjState.INCERTO
+            state = (
+                ObjState.INCERTO
+            )  # declaração não é conclusão nem falha: sem marcador por perto, só hipótese
+        prior = current_state(db, obj.id, session_id)
+        if prior is not None and prior.state == state.value and prior.ev_quote == cand.quote:
+            continue  # nada mudou: reexecutar não cria transição falsa nem engorda a tabela
         set_state(
             db, obj.id, session_id, state, source="transcricao", quote=cand.quote,
             start_frame=cand.start_frame, end_frame=cand.end_frame, confidence=cand.confidence,

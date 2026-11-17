@@ -57,7 +57,7 @@ def crop(frame: Any, region: HudRegionSpec) -> Any:
 class HudTextStage:
     name = "video_hud_text"
     version = "1"
-    needs: tuple[str, ...] = ()
+    needs: tuple[str, ...] = ("normalize",)
     uses_gpu = False  # OCR em CPU (ONNX)
 
     def __init__(
@@ -92,7 +92,8 @@ class HudTextStage:
             path = write_events_file(ctx.out_dir, [])
             warnings.append("perfil sem regiões de HUD: nada a ler")
             return StageResult(files=[path], data={EVENTS_KEY: path, "count": 0}, warnings=warnings)
-        master = Path(ctx.media_path)
+        # O master normalizado (remux/8 bits), não o original: um MP4 interrompido só abre depois do remux.
+        master = Path(str(ctx.inputs["normalize"].data.get("media", ctx.media_path)))
         if not master.is_file():
             raise StageError(f"master não encontrado: {master}")
         reads: dict[str, list[tuple[float, str]]] = {r.name: [] for r in self.regions}
@@ -106,6 +107,7 @@ class HudTextStage:
                 start_s=start,
                 end_s=end,
             ):
+                ctx.wait_for_gpu()  # pausa com o OBS gravando ou jogo em tela cheia (CLAUDE.md)
                 texts = self.reader.read([crop(frame, r) for r in self.regions])
                 for region, text in zip(self.regions, texts, strict=True):
                     reads[region.name].append((sec, clean(text, region.read)))

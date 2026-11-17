@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from cronista.audio.events import load_events
+from cronista.audio.events import load_active_events
 from cronista.db.models import Marker, Objective, RecordingSession
 from cronista.domain.evidence import AnalysisEvent
 from cronista.relevance.engine import Segment
@@ -64,13 +64,16 @@ def build_story(
         if not segments:
             continue
         files.append((media.id, segments))
-        events = load_events(db, media.id)
+        events = load_active_events(db, media.id)
         speech = speech_events([e for e in events if e.kind == "fala"])
         speech_by_file[media.id] = speech
         marks = list(db.scalars(select(Marker).where(Marker.media_file_id == media.id)))
         kinds.update({m.marker_id: m.kind for m in marks})
         corroboration = [(m.media_frame, m.media_frame) for m in marks if m.kind == "conquista"]
-        part = discover(db, project.id, session_id, media.id, speech, RuleExtractor(known), corroboration)
+        failures = [(m.media_frame, m.media_frame) for m in marks if m.kind == "morte_falha"]
+        part = discover(
+            db, project.id, session_id, media.id, speech, RuleExtractor(known), corroboration, failures
+        )
         discovery.confirmed += part.confirmed
         discovery.hypotheses += part.hypotheses
         discovery.rejected += part.rejected

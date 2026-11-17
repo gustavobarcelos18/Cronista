@@ -31,7 +31,7 @@ from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
 from cronista.ingest.service import SessionConflictError, ingest_folder
 from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
-from cronista.pipeline import recover_orphans
+from cronista.pipeline import StageError, recover_orphans
 from cronista.preview import PreviewError, build_preview
 from cronista.profiles import build_models_with_profile
 from cronista.recorder.feedback import ConsoleFeedback
@@ -132,6 +132,11 @@ def analyze(
     """Análise da sessão: áudio (sinais, fala, eventos) e vídeo (cenas, menu, loading, idle, câmera)."""
     settings = load_settings()
     setup_logging(settings.log_level)
+    try:
+        video_models = build_models_with_profile(settings)
+    except (FileNotFoundError, ValueError) as exc:  # perfil inexistente ou inválido
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
     with open_db(settings.db_path) as db:
         recover_orphans(db)
         try:
@@ -142,7 +147,7 @@ def analyze(
                 build_gate(settings),
                 build_models(settings),
                 only.value if only else None,
-                build_models_with_profile(settings),
+                video_models,
             )
         except AnalysisError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -304,13 +309,17 @@ def gabarito(
         previa.mkdir(parents=True, exist_ok=True)
         for a in report.annotations:
             out = previa / f"{a.line:03d}-{a.cls}.mp4"
-            run_ffmpeg(
-                settings,
-                ["-ss", f"{frame_to_seconds(a.start_frame):.3f}",
-                 "-t", f"{frame_to_seconds(a.end_frame - a.start_frame):.3f}", "-i", str(video),
-                 "-map", "0:v:0", "-map", "0:a:0", "-vf", "scale=640:-2,fps=30,format=yuv420p",
-                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-c:a", "aac", str(out)],
-            )  # fmt: skip
+            try:
+                run_ffmpeg(
+                    settings,
+                    ["-ss", f"{frame_to_seconds(a.start_frame):.3f}",
+                     "-t", f"{frame_to_seconds(a.end_frame - a.start_frame):.3f}", "-i", str(video),
+                     "-map", "0:v:0", "-map", "0:a:0", "-vf", "scale=640:-2,fps=30,format=yuv420p",
+                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-c:a", "aac", str(out)],
+                )  # fmt: skip
+            except StageError as exc:
+                typer.echo(f"erro: prévia da linha {a.line}: {exc}", err=True)
+                raise typer.Exit(1) from exc
         typer.echo(f"prévia: {len(report.annotations)} arquivo(s) em {previa}")
     raise typer.Exit(0 if report.ok else 1)
 
@@ -720,7 +729,11 @@ def story(
 
     settings = load_settings()
     setup_logging(settings.log_level)
-    profile = load_settings_profile(settings)
+    try:
+        profile = load_settings_profile(settings)
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
     with open_db(settings.db_path) as db:
         try:
             result = build_story(db, session, target_min * 60, (profile.objetivos, profile.regras))
@@ -892,7 +905,7 @@ def gabarito_ui(
         )
     else:
         suggestions = build_suggestions(events)
-    page = render_annotator(proxy_path, suggestions, Path(item.path).name)
+    page = render_annotator(proxy_path, suggestions, Path(item.path).name, "visual" if visual else "audio")
     target = out or settings.data_dir / "gabarito" / f"anotar-{session}.html"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(page, encoding="utf-8")

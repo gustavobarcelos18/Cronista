@@ -55,8 +55,12 @@ def wait_until_free(
 ) -> int:
     """Bloqueia até o processamento poder rodar; devolve o número de esperas (motivo no log)."""
     waits = 0
+    last_reason: str | None = None
     while not is_free_now(gate, working=working):
         waits += 1
-        log_event("gpu_ocupada_aguardando", motivo=gate_reason(gate), **log_fields)
+        reason = gate_reason(gate)
+        if waits == 1 or reason != last_reason:  # 6 h de OBS gravando não podem virar 4 mil linhas iguais
+            log_event("gpu_ocupada_aguardando", motivo=reason, **log_fields)
+            last_reason = reason
         sleep(poll_seconds)
     return waits

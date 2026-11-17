@@ -12,6 +12,7 @@ import numpy as np
 from cronista.audio.events import events_from_result
 from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
+from cronista.domain.models import StageResult
 from cronista.pipeline import StageContext
 from cronista.video import frames as vframes
 from cronista.video.broll import Candidate, theme_tags
@@ -66,7 +67,14 @@ def test_stage_reads_only_declared_regions(tmp_path: Path, settings: Settings) -
     _master(settings, master)
     out = tmp_path / "out"
     out.mkdir()
-    ctx = StageContext(media_path=master, out_dir=out, settings=settings, inputs={})
+    original = tmp_path / "original-interrompido.mp4"  # o OCR precisa ler o master normalizado, não este
+    original.write_bytes(b"x")
+    ctx = StageContext(
+        media_path=original,
+        out_dir=out,
+        settings=settings,
+        inputs={"normalize": StageResult(data={"media": str(master)})},
+    )
     reader = FakeReader()
     regions = (
         HudRegionSpec("bioma", 0.1, 0.1, 0.3, 0.1, "text", tag_theme=True),

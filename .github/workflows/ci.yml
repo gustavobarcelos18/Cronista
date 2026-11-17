@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -26,7 +27,7 @@ jobs:
       - name: Instalar FFmpeg (Windows)
         if: runner.os == 'Windows'
         run: choco install ffmpeg --version=9.0.2 -y --no-progress
-      - run: uv sync
+      - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
@@ -35,7 +36,7 @@ jobs:
         shell: bash
         working-directory: .
         run: |
-          if git grep -nE 'C:\\Users|/home/[a-z]' -- . ':!.github' ':!docs' ':!pnpm-lock.yaml' ':!services/engine/uv.lock'; then
+          if git grep -nE 'C:\\Users|/home/[a-z]|\b[A-Za-z]:[\\/][A-Za-z]' -- . ':!.github' ':!docs' ':!pnpm-lock.yaml' ':!services/engine/uv.lock' ':!services/engine/tests'; then
             echo "Caminho pessoal encontrado em arquivo versionado"; exit 1
           fi
 

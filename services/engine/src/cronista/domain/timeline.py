@@ -9,6 +9,7 @@ Regras da seção 4 do plano mestre:
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -192,10 +193,16 @@ def reconcile_file(
         if marker_id not in seen:
             resolved.append(_file_only(file_name, marker_id, chapter))
     for index, chapter in orphans:  # capítulo sem o nome `tipo|id` (ex.: hotkey nativa do OBS)
-        resolved.append(_file_only(file_name, f"arquivo-{index}", chapter))
+        resolved.append(_file_only(file_name, orphan_id(file_name, index), chapter))
 
     resolved.sort(key=lambda m: m.media_frame)
     return resolved
+
+
+def orphan_id(file_name: str, index: int) -> str:
+    """Id de um capítulo sem `tipo|id`: leva um resumo do arquivo, senão `arquivo-0` repete entre arquivos."""
+    digest = hashlib.sha1(file_key(file_name).encode()).hexdigest()[:6]
+    return f"arquivo-{digest}-{index}"
 
 
 def _file_only(file_name: str, marker_id: str, chapter: FileChapter) -> ResolvedMarker:

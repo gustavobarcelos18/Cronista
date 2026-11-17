@@ -43,3 +43,15 @@ def test_repo_configs_load_and_have_no_personal_paths() -> None:
         text = (root / "config" / f"{env}.yaml").read_text(encoding="utf-8")
         assert "C:\\Users" not in text
         assert "/home/" not in text
+
+
+def test_other_relative_paths_are_also_resolved_from_repo_root(tmp_path: Path) -> None:
+    cfg = tmp_path / "config"
+    _write(
+        cfg / "dev.yaml",
+        "env: dev\ndata_dir: data\nmodels_dir: modelos\nwatch_dir: obs\nprofiles_dir: perfis\n",
+    )
+    settings = load_settings("dev", cfg)
+    assert settings.models_dir == (tmp_path / "modelos").resolve()
+    assert settings.watch_dir == (tmp_path / "obs").resolve()
+    assert settings.profiles_dir == (tmp_path / "perfis").resolve()

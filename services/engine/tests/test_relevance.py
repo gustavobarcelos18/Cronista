@@ -109,3 +109,12 @@ def test_quality_metrics_and_product() -> None:
     assert q.farm_recall is not None and q.farm_recall > 0.5
     assert "meta 85%" in render_quality(q)
     assert product_seconds(segs) > 0
+
+
+def test_marker_beats_pause_discard() -> None:
+    """Cinemática lida como menu: o marcador do criador impede a classe `descartavel`."""
+    events = [ev("menu", 0, 100)]
+    segs = build_segments(events, [MarkerRef("c", "cinematica", 50.0)], 120.0)
+    marked = [s for s in segs if "c" in s.markers]
+    assert marked and all(s.classe != "descartavel" for s in marked)
+    assert by_class(build_segments(events, [], 120.0), "descartavel")

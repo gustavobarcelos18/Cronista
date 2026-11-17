@@ -74,8 +74,10 @@ async def run_forever(
             feedback.info("Conectado ao OBS.")
             try:
                 await run_session(current, obs)
-            except ObsError as exc:
-                feedback.warn(str(exc))
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # ObsError ou erro inesperado: os hotkeys não podem morrer calados
+                feedback.warn(f"{type(exc).__name__}: {exc}" if not isinstance(exc, ObsError) else str(exc))
             finally:
                 current.close()
                 current = None

@@ -58,3 +58,16 @@ def test_evaluate_completo() -> None:
     assert rep.wer == 0.0
     assert rep.detection["risada"].recall == 1.0
     assert rep.false_per_10_min["teclado"] == pytest.approx(1.0)
+
+
+def test_texto_do_whisper_sobre_respiracao_conta_como_falso() -> None:
+    anns = [Annotation(2, 100, 200, "respiracao", ""), Annotation(3, 1000, 1200, "fala", "oi")]
+    rep = evaluate(
+        anns,
+        [Utterance(110, 190, "a suar o nariz"), Utterance(1000, 1200, "oi")],
+        [],
+        [],
+        total_frames=60 * 300,
+    )
+    assert rep.false_per_10_min["respiracao"] == pytest.approx(2.0)
+    assert rep.wer == 0.0

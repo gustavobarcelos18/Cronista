@@ -166,7 +166,14 @@ def evaluate(
         cls: match_events(spans(cls), [iv for kind, iv in events if kind == cls], tolerance)
         for cls in ("risada", "grito")
     }
-    all_events = [iv for _, iv in events]
+    spoken = spans("fala")
+    # Texto do Whisper onde não há fala anotada também é falso positivo (ruído de boca virando palavra).
+    ghost_speech = [
+        (u.start_frame, u.end_frame)
+        for u in utterances
+        if not any(overlap((u.start_frame, u.end_frame), s) > 0 for s in spoken)
+    ]
+    all_events = [iv for _, iv in events] + ghost_speech
     false_rates = {
         cls: false_events_per_10_min(spans(cls), all_events, total_frames)
         for cls in ("teclado", "respiracao")

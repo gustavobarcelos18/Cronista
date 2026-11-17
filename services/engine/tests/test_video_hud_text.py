@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 import numpy as np
 
@@ -26,9 +26,9 @@ class FakeReader:
 
     name = "fake-ocr"
     version = "1"
-    options: ClassVar[dict[str, Any]] = {}
 
     def __init__(self) -> None:
+        self.options: dict[str, Any] = {}
         self.calls = 0
 
     def read(self, crops: Sequence[RgbFrames]) -> list[str]:

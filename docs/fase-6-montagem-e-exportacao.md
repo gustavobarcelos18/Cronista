@@ -115,3 +115,17 @@ do capítulo; stems nivelados; SRT alinhado.
   intermediárias, canal desativado em A6/A7, trilhas V2/V4/A3–A5 vazias (o Lua não as cria; a API de `AddTrack` não
   consta do README), tamanho máximo do Lua colado, `AddMarker` com frame relativo ao início da timeline. Isso fecha o
   aceite da 6C em `prod`.
+
+- **6D codificada** (`shorts/candidates.py`, `shorts/service.py`, `cronista shorts <sessão>`, `tests/test_shorts.py`):
+  candidatos de até 13 s com gancho nos 3 primeiros segundos. Pico = marcador do criador, ou a emoção mais confiante;
+  sem pico não há candidato. Gancho = primeiro ponto de interesse que ainda deixa a janela caber (início de fala após
+  silêncio, fala já em curso, emoção ou o pico); a janela recua para ele (folga de 0,5 s), segue 4 s depois do pico
+  (estendida até 5 s no mínimo) e nunca corta dentro de palavra nem passa de 13 s. Escolha sem sobreposição, por nota,
+  até `--top` (10). Saída em `data/<env>/shorts/<sessão>/shorts-<sessão>.json`. Só lista janelas e razões; 9:16, legenda
+  e margens são da Fase 9. Não rodado em mídia real (aceite: avaliar os candidatos de uma sessão com o criador).
+
+## Estado da fase
+
+6A a 6E codificadas em `fase/6-montagem` (o `montagem` da 6C encadeia plano, timelapse, mixagem e exportação, com
+retomada só do que já existe em disco: timelapses). Falta para o aceite: spike do Resolve (bloco D), mídia real e
+ouvir a mixagem.

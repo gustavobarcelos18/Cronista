@@ -1086,3 +1086,35 @@ def montagem(
     typer.echo(f"{report.directory}\nLeia o LEIA-ME.md da pasta para importar no Resolve.")
     if report.problems:
         raise typer.Exit(2)
+
+
+@app.command("shorts")
+def shorts(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    top: Annotated[int, typer.Option(help="Quantos candidatos listar")] = 10,
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/shorts/<sessão>)")] = None,
+) -> None:
+    """Candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D; a finalização é da Fase 9)."""
+    from cronista.shorts.candidates import ShortsParams
+    from cronista.shorts.service import build_shorts, write_shorts
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            found = build_shorts(db, session, ShortsParams(max_candidates=top))
+        except StoryError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    path = write_shorts(found, out or settings.data_dir / "shorts" / str(session), session)
+    for n, c in enumerate(found, start=1):
+        typer.echo(
+            f"{n}. arquivo {c.file_id} {c.start_frame / 60:.1f}s: {c.duration_s:.1f} s, nota {c.score:.2f}, "
+            f"gancho ({c.hook_kind}) em {c.hook_offset_s:.1f} s; {c.reason}"
+        )
+    if not found:
+        typer.echo(
+            "nenhum candidato: faltam momentos com pico (marcador ou emoção) e gancho nos 3 s iniciais"
+        )
+    typer.echo(str(path))

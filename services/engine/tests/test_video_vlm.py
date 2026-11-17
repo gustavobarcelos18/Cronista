@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 import numpy as np
 import pytest
@@ -54,9 +54,9 @@ def test_schema_lists_choices() -> None:
 class FakeVLM:
     name = "fake-vlm"
     version = "1"
-    options: ClassVar[dict[str, Any]] = {}
 
     def __init__(self, replies: list[str]) -> None:
+        self.options: dict[str, Any] = {}
         self.replies = replies
         self.prompts: list[str] = []
 

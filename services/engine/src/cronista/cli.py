@@ -633,16 +633,63 @@ def bench_quality(
         typer.echo("aviso: a análise ainda não grava eventos `rotina`; revocação de farm não é confiável")
 
 
+@app.command("bench-video-quality")
+def bench_video_quality(
+    session: Annotated[int, typer.Argument(help="Sessão analisada (`cronista analyze`)")],
+    gabarito: Annotated[Path, typer.Argument(help="CSV do gabarito deste arquivo")],
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    tolerance: Annotated[float, typer.Option(help="Tolerância das bordas, em segundos")] = 2.0,
+) -> None:
+    """Compara menu, loading, idle e HUD oculto do banco com o gabarito (precisão, revocação, bordas)."""
+    from cronista.audio.events import load_stored_events
+    from cronista.video.quality import VIDEO_CLASSES, evaluate_video, render_video_quality
+    from cronista.video.report import is_video_event
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    report = validate_gabarito(gabarito)
+    if not report.ok:
+        for err in report.errors:
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        item = _pick_media(db, session, file)
+        stored = [s for s in load_stored_events(db, item.id) if is_video_event(s)]
+    if not stored:
+        typer.echo("erro: sem eventos de vídeo no banco; rode `cronista analyze` antes", err=True)
+        raise typer.Exit(1)
+    predicted: dict[str, list[tuple[int, int]]] = {}
+    for s in stored:
+        if s.event.kind in VIDEO_CLASSES:
+            ev = s.event.evidence
+            predicted.setdefault(s.event.kind, []).append((ev.start_frame, ev.end_frame))
+    total = max(
+        [a.end_frame for a in report.annotations] + [iv[1] for ivs in predicted.values() for iv in ivs],
+        default=0,
+    )
+    typer.echo(
+        render_video_quality(evaluate_video(report.annotations, predicted, total, tolerance), tolerance)
+    )
+    typer.echo(
+        "aviso: 'falsos/30min' só vale se o gabarito cobre a sessão toda; "
+        "previstos fora dos trechos anotados contam como falsos"
+    )
+
+
 @app.command("gabarito-ui")
 def gabarito_ui(
     session: Annotated[int, typer.Argument(help="Sessão analisada")],
     file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
     out: Annotated[Path | None, typer.Option(help="HTML de saída")] = None,
+    visual: Annotated[
+        bool,
+        typer.Option("--visual", help="Candidatos visuais (menu, loading, idle, HUD oculto) com miniatura"),
+    ] = False,
 ) -> None:
     """Gera uma página para anotar o gabarito vendo o vídeo, com sugestões da análise já preenchidas."""
-    from cronista.audio.annotate_ui import build_suggestions, render_annotator
+    from cronista.audio.annotate_ui import VISUAL_CLASSES_UI, build_suggestions, render_annotator
     from cronista.audio.events import load_stored_events
-    from cronista.video.report import is_video_event
+    from cronista.video.report import is_video_event, thumbnail
 
     settings = load_settings()
     setup_logging(settings.log_level)
@@ -661,14 +708,20 @@ def gabarito_ui(
         events = [
             (e.kind, e.evidence.start_frame, e.evidence.end_frame, e.evidence.confidence, e.evidence.quote)
             for s in load_stored_events(db, item.id)
-            if not is_video_event(s)  # o anotador é de áudio; cenas e menus não são sugestões
+            if is_video_event(s) == visual  # sem `--visual` o anotador é de áudio; com, só os estados de tela
             for e in [s.event]
         ]
-    page = render_annotator(proxy_path, build_suggestions(events), Path(item.path).name)
+    if visual:
+        suggestions = build_suggestions(
+            events, VISUAL_CLASSES_UI, lambda frame: thumbnail(settings, proxy_path, frame)
+        )
+    else:
+        suggestions = build_suggestions(events)
+    page = render_annotator(proxy_path, suggestions, Path(item.path).name)
     target = out or settings.data_dir / "gabarito" / f"anotar-{session}.html"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(page, encoding="utf-8")
-    typer.echo(f"{target}\n{len(events)} eventos viraram sugestões; abra o arquivo no navegador.")
+    typer.echo(f"{target}\n{len(suggestions)} sugestões; abra o arquivo no navegador.")
 
 
 @app.command("broll-search")

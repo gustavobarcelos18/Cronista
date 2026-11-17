@@ -29,6 +29,7 @@ CLASSES: dict[str, str] = {
     "menu": "menu/inventário/mapa",
     "loading": "tela de carregamento",
     "idle": "personagem parado sem ação",
+    "hud_oculto": "HUD escondido de propósito (F1, modo diretor, Replay Mod)",
     "cinematica": "cinemática do jogo",
     "construcao": "construção/obra em andamento",
     "objetivo": "objetivo declarado ou implícito (Fase 5A; a nota diz qual)",

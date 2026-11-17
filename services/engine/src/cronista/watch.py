@@ -117,7 +117,11 @@ def is_complete(db: Session, session: RecordingSession) -> bool:
     if not session.media_files:
         return False
     return all(
-        db.scalar(select(Artifact.id).where(Artifact.media_file_id == m.id, Artifact.stage == "audio"))
+        db.scalar(
+            select(Artifact.id).where(
+                Artifact.media_file_id == m.id, Artifact.stage == "audio", Artifact.variant == ""
+            )
+        )
         is not None
         for m in session.media_files
     )

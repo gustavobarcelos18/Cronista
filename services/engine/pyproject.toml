@@ -13,6 +13,8 @@ dependencies = [
     "otio-fcpx-xml-adapter>=1.0.0",
     "simpleobsws>=1.4.3",
     "pynput>=1.8.2 ; sys_platform == 'win32'",
+    "numpy>=2.5.5",
+    "soundfile>=0.14.0",
 ]
 
 [project.scripts]
@@ -63,8 +65,9 @@ module = ["opentimelineio", "opentimelineio.*"]
 ignore_missing_imports = true  # a OTIO não publica tipos
 
 [[tool.mypy.overrides]]
-module = ["simpleobsws", "pynput", "pynput.*", "msgpack"]
+module = ["simpleobsws", "pynput", "pynput.*", "msgpack", "soundfile"]
 ignore_missing_imports = true  # sem tipos publicados
 
 [tool.ruff.lint.per-file-ignores]
 "src/cronista/devtools/resolve_kit.py" = ["E501"]  # modelos de FCPXML: quebrar a linha estraga a leitura
+"src/cronista/audio/report.py" = ["E501"]  # modelos de HTML/SVG: quebrar a linha estraga a leitura

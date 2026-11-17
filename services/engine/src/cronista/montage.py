@@ -43,7 +43,11 @@ class SessionPlan:
 
 
 def _artifact_result(db: Session, media: MediaFile, stage: str) -> StageResult | None:
-    artifact = db.scalar(select(Artifact).where(Artifact.media_file_id == media.id, Artifact.stage == stage))
+    artifact = db.scalar(
+        select(Artifact).where(
+            Artifact.media_file_id == media.id, Artifact.stage == stage, Artifact.variant == ""
+        )
+    )
     if artifact is None or not Path(artifact.result_path).is_file():
         return None
     return StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8"))

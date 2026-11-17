@@ -58,3 +58,38 @@ def test_migration_0004_converts_marker_seconds_to_frames_and_back(tmp_path: Pat
         back: dict[str, float] = dict(conn.execute(text("SELECT marker_id, media_time_s FROM marker")).all())
     assert back["b"] == 12.5 and back["d"] == pytest.approx(24194 / 60)
     engine.dispose()
+
+
+def test_migration_0005_keeps_existing_rows_and_allows_variants(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "variante.db")
+    cfg = Config()
+    cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
+    cfg.attributes["connection_url"] = engine.url.render_as_string(hide_password=False)
+
+    command.upgrade(cfg, "0004")
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO project (id, name, created_at) VALUES (1, 'p', '2026-11-16')"))
+        conn.execute(
+            text("INSERT INTO session (id, project_id, folder, created_at) VALUES (1, 1, 'x', '2026-11-16')")
+        )
+        conn.execute(
+            text(
+                "INSERT INTO media_file (id, session_id, path, ordinal, size_bytes) VALUES (1, 1, 'a', 0, 0)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO artifact (media_file_id, stage, cache_key, result_path, created_at) "
+                "VALUES (1, 'audio', 'k', 'r', '2026-11-16')"
+            )
+        )
+        conn.execute(
+            text("INSERT INTO job (media_file_id, stage, status, attempts) VALUES (1, 'audio', 'done', 1)")
+        )
+
+    command.upgrade(cfg, "head")
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT stage, variant FROM artifact")).all() == [("audio", "")]
+        assert conn.execute(text("SELECT stage, variant, status FROM job")).all() == [("audio", "", "done")]
+        assert "event" in inspect(conn).get_table_names()
+    engine.dispose()

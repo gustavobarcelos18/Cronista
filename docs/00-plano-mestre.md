@@ -873,6 +873,10 @@ Só se avança com os critérios da fase anterior cumpridos.
   a partir dos marcadores, CI verde.
 
 ### Fase 2 — Análise de áudio
+> **Dividida em 2A (fundação e sinais numéricos, CPU), 2B (modelos reais e benchmark de desempenho) e 2C (qualidade contra o
+> gabarito).** O plano de execução está em [fase-2-analise-de-audio.md](fase-2-analise-de-audio.md); a lista abaixo continua
+> valendo como escopo total. A 2C depende do gabarito anotado pelo criador.
+
 - **Benchmarks de modelos na RTX 3060** (primeiras tarefas da fase): desempenho (velocidade, VRAM, convivência de CUDA; antes movido da 1C) e **qualidade** contra o gabarito (WER do Whisper com e sem DeepFilterNet). Os modelos da fase são escolhidos por esses números.
 - Lacunas técnicas 2–4 da seção 9 (provenance, unicidade de artefato por variante, formato de sinais) são resolvidas no início da fase, antes do primeiro benchmark.
 - Microfone: (DeepFilterNet, se aprovado no benchmark) → Silero VAD → faster-whisper (com timestamps por palavra) → picos relativos. Risada e grito vêm do classificador de eventos sonoros, que roda também no microfone (seção 3).
@@ -1126,9 +1130,9 @@ Só se avança com os critérios da fase anterior cumpridos.
 
 **Lacunas técnicas identificadas (2026-11-16) e fase de correção:**
 1. **Tempo do marcador em float de segundos** (`marker.media_time_s`) → guardar em **quadros inteiros a 60 fps**. Fase: **1B, antes do merge** (o modelo do marcador é entregue pela 1B).
-2. **Padrão de evidência/proveniência** (intervalo em quadros, fonte, confiança, versão do modelo) não existe no código. Fase: **início da Fase 2** (primeiro consumidor: transcrição e sinais), ampliado na **5A** (objetivos).
-3. **`Artifact` com `UniqueConstraint(media_file_id, stage)`**: duas variantes de um estágio (dois modelos ou parâmetros para comparar no benchmark) se sobrescrevem. Fase: **início da Fase 2, antes do benchmark de WER**. Chave de cache continua incluindo versão e parâmetros.
-4. **Sinais em série temporal sem lugar definido** (energia, novidade, similaridade). Decidir o formato (array no cache, referenciado por `artifact`) e o esquema de consulta. Fase: **início da Fase 2**, antes da primeira análise.
+2. **Padrão de evidência/proveniência** (intervalo em quadros, fonte, confiança, versão do modelo) não existe no código. Fase: **início da Fase 2** (primeiro consumidor: transcrição e sinais), ampliado na **5A** (objetivos). **Resolvida na 2A (histórico §43):** `Evidence`/`AnalysisEvent` em `domain/evidence.py` e tabela `event` (migração 0006).
+3. **`Artifact` com `UniqueConstraint(media_file_id, stage)`**: duas variantes de um estágio (dois modelos ou parâmetros para comparar no benchmark) se sobrescrevem. Fase: **início da Fase 2, antes do benchmark de WER**. Chave de cache continua incluindo versão e parâmetros. **Resolvida na 2A:** coluna `variant` em `artifact` e `job` (migração 0005).
+4. **Sinais em série temporal sem lugar definido** (energia, novidade, similaridade). Decidir o formato (array no cache, referenciado por `artifact`) e o esquema de consulta. Fase: **início da Fase 2**, antes da primeira análise. **Resolvida na 2A:** `.npy` float32 no cache, grade de 6 quadros (10 Hz), `SignalMeta` no `result.json`, sem tabela.
 
 **Decisão de 2026-11-16 (memória narrativa; histórico §37):**
 - **SQLite como memória persistente do contexto narrativo**, no banco do engine, com objetivos, acontecimentos, relações,

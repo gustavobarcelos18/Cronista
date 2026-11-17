@@ -967,3 +967,154 @@ def broll_search(
             f"{frame_to_seconds(a):7.1f} s  +{(b - a) // 60:>3} s  sim={score:.3f}  "
             f"util={ev.evidence.confidence:.2f}  {tags}"
         )
+
+
+@app.command("montar")
+def montar(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/montagem/<sessão>)")] = None,
+) -> None:
+    """Plano de montagem em quadros a 60 fps: cortes, timelapses, B-roll e cartelas (Fase 6A)."""
+    from cronista.assembly.service import build_assembly, write_plan
+    from cronista.profiles import load_settings_profile
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        profile = load_settings_profile(settings)
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    with open_db(settings.db_path) as db:
+        try:
+            plan = build_assembly(db, session, settings, target_min * 60, (profile.objetivos, profile.regras))
+        except StoryError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    path = write_plan(plan, out or settings.data_dir / "montagem" / str(session), session)
+    for number, budget in plan.chapter_budget_s.items():
+        typer.echo(f"capítulo {number}: {plan.chapter_s(number):.0f} s de {budget:.0f} s alocados")
+    typer.echo(
+        f"total: {plan.total_s / 60:.1f} min em {len(plan.v1)} cortes"
+        f" ({len(plan.items) - len(plan.v1)} B-roll)"
+    )
+    for warning in plan.warnings:
+        typer.echo(f"aviso: {warning}")
+    typer.echo(str(path))
+
+
+@app.command("mixar")
+def mixar(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    script: Annotated[
+        Path | None, typer.Option(help="roteiro.json validado (ducking sob a narração)")
+    ] = None,
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[
+        Path | None, typer.Option(help="Pasta dos stems (padrão: data/export/stems/<sessão>)")
+    ] = None,
+) -> None:
+    """Stems A1/A2 nivelados (ducking, cadeia de voz) e crus A6/A7, só dos trechos usados (Fase 6B)."""
+    from cronista.mix.service import mix_session
+    from cronista.montage import SessionPlanError
+    from cronista.pipeline.stage import StageError
+    from cronista.profiles import load_settings_profile
+    from cronista.story.script import load_script
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        profile = load_settings_profile(settings)
+        loaded = load_script(script) if script else None
+        with open_db(settings.db_path) as db:
+            report = mix_session(
+                db, session, settings, loaded, target_min * 60, (profile.objetivos, profile.regras), out
+            )
+    except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for stem in report.stems:
+        lufs = "silêncio" if stem.lufs is None else f"{stem.lufs:.1f} LUFS"
+        peak = "-" if stem.true_peak_db is None else f"{stem.true_peak_db:.1f} dBFS"
+        typer.echo(f"{stem.name}: {lufs}, pico {peak}, ganho {stem.gain_db:+.1f} dB")
+    typer.echo(f"ducking em {report.ducked_s:.0f} s")
+    for warning in report.warnings:
+        typer.echo(f"aviso: {warning}")
+    typer.echo(str(report.directory))
+
+
+@app.command("montagem")
+def montagem(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    script: Annotated[Path | None, typer.Option(help="roteiro.json validado")] = None,
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[
+        Path | None, typer.Option(help="Base da exportação (padrão: data/export/montagem/<sessão>)")
+    ] = None,
+) -> None:
+    """Pacote para o Resolve: FCPXML multi-trilha, stems, SRT, marcadores em Lua e manifesto (Fase 6C)."""
+    from cronista.export.pacote import export_montagem
+    from cronista.montage import SessionPlanError
+    from cronista.pipeline.stage import StageError
+    from cronista.profiles import load_settings_profile
+    from cronista.story.script import load_script
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        profile = load_settings_profile(settings)
+        loaded = load_script(script) if script else None
+        with open_db(settings.db_path) as db:
+            report = export_montagem(
+                db, session, settings, loaded, target_min * 60, (profile.objetivos, profile.regras), out
+            )
+    except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"versão {report.version}: {report.duration_s / 60:.1f} min, {report.clips} cortes,"
+        f" {report.markers} marcadores"
+    )
+    for problem in report.problems:
+        typer.echo(f"problema: {problem}", err=True)
+    for warning in report.warnings:
+        typer.echo(f"aviso: {warning}")
+    typer.echo(f"{report.directory}\nLeia o LEIA-ME.md da pasta para importar no Resolve.")
+    if report.problems:
+        raise typer.Exit(2)
+
+
+@app.command("shorts")
+def shorts(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    top: Annotated[int, typer.Option(help="Quantos candidatos listar")] = 10,
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/shorts/<sessão>)")] = None,
+) -> None:
+    """Candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D; a finalização é da Fase 9)."""
+    from cronista.shorts.candidates import ShortsParams
+    from cronista.shorts.service import build_shorts, write_shorts
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            found = build_shorts(db, session, ShortsParams(max_candidates=top))
+        except StoryError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    path = write_shorts(found, out or settings.data_dir / "shorts" / str(session), session)
+    for n, c in enumerate(found, start=1):
+        typer.echo(
+            f"{n}. arquivo {c.file_id} {c.start_frame / 60:.1f}s: {c.duration_s:.1f} s, nota {c.score:.2f}, "
+            f"gancho ({c.hook_kind}) em {c.hook_offset_s:.1f} s; {c.reason}"
+        )
+    if not found:
+        typer.echo(
+            "nenhum candidato: faltam momentos com pico (marcador ou emoção) e gancho nos 3 s iniciais"
+        )
+    typer.echo(str(path))

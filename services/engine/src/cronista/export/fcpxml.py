@@ -134,7 +134,7 @@ def check_fcpxml(xml: str) -> list[str]:
     if resources is None:
         return [*problems, "falta <resources>"]
 
-    ids = {e.get("id") for e in resources if e.get("id")}
+    ids = {e.get("id") for e in root.iter() if e.get("id")}  # inclui os ids de dentro do título
     formats = resources.findall("format")
     if not formats:
         problems.append("falta <format> em <resources>")

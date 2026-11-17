@@ -1174,6 +1174,15 @@ extração de atributos do AST em CPU (janelas sobrepostas ~4×) **não foi trat
 `@pytest.mark.gpu` rodada (os testes existem em `tests/test_adapters_gpu.py`, ver resultado no PR).
 
 ---
+## 45. Plano de execução da Fase 3 (2026-11-17)
+
+A Fase 3 ganhou plano próprio em [fase-3-analise-de-video.md](fase-3-analise-de-video.md), dividido como a Fase 2: **3A** (frames do proxy,
+cenas, sinais visuais e heurística universal de menu/loading/idle, CPU), **3B** (embeddings SigLIP/CLIP, contexto visual, linha de base do
+áudio por contexto, B-roll) e **3C** (perfis YAML, OCR de HUD no master, VLM só em candidatos, métricas contra o gabarito). Números de
+corte propostos (menu/loading ≥ 90% de precisão sem perfil de jogo etc.) **ainda não decididos**: precisam da aprovação do criador antes
+do benchmark final. Pendências do criador: classes visuais no gabarito, segundo gênero de jogo, download dos modelos novos e a marcação
+de `novo_dia` com teclado de 60%. Nada implementado.
+
 
 ## Decisões em aberto
 

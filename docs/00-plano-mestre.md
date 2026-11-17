@@ -889,6 +889,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - ✅ Aceite: no gabarito, teclado e respiração **não** geram eventos; fala transcrita com WER aceitável; trechos rítmicos detectados como rotina.
 
 ### Fase 3 — Análise de vídeo e perfis de jogo
+> **Plano de execução em [fase-3-analise-de-video.md](fase-3-analise-de-video.md)** (3A frames/cenas/sinais, 3B embeddings/contexto/B-roll, 3C perfis/OCR/VLM/qualidade; histórico §45). A 3C depende do gabarito.
 - Detecção de cena, movimento, embeddings de frames, detecção de menu/loading/pausa/idle — tudo universal.
 - Contexto visual (agrupamento de cenas parecidas) → refina a linha de base do áudio do jogo calculada na Fase 2 (seção 3).
 - Tomadas cinematográficas e biblioteca de B-roll (seção 6.2).

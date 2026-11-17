@@ -216,10 +216,10 @@ class ContextNoveltyStage:
 
 
 class BrollStage:
-    """Biblioteca de B-roll: eventos `broll` (trecho de câmera parada/panorâmica) com beleza, tags e capa."""
+    """Biblioteca de B-roll: eventos `broll` (câmera parada/panorâmica) com utilidade, tags e capa."""
 
     name = "video_broll"
-    version = "1"
+    version = "2"
     needs: tuple[str, ...] = ("video_scenes", "video_embeddings")
     uses_gpu = False
 
@@ -247,7 +247,7 @@ class BrollStage:
                         source=EvidenceSource.CENA,
                         start_frame=c.start_frame,
                         end_frame=c.end_frame,
-                        confidence=float(info["beleza"]),
+                        confidence=float(info["utilidade"]),
                         model=self.embedder.name,
                         model_version=self.embedder.version,
                         params_hash=digest,

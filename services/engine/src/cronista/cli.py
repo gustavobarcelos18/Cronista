@@ -715,5 +715,5 @@ def broll_search(
         tags = ", ".join(str(t) for t in ev.payload.get("tags", []))
         typer.echo(
             f"{frame_to_seconds(a):7.1f} s  +{(b - a) // 60:>3} s  sim={score:.3f}  "
-            f"beleza={ev.evidence.confidence:.2f}  {tags}"
+            f"util={ev.evidence.confidence:.2f}  {tags}"
         )

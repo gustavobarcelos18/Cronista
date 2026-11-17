@@ -193,7 +193,7 @@ def context_table(events: list[StoredEvent], settings: Settings | None, proxy: P
 def broll_table(
     events: list[StoredEvent], settings: Settings | None, proxy: Path | None, top: int = 12
 ) -> str:
-    """Galeria de B-roll candidato: os de maior nota de beleza, com capa, movimento e tags."""
+    """Galeria de B-roll candidato: os de maior nota de utilidade, com capa, movimento e tags."""
     clips = sorted(
         (e.event for e in events if e.event.kind == "broll"),
         key=lambda e: e.evidence.confidence,
@@ -224,7 +224,7 @@ def broll_table(
         )
     return (
         f"<h3>B-roll candidato: {len(clips)} melhores</h3>"
-        "<table><tr><th>Início</th><th>Duração</th><th>Movimento</th><th>Beleza</th><th>Tags</th>"
+        "<table><tr><th>Início</th><th>Duração</th><th>Movimento</th><th>Utilidade</th><th>Tags</th>"
         f"<th>Capa</th></tr>{''.join(rows)}</table>"
     )
 

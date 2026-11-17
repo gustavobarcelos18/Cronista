@@ -521,6 +521,7 @@ fixo a partir disso.
 - **Detectar** (Fase 3): movimento de câmera (fluxo óptico: parada, panorâmica, órbita), HUD oculto, beleza visual
   (preditor de estética sobre embeddings CLIP) e cenas por texto ("pôr do sol", "vista da base").
   O resultado vai para uma **biblioteca de B-roll** com tags, usada em aberturas, transições de dia e respiros.
+  Sob a narração o B-roll **alterna**: uma sequência de tomadas (uma nova a cada 4–7 s, sem repetir nem pôr contextos parecidos em seguida), a primeira mais próxima do assunto (busca por texto) e as demais do mesmo tema ou, faltando, cenas calmas de boa utilidade (histórico §50). A nota de B-roll é de **utilidade** (cena de jogo, não menu/tela preta), nunca de beleza: cena escura ou medonha serve se o assunto pede.
 - **Timelapse de construção** (Fase 6), em três níveis de qualidade:
   1. *Automático*: pega frames da gravação normal em que a construção aparece de ângulo parecido
      (similaridade + feature matching/homografia para alinhar) e monta um "progresso". Qualidade variável.

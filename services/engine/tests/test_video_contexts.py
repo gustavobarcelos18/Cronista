@@ -139,7 +139,7 @@ def test_broll_pontua_etiqueta_e_busca_por_texto() -> None:
     emb /= np.linalg.norm(emb, axis=1, keepdims=True)
     cand = Candidate(0, 20 * 60, "parada", 0.6)
     info = score_candidate(emb, fake, BrollParams(), hop=60, c=cand)
-    assert info is not None and 0.0 <= float(info["beleza"]) <= 1.0
+    assert info is not None and 0.0 <= float(info["utilidade"]) <= 1.0
     assert len(info["tags"]) == 3 and int(info["cover_frame"]) % 60 == 0
     hits = search(
         emb,

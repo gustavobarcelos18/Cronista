@@ -1,7 +1,8 @@
-"""Biblioteca de B-roll (Fase 3B): candidatos, beleza, tags e busca por texto sobre os embeddings.
+"""Biblioteca de B-roll (Fase 3B): candidatos, utilidade, tags e busca por texto sobre os embeddings.
 
-Candidato = trecho de câmera parada ou panorâmica fora de menu/loading/pausa. A nota de beleza é zero-shot
-(prompts positivos contra negativos no espaço do modelo), simples de propósito: ordena, não decide.
+Candidato = trecho de câmera parada ou panorâmica fora de menu/loading/pausa. A nota de utilidade é zero-shot
+(cena de jogo contra menu, inventário, tela preta e loading). Não mede beleza: cena escura ou
+medonha vale tanto quanto uma paisagem; o que casa com a narração é a busca por texto.
 """
 
 from __future__ import annotations
@@ -19,16 +20,16 @@ from cronista.video.ports import FrameEmbedder
 FloatArray = npt.NDArray[np.float32]
 
 POSITIVE = (
-    "a beautiful scenic view",
-    "a stunning landscape",
-    "a cinematic wide shot",
-    "a breathtaking sunset",
+    "a game scene showing an environment",
+    "a first person view of a game world",
+    "a dark scary cave in a video game",
+    "a landscape in a video game",
 )
 NEGATIVE = (
-    "a blurry dark image",
     "a menu screen full of text",
-    "an empty ugly gray scene",
-    "a cluttered inventory",
+    "an inventory screen",
+    "a black screen",
+    "a loading screen",
 )
 VOCAB = (
     "a cave",
@@ -108,7 +109,7 @@ def score_candidate(
     order = np.argsort(-sims)[: params.top_tags]
     return {
         "movimento": c.movement,
-        "beleza": float(per.mean()),
+        "utilidade": float(per.mean()),
         "tags": [VOCAB[int(i)] for i in order],
         "cover_frame": int((first + int(np.argmax(per))) * hop),
     }

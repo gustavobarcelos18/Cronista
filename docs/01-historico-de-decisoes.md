@@ -1306,6 +1306,12 @@ manifesto; versão completa idêntica é reaproveitada, interrompida é continua
 (nunca apaga a anterior). Timelapses passam para `<base>/timelapses`. Pausa: `build_gate` do ambiente consultado antes
 de cada timelapse e da mixagem. Não interrompe um FFmpeg já em curso. 425 testes verdes.
 
+## 55. Fase 7A: API local do Studio (2026-11-17)
+
+Fase 7 dividida em 7A–7E (`docs/fase-7-studio.md`). A 7A entrega a API FastAPI só de leitura (`cronista api`, porta 8000,
+CORS apenas para `localhost:3000`); o comando `serve` já era o watcher do OBS, então a API é `api`. Escrita (decisões do
+criador) fica para a 7C.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

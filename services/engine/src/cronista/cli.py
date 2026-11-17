@@ -1133,3 +1133,15 @@ def shorts(
             "nenhum candidato: faltam momentos com pico (marcador ou emoção) e gancho nos 3 s iniciais"
         )
     typer.echo(str(path))
+
+
+@app.command("api")
+def api_cmd(
+    port: Annotated[int, typer.Option(help="Porta da API local")] = 8000,
+) -> None:
+    """Sobe a API local que o Studio consome (Fase 7)."""
+    import uvicorn
+
+    from cronista.api.app import create_app
+
+    uvicorn.run(create_app(load_settings()), host="127.0.0.1", port=port)

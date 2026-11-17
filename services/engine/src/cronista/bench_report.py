@@ -230,7 +230,11 @@ def write_reports(bench: Path, out_dir: Path) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     for name, (title, command, make) in REPORTS.items():
-        path = out_dir / name
+        path = (out_dir / name).resolve()
+        if (
+            path.parent != out_dir.resolve()
+        ):  # nomes vêm de REPORTS; garante que nada escapa da pasta de saída
+            raise ValueError(f"relatório fora da pasta de saída: {name}")
         _write_block(path, title, command, make(bench))
         written.append(path)
     return written

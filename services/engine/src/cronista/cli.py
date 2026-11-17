@@ -1044,3 +1044,45 @@ def mixar(
     for warning in report.warnings:
         typer.echo(f"aviso: {warning}")
     typer.echo(str(report.directory))
+
+
+@app.command("montagem")
+def montagem(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    script: Annotated[Path | None, typer.Option(help="roteiro.json validado")] = None,
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[
+        Path | None, typer.Option(help="Base da exportação (padrão: data/export/montagem/<sessão>)")
+    ] = None,
+) -> None:
+    """Pacote para o Resolve: FCPXML multi-trilha, stems, SRT, marcadores em Lua e manifesto (Fase 6C)."""
+    from cronista.export.pacote import export_montagem
+    from cronista.montage import SessionPlanError
+    from cronista.pipeline.stage import StageError
+    from cronista.profiles import load_settings_profile
+    from cronista.story.script import load_script
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        profile = load_settings_profile(settings)
+        loaded = load_script(script) if script else None
+        with open_db(settings.db_path) as db:
+            report = export_montagem(
+                db, session, settings, loaded, target_min * 60, (profile.objetivos, profile.regras), out
+            )
+    except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"versão {report.version}: {report.duration_s / 60:.1f} min, {report.clips} cortes,"
+        f" {report.markers} marcadores"
+    )
+    for problem in report.problems:
+        typer.echo(f"problema: {problem}", err=True)
+    for warning in report.warnings:
+        typer.echo(f"aviso: {warning}")
+    typer.echo(f"{report.directory}\nLeia o LEIA-ME.md da pasta para importar no Resolve.")
+    if report.problems:
+        raise typer.Exit(2)

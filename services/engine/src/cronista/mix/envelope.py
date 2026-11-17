@@ -50,10 +50,15 @@ def timeline_intervals(
     return merge_intervals(out)
 
 
-def narration_intervals(plan_items: Sequence[EditItem], lines: Sequence[ScriptLine]) -> list[tuple[int, int]]:
-    """Onde o roteiro prevê narração, em quadros da timeline (entra em `start_s` ou no começo do trecho)."""
+def narration_cues(
+    plan_items: Sequence[EditItem], lines: Sequence[ScriptLine]
+) -> list[tuple[int, int, ScriptLine]]:
+    """Onde o roteiro prevê cada fala, em quadros da timeline (entra em `start_s` ou no começo do trecho).
+
+    Linha de segmento que não está na montagem (ou está em timelapse) é ignorada.
+    """
     by_segment = {i.segment_id: i for i in plan_items if i.track == Track.V1 and i.speed == 1}
-    out: list[tuple[int, int]] = []
+    out: list[tuple[int, int, ScriptLine]] = []
     for line in lines:
         item = by_segment.get(line.segment_id)
         if item is None:
@@ -62,8 +67,14 @@ def narration_intervals(plan_items: Sequence[EditItem], lines: Sequence[ScriptLi
         start_file = round(line.start_s * FPS) if line.start_s is not None else item.in_frame
         start_file = min(max(start_file, item.in_frame), item.out_frame)
         start = item.timeline_start + start_file - item.in_frame
-        out.append((start, min(start + round(seconds * FPS), item.timeline_end)))
-    return merge_intervals([i for i in out if i[1] > i[0]])
+        end = min(start + round(seconds * FPS), item.timeline_end)
+        if end > start:
+            out.append((start, end, line))
+    return sorted(out, key=lambda c: c[0])
+
+
+def narration_intervals(plan_items: Sequence[EditItem], lines: Sequence[ScriptLine]) -> list[tuple[int, int]]:
+    return merge_intervals([(a, b) for a, b, _ in narration_cues(plan_items, lines)])
 
 
 def merge_intervals(intervals: Sequence[tuple[int, int]]) -> list[tuple[int, int]]:

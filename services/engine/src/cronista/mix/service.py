@@ -160,8 +160,9 @@ def mix_session(
     target_s: float = 40 * 60.0,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     out_dir: Path | None = None,
+    plan: EditPlan | None = None,
 ) -> MixReport:
-    plan = build_assembly(db, session_id, settings, target_s, profile_objectives)
+    plan = plan or build_assembly(db, session_id, settings, target_s, profile_objectives)
     session = db.get(RecordingSession, session_id)
     assert session is not None
     game: dict[int, Path] = {}

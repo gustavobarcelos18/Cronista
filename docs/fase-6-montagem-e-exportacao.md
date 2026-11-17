@@ -103,3 +103,15 @@ do capítulo; stems nivelados; SRT alinhado.
   em mídia real (o `claude_teste` não rodou: o master original `Cronista_Teste.mp4` saiu do lugar, precisa de
   `cronista ingest` de novo), escolher entre `afftdn` e `arnndn`/DeepFilterNet de ouvido e confirmar com o criador o
   ducking sob narração (plano, seção 9, item 9).
+
+- **6C codificada** (`export/montagem.py`, `timelapse.py`, `pacote.py`, `cronista montagem <sessão> [--roteiro]`,
+  `tests/test_export_montagem.py`): FCPXML 1.9 no desenho que o Resolve importou no spike, com V1 no `spine` e o resto
+  como clipes conectados (B-roll lane 2 = V3, cartela como título editável lane 4 = V5, stems lanes −1/−2 e crus
+  desativados −6/−7); timelapses pré-renderizados com FFmpeg (sem áudio, 60 fps, contagem de quadros testada); SRT em
+  tempo de timeline com fala "." em 0 s; marcadores coloridos por tipo em Lua de uma linha (partido em várias se passar
+  de 6000 caracteres, palpite a medir); validação (`check_plan_fcpxml`: ids, grade de quadros, duração, arquivos
+  existentes, clipe dentro do arquivo); pacote `versao-N/` que nunca sobrescreve, com `manifesto.json` (hashes) e
+  `LEIA-ME.md`. **Não validado no Resolve nem em mídia real** (master do `claude_teste` ausente): lanes −6/−7 sem as
+  intermediárias, canal desativado em A6/A7, trilhas V2/V4/A3–A5 vazias (o Lua não as cria; a API de `AddTrack` não
+  consta do README), tamanho máximo do Lua colado, `AddMarker` com frame relativo ao início da timeline. Isso fecha o
+  aceite da 6C em `prod`.

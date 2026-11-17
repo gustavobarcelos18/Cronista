@@ -967,3 +967,39 @@ def broll_search(
             f"{frame_to_seconds(a):7.1f} s  +{(b - a) // 60:>3} s  sim={score:.3f}  "
             f"util={ev.evidence.confidence:.2f}  {tags}"
         )
+
+
+@app.command("montar")
+def montar(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/montagem/<sessão>)")] = None,
+) -> None:
+    """Plano de montagem em quadros a 60 fps: cortes, timelapses, B-roll e cartelas (Fase 6A)."""
+    from cronista.assembly.service import build_assembly, write_plan
+    from cronista.profiles import load_settings_profile
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        profile = load_settings_profile(settings)
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    with open_db(settings.db_path) as db:
+        try:
+            plan = build_assembly(db, session, settings, target_min * 60, (profile.objetivos, profile.regras))
+        except StoryError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    path = write_plan(plan, out or settings.data_dir / "montagem" / str(session), session)
+    for number, budget in plan.chapter_budget_s.items():
+        typer.echo(f"capítulo {number}: {plan.chapter_s(number):.0f} s de {budget:.0f} s alocados")
+    typer.echo(
+        f"total: {plan.total_s / 60:.1f} min em {len(plan.v1)} cortes"
+        f" ({len(plan.items) - len(plan.v1)} B-roll)"
+    )
+    for warning in plan.warnings:
+        typer.echo(f"aviso: {warning}")
+    typer.echo(str(path))

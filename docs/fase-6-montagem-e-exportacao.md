@@ -83,3 +83,13 @@ render de 10 min (CPU × intermediário + NVENC) e se a página Entrega exporta 
 
 Importar no DaVinci Resolve gratuito sem erro, com mídia linkada e marcadores visíveis; vídeo com duração dentro do orçamento
 do capítulo; stems nivelados; SRT alinhado.
+
+## Estado (2026-11-17)
+
+- **6A codificada** (`assembly/plan.py`, `assembly/service.py`, `cronista montar <sessão>`, `tests/test_assembly_plan.py`):
+  cortes em quadros inteiros, folga de 1,5 s, ajuste para fora de palavra (até 1 s), orçamento por capítulo (protegidos
+  nunca saem; aviso se só eles estouram), farm em timelapse 4×–50×, trecho longo resumido ao desfecho, fusão de trechos
+  vizinhos, B-roll em V3 (1 por capítulo) e cartela "Capítulo N" sem número em V5. No `claude_teste`: 3,3 min em 7 cortes
+  (a sessão tem pouco material; o orçamento de 40 min não é atingido, e isso é correto: nada é esticado).
+- Pendente na 6A: cortes J/L e remoção de silêncio morto da fala do criador; "marcos do esforço" da montagem inteligente
+  (hoje só o desfecho); timelapse pré-renderizado com FFmpeg (entra com a 6C, que precisa dos arquivos).

@@ -1238,7 +1238,7 @@ tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadr
    - Shorts 9:16 a partir de 1080p: o recorte tem só 608 px de largura e é ampliado ~1,8×. Aceitar a perda, usar
      fundo desfocado como padrão ou gravar em resolução maior? (seção 6.6)
    - ~~Quem dispara o processamento e em que linguagem é o gravador~~: **decidido** (D1), engine dispara; gravador em Python.
-   - Stems processados: cobrem a sessão inteira ou só os trechos usados na timeline? (seção 2; plano da Fase 6)
+   - ~~Stems processados: cobrem a sessão inteira ou só os trechos usados na timeline?~~ **Decidido em 2026-11-17 (histórico §53):** só os trechos usados, um WAV por item da montagem (plano da Fase 6, sub-etapa 6B).
 11. Questionário editorial v0.1 (histórico §40). ~~Os 6 conflitos e a Q27~~: **decididos** (ver "Já decididas", bloco
    "Conflitos decididos no mesmo dia"). Seguem em aberto:
    - **Lacunas:** fila de revisão humana entre a 5A e o Studio (proposta na 5A); "tom" ou emoção da cena como sinal (Q16 e Q19),

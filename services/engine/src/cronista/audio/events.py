@@ -141,3 +141,20 @@ def events_from_result(result: StageResult) -> list[AnalysisEvent] | None:
     if not path:
         return None
     return _EVENT_LIST.validate_json(Path(str(path)).read_bytes())
+
+
+def load_active_events(db: Session, media_file_id: int) -> list[AnalysisEvent]:
+    """Eventos para consumir (relevância, narrativa).
+
+    As variantes ficam lado a lado no banco de propósito (benchmark de modelos), mas a fala de dois
+    transcritores não pode contar duas vezes: fica a variante de fala gravada por último. As demais etapas
+    entram inteiras (cada variante de `sound_events` é uma faixa).
+    """
+    stored = load_stored_events(db, media_file_id)
+    latest = db.scalar(
+        select(Event.variant)
+        .where(Event.media_file_id == media_file_id, Event.stage == "speech")
+        .order_by(Event.id.desc())
+        .limit(1)
+    )
+    return [s.event for s in stored if s.stage != "speech" or s.variant == latest]

@@ -12,6 +12,7 @@ from cronista.audio.ports import AudioModels
 from cronista.audio.stages import analysis_stages
 from cronista.config import Settings
 from cronista.db.models import RecordingSession
+from cronista.domain.models import StageResult
 from cronista.ingest.stages import ingest_stages
 from cronista.pipeline import GpuGate, StageFailedError, run_pipeline
 from cronista.pipeline.runner import PipelineReport
@@ -70,20 +71,26 @@ def analyze_session(
         *([] if only == "audio" else video_stages(video_models, with_audio=only is None)),
     ]
     stages = [*ingest_stages(), *analysis]
+    analysis_keys = {stage_key(s) for s in analysis}
     for media in session.media_files:
         name = Path(media.path).name
         if not Path(media.path).is_file():
             report.failures[name] = f"arquivo não encontrado: {media.path} (movido ou apagado?)"
             continue
+
+        def store(stage: Stage, result: StageResult, media_id: int = media.id, file_name: str = name) -> None:
+            # Grava assim que a etapa termina: uma falha tardia não pode jogar fora o que já está pronto.
+            if stage_key(stage) not in analysis_keys:
+                return
+            events = events_from_result(result)
+            if events is not None:
+                count = replace_events(db, media_id, stage.name, stage_variant(stage), events)
+                report.events[f"{file_name}::{stage_key(stage)}"] = count
+
         try:
-            result = run_pipeline(db, media, stages, settings, gate)
+            result = run_pipeline(db, media, stages, settings, gate, on_result=store)
         except StageFailedError as exc:
             report.failures[name] = str(exc)
             continue
         report.files[name] = result
-        for stage in analysis:
-            events = events_from_result(result.results[stage_key(stage)])
-            if events is not None:
-                count = replace_events(db, media.id, stage.name, stage_variant(stage), events)
-                report.events[f"{name}::{stage_key(stage)}"] = count
     return report

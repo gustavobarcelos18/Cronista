@@ -102,7 +102,8 @@ class MenuTypesStage:
         for tid in range(len(cents)):
             idx = np.flatnonzero(labels == tid)
             rep = int(idx[int(np.argmax(vectors[idx] @ cents[tid]))])
-            rep_frame = rows[rep][0].evidence.start_frame
+            rep_ev = rows[rep][0].evidence
+            rep_frame = (rep_ev.start_frame + rep_ev.end_frame) // 2
             seconds = sum((rows[i][0].evidence.end_frame - rows[i][0].evidence.start_frame) / 60 for i in idx)
             types.append(
                 {"id": tid, "menus": len(idx), "seconds": seconds, "representative_frame": rep_frame}

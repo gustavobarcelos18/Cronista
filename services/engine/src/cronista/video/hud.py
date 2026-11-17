@@ -140,7 +140,9 @@ class HudStage:
             raise StageError(f"proxy não encontrado: {proxy} (rode a ingestão de novo)")
         sample: list[Gray] = []
         seen = 0
-        for block in vframes.iter_gray_blocks(ctx.settings, proxy, sample_fps=1):
+        for block in vframes.iter_gray_blocks(
+            ctx.settings, proxy, sample_fps=1, between_blocks=ctx.wait_for_gpu
+        ):
             for k in range(len(block)):
                 if (seen + k) % self.hud.template_stride == 0:
                     sample.append(block[k].copy())
@@ -153,7 +155,9 @@ class HudStage:
         if not template.usable:
             warnings.append("sem HUD estável nesta sessão: nenhum trecho de HUD oculto é detectável")
         else:
-            for block in vframes.iter_gray_blocks(ctx.settings, proxy, sample_fps=1):
+            for block in vframes.iter_gray_blocks(
+                ctx.settings, proxy, sample_fps=1, between_blocks=ctx.wait_for_gpu
+            ):
                 scores.append(match(block, template, self.hud))
         score = np.concatenate(scores) if scores else np.ones(seen, np.float32)
         blocked = np.zeros(len(score), bool)

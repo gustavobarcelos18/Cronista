@@ -74,8 +74,8 @@ O OBS não informa o arquivo ao iniciar a gravação; o gravador o procura na pa
 
 ```yaml
 # config/prod.local.yaml (fora do git)
-data_dir: D:/EditorVideo/data/prod
-watch_dir: "D:/GRAVAÇÃO BRUTA DOS VIDEOS SEM EDIÇÃO"
+data_dir: <pasta onde ficam banco, cache e modelos>
+watch_dir: "<pasta de gravação do OBS>"
 # obs_password: ...   # ou a variável CRONISTA_OBS_PASSWORD
 ```
 

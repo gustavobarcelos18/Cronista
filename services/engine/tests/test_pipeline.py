@@ -184,3 +184,47 @@ def test_cached_stage_does_not_consult_the_gate(db: Session, media: MediaFile, s
 
     report = run_pipeline(db, media, [FakeStage("x", calls=calls)], settings, Exploding())
     assert report.cached == ["x"] and calls["x"] == 1
+
+
+def test_on_result_runs_per_stage_even_if_a_later_stage_fails(
+    db: Session, media: MediaFile, settings: Settings
+) -> None:
+    calls: Counter[str] = Counter()
+    stages = [FakeStage("a", calls=calls), FakeStage("b", ("a",), calls=calls, fail=True)]
+    seen: list[str] = []
+    with pytest.raises(StageFailedError):
+        run_pipeline(
+            db,
+            media,
+            stages,
+            settings,
+            AlwaysFreeGate(),
+            on_result=lambda stage, _result: seen.append(stage.name),
+        )
+    assert seen == ["a"]  # o resultado da etapa pronta chegou a quem grava, mesmo com a seguinte falhando
+
+
+def test_result_persistence_failure_marks_the_job_failed(
+    db: Session, media: MediaFile, settings: Settings
+) -> None:
+    class Unserializable(FakeStage):
+        def run(self, ctx: StageContext) -> StageResult:
+            result = super().run(ctx)
+            result.files = [object()]  # type: ignore[list-item]  # o dump do resultado vai falhar
+            return result
+
+    calls: Counter[str] = Counter()
+    with pytest.raises(StageFailedError):
+        run_pipeline(db, media, [Unserializable("a", calls=calls)], settings, AlwaysFreeGate())
+    job = db.scalars(select(Job)).one()
+    assert job.status == "failed" and job.error
+
+
+def test_fingerprint_covers_the_tail_of_small_files(tmp_path: Path) -> None:
+    from cronista.pipeline.cache import fingerprint_file
+
+    path = tmp_path / "f.bin"
+    path.write_bytes(b"a" * (1_500_000))
+    before = fingerprint_file(path)
+    path.write_bytes(b"a" * 1_499_999 + b"b")
+    assert fingerprint_file(path) != before

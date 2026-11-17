@@ -132,6 +132,7 @@ class MenuNamesStage:
         events: list[AnalysisEvent] = []
         invalid = 0
         for t in types:
+            ctx.wait_for_gpu()
             frame = int(t["representative_frame"])
             image = vframes.read_rgb_frame(ctx.settings, proxy, frame, *IMAGE_SIZE)
             answer = ask_choice(self.vlm, image, self.question)

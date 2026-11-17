@@ -8,6 +8,7 @@ de `gabarito.py`. Nada de servidor: abre direto no navegador.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -48,9 +49,21 @@ def build_suggestions(
     return out
 
 
-def render_annotator(video: Path, suggestions: list[dict[str, object]], title: str) -> str:
+def render_annotator(
+    video: Path, suggestions: list[dict[str, object]], title: str, mode: str = "audio"
+) -> str:
+    # A chave das linhas salvas no navegador leva o modo e um resumo das sugestões: o anotador visual não pode
+    # herdar as linhas do de áudio, nem uma página regenerada esconder as sugestões novas.
+    digest = hashlib.sha1(json.dumps(suggestions, sort_keys=True).encode()).hexdigest()[:8]
+    key = f"gabarito:{video.resolve().as_uri()}:{mode}:{digest}"
     data = json.dumps(
-        {"video": video.resolve().as_uri(), "title": title, "classes": CLASSES_UI, "sug": suggestions},
+        {
+            "video": video.resolve().as_uri(),
+            "key": key,
+            "title": title,
+            "classes": CLASSES_UI,
+            "sug": suggestions,
+        },
         ensure_ascii=False,
     ).replace("</", "<\\/")
     descriptions = json.dumps({c: CLASSES[c] for c in CLASSES_UI}, ensure_ascii=False)
@@ -96,7 +109,7 @@ As caixas tracejadas à direita são <b>sugestões da análise</b>: confirme com
 <div id="rows"></div>
 </div>
 <script>
-const D=__DATA__, DESC=__DESC__, KEY="gabarito:"+D.video;
+const D=__DATA__, DESC=__DESC__, KEY=D.key;
 const $=id=>document.getElementById(id), v=$("v");
 let rows=[], mark={s:null,e:null};
 $("ttl").textContent=D.title; v.src=D.video;

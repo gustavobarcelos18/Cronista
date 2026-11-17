@@ -125,7 +125,9 @@ def load_settings(env: str | None = None, config_dir: Path | None = None) -> Set
     password = os.environ.get("CRONISTA_OBS_PASSWORD")
     if password:
         settings = settings.model_copy(update={"obs_password": password})
-    if not settings.data_dir.is_absolute():
-        # Caminhos relativos valem a partir da raiz do repositório (pai da pasta config).
-        settings = settings.model_copy(update={"data_dir": (config_dir.parent / settings.data_dir).resolve()})
+    # Caminhos relativos valem a partir da raiz do repositório (pai da pasta config), não do cwd.
+    for field in ("data_dir", "models_dir", "watch_dir", "profiles_dir"):
+        value = getattr(settings, field)
+        if value is not None and not value.is_absolute():
+            settings = settings.model_copy(update={field: (config_dir.parent / value).resolve()})
     return settings

@@ -86,7 +86,11 @@ def test_state_requires_evidence(db: Session, session_ids: tuple[int, int]) -> N
     with pytest.raises(EvidenceError):
         set_state(db, obj.id, sid, ObjState.CONCLUIDO, source="transcricao", quote="  ")
     first = set_state(db, obj.id, sid, ObjState.PROPOSTO, source="transcricao", quote="preciso achar comida")
-    second = set_state(db, obj.id, sid, ObjState.EM_ANDAMENTO, source="marcador", quote=None)
+    with pytest.raises(EvidenceError):  # marcador sem intervalo de quadros não é evidência
+        set_state(db, obj.id, sid, ObjState.EM_ANDAMENTO, source="marcador", quote=None)
+    second = set_state(
+        db, obj.id, sid, ObjState.EM_ANDAMENTO, source="marcador", quote=None, start_frame=100, end_frame=160
+    )
     assert second.replaces_id == first.id
     assert current_state(db, obj.id, sid).state == "em_andamento"  # type: ignore[union-attr]
     assert add_objective(db, pid, "achar comida").id == obj.id  # retomada mantém o id
@@ -191,9 +195,9 @@ def test_story_pack_truncates_when_too_big() -> None:
     segs = [seg(i * 60, i * 60 + 60, "momento", 0.5 + i / 1000) for i in range(30)]
     chapters = build_chapters([(1, segs)], {})
     speech = {1: [fala(i * 60 + 1, i * 60 + 9, "x " * 70) for i in range(30)]}
-    pack = build_story_pack(chapters, speech, {}, [], 600, max_chars=15000)
+    pack = build_story_pack(chapters, speech, {}, [], 600, max_chars=12000)
     assert pack["truncado"] is True
-    assert len(json.dumps(pack, ensure_ascii=False)) <= 15000
+    assert len(json.dumps(pack, ensure_ascii=False)) <= 12000
 
 
 # ------------------------------------------------------------------ roteiro
@@ -259,3 +263,32 @@ def test_voice_profile() -> None:
     quotes = ["cara isso aqui é loucura", "cara olha só isso", "cara não acredito que deu certo"]
     prof = voice_profile(quotes)
     assert (prof["frases"] == 3 and "cara" in prof["palavras_frequentes"]) or prof["bordoes"] == []
+
+
+def test_failure_needs_a_failure_marker(db: Session, session_ids: tuple[int, int]) -> None:
+    pid, sid = session_ids
+    obj = add_objective(db, pid, "achar comida", ObjKind.PRINCIPAL)
+    speech = [fala(50, 53, "Não consegui achar comida nenhuma.")]
+    discover(db, pid, sid, 1, speech, RuleExtractor([obj.title]))
+    assert current_state(db, obj.id).state == "incerto"  # type: ignore[union-attr]
+    discover(
+        db, pid, sid, 1, speech, RuleExtractor([obj.title]), failure_corroboration=[(51 * FPS, 51 * FPS)]
+    )
+    assert current_state(db, obj.id).state == "falhou"  # type: ignore[union-attr]
+
+
+def test_discover_is_idempotent(db: Session, session_ids: tuple[int, int]) -> None:
+    from sqlalchemy import func, select
+
+    from cronista.db.models import ObjectiveState
+
+    pid, sid = session_ids
+    speech = [fala(10, 13, "Preciso achar comida antes de anoitecer.")]
+    for _ in range(3):
+        discover(db, pid, sid, 1, speech, RuleExtractor())
+    assert db.scalar(select(func.count()).select_from(ObjectiveState)) == 1
+
+
+def test_story_pack_truncated_flag_only_when_cut() -> None:
+    small = make_pack()
+    assert small["truncado"] is False

@@ -17,7 +17,9 @@ from cronista.pipeline.stage import StageError
 
 def run_ffmpeg(settings: Settings, args: list[str]) -> None:
     cmd = [settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", *args]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+    )
     if proc.returncode != 0:
         raise StageError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-500:]}")
 
@@ -64,7 +66,9 @@ def probe_media(settings: Settings, path: Path) -> MediaProbe:
     cmd = [
         settings.ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path),
     ]  # fmt: skip
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+    )
     if proc.returncode != 0 or not proc.stdout.strip():
         return MediaProbe(path=str(path), interrupted=True)
     info: dict[str, Any] = json.loads(proc.stdout)
@@ -95,7 +99,9 @@ def probe_chapters(settings: Settings, path: Path) -> list[FileChapter]:
     Falha do ffprobe devolve lista vazia: o diário ainda cobre o tempo dos marcadores.
     """
     cmd = [settings.ffprobe, "-v", "error", "-print_format", "json", "-show_chapters", str(path)]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+    )
     if proc.returncode != 0 or not proc.stdout.strip():
         return []
     info: dict[str, Any] = json.loads(proc.stdout)

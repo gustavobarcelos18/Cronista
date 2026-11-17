@@ -9,7 +9,9 @@
 --
 -- Cada passo imprime OK/FALHOU no Console (e grava resultado-script.txt só se o Lua tiver `io`).
 
-local KIT = "D:\\EditorVideo\\data\\prod\\kit-resolve"
+-- `gerar_linha_unica.py` troca o marcador abaixo pelo caminho do kit na máquina; se este arquivo for copiado
+-- direto para a pasta de scripts do Resolve, edite a linha com o caminho local (nunca versionar o caminho).
+local KIT = "__KIT_DIR__"
 -- Projeto novo a cada rodada: reabrir o da rodada anterior recusa timelines de mesmo nome e mascara os resultados.
 local PROJECT = "Cronista-kit-" .. os.date("%H%M%S")
 local results = {}

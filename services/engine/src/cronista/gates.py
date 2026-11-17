@@ -25,7 +25,6 @@ from cronista.logging_setup import log_event
 from cronista.pipeline.gpu import AlwaysFreeGate, GpuGate, gate_reason, is_free_now
 from cronista.recorder.core import system_clock
 from cronista.recorder.obs import SimpleObsLink
-from cronista.recorder.ports import ObsError
 
 # `SHQueryUserNotificationState` (shell32, Windows). ⚠️ valores de memória: conferir no PC de casa.
 QUNS_BUSY = 2  # aplicativo em tela cheia (ou modo de apresentação)
@@ -77,16 +76,16 @@ class ObsRecordingGate:
         """True/False = estado da gravação; None = OBS inacessível."""
         if not self._port_open():  # o Windows leva ~2 s por endereço para recusar uma conexão; isto é rápido
             return None
+        pool = ThreadPoolExecutor(max_workers=1)
         try:
-            with ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(lambda: asyncio.run(self._status())).result(
-                    timeout=OBS_PROBE_TIMEOUT_S * 3
-                )
-        except (ObsError, OSError, TimeoutError) as exc:
+            return pool.submit(lambda: asyncio.run(self._status())).result(timeout=OBS_PROBE_TIMEOUT_S * 3)
+        except Exception as exc:  # sinal ilegível conta como livre (docstring do módulo)
             # A porta responde mas a conexão falha (senha errada, WebSocket sem autenticação esperada):
             # o gate fica cego para a gravação, então isso precisa aparecer no log.
             log_event("gate_obs_recusou_conexao", level=logging.WARNING, erro=str(exc))
             return None
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)  # `with` esperaria a thread travada terminar
 
     def is_free(self) -> bool:
         self._recording = self._probe() is True

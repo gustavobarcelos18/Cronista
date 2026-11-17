@@ -22,8 +22,8 @@ def fingerprint_file(path: Path) -> str:
     digest.update(str(size).encode())
     with path.open("rb") as handle:
         digest.update(handle.read(_EDGE))
-        if size > 2 * _EDGE:
-            handle.seek(size - _EDGE)
+        if size > _EDGE:
+            handle.seek(max(size - _EDGE, _EDGE))
             digest.update(handle.read(_EDGE))
     return digest.hexdigest()
 

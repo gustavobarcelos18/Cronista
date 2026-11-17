@@ -67,8 +67,13 @@ def run_pipeline(
     settings: Settings,
     gate: GpuGate,
     sleep: Callable[[float], None] = time.sleep,
+    on_result: Callable[[Stage, StageResult], None] | None = None,
 ) -> PipelineReport:
-    """Roda as etapas na ordem dada (já topológica). Etapa com cache válido é pulada."""
+    """Roda as etapas na ordem dada (já topológica). Etapa com cache válido é pulada.
+
+    `on_result` é chamado assim que cada etapa termina (executada ou em cache), para quem precisa gravar o
+    resultado sem esperar as etapas seguintes (uma falha tardia não pode perder o que já está pronto).
+    """
     report = PipelineReport()
     keys: dict[str, str] = {}
     media_path = Path(media.path)
@@ -90,6 +95,8 @@ def run_pipeline(
         if cached is not None:
             report.results[name] = cached
             report.cached.append(name)
+            if on_result is not None:
+                on_result(stage, cached)
             log_event("etapa_em_cache", media_file_id=media.id, stage=name, cache_key=key[:12])
             continue
 
@@ -134,29 +141,31 @@ def run_pipeline(
         log_event("etapa_iniciada", media_file_id=media.id, stage=name, job_id=job.id)
         try:
             result = stage.run(ctx)
-        except Exception as exc:
+            result_path = out_dir / RESULT_FILE
+            result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+            if artifact is None:
+                artifact = Artifact(
+                    media_file_id=media.id, stage=stage.name, variant=variant, cache_key=key, result_path=""
+                )
+                db.add(artifact)
+            else:  # troca de versão do cache: apaga a saída antiga
+                old_dir = Path(artifact.result_path).parent
+                if old_dir.exists() and old_dir != out_dir:
+                    shutil.rmtree(old_dir, ignore_errors=True)
+            artifact.cache_key, artifact.result_path, artifact.created_at = key, str(result_path), _now()
+            job.status, job.finished_at = "done", _now()
+            db.commit()
+        except Exception as exc:  # inclui a gravação do resultado: o job nunca fica `running` para sempre
+            db.rollback()
             job.status, job.error, job.finished_at = "failed", str(exc), _now()
             db.commit()
             log_event("etapa_falhou", level=logging.ERROR, media_file_id=media.id, stage=name, error=str(exc))
             raise StageFailedError(name, str(exc)) from exc
 
-        result_path = out_dir / RESULT_FILE
-        result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
-        if artifact is None:
-            artifact = Artifact(
-                media_file_id=media.id, stage=stage.name, variant=variant, cache_key=key, result_path=""
-            )
-            db.add(artifact)
-        else:  # troca de versão do cache: apaga a saída antiga
-            old_dir = Path(artifact.result_path).parent
-            if old_dir.exists() and old_dir != out_dir:
-                shutil.rmtree(old_dir, ignore_errors=True)
-        artifact.cache_key, artifact.result_path, artifact.created_at = key, str(result_path), _now()
-        job.status, job.finished_at = "done", _now()
-        db.commit()
-
         report.results[name] = result
         report.executed.append(name)
+        if on_result is not None:
+            on_result(stage, result)
         log_event("etapa_concluida", media_file_id=media.id, stage=name, warnings=result.warnings)
 
     return report

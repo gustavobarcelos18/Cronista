@@ -168,6 +168,10 @@ def test_service_stores_events_once_and_keeps_variants_apart(
     }  # outro modelo: outra variante, lado a lado
     quotes = {e.evidence.model: e.evidence.quote for e in load_events(db, media.id, kind="fala")}
     assert quotes == {"fake-asr": "e aí", "fake-asr-b": "e ai"}
+    from cronista.audio.events import load_active_events
+
+    active = [e.evidence.quote for e in load_active_events(db, media.id) if e.kind == "fala"]
+    assert active == ["e ai"]  # quem consome vê só a fala do transcritor mais recente, sem contar em dobro
 
 
 @needs_ffmpeg

@@ -130,7 +130,7 @@ def test_divergence_and_file_only_marker_produce_warnings(
     report = _ingest(db, folder, settings)
     by_id = {r.marker_id: r for r in _markers(db)}
     assert by_id["m1"].media_frame == 114 and "divergem" in (by_id["m1"].warning or "")
-    orphan = by_id["arquivo-1"]
+    orphan = by_id[next(k for k in by_id if k.startswith("arquivo-") and k.endswith("-1"))]
     assert orphan.kind == "momento" and "só no arquivo" in (orphan.warning or "")
     assert len(report.markers.warnings) == 2
 

@@ -91,9 +91,10 @@ def build_story_pack(
     cutoff = 0.0
     pack = make(cutoff)
     scores = sorted({i.segment.score for c in chapters for i in c.items})
-    for cutoff in [*scores, 1.01]:
+    for candidate in [*scores, 1.01]:
         if len(json.dumps(pack, ensure_ascii=False)) <= max_chars:
             break
+        cutoff = candidate
         pack = make(cutoff)
     pack["truncado"] = cutoff > 0.0
     return pack

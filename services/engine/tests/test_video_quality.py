@@ -44,7 +44,11 @@ def test_render_and_empty() -> None:
 
 
 def test_visual_suggestions_carry_thumbnails_and_skip_audio() -> None:
-    events = [("menu", 0, 600, 0.1, None), ("idle", 600, 1200, 0.9, None), ("risada", 0, 60, 0.9, None)]
+    events: list[tuple[str, int, int, float, str | None]] = [
+        ("menu", 0, 600, 0.1, None),
+        ("idle", 600, 1200, 0.9, None),
+        ("risada", 0, 60, 0.9, None),
+    ]
     out = build_suggestions(events, VISUAL_CLASSES_UI, lambda f: f"thumb{f}")
     assert [s["cls"] for s in out] == ["menu", "idle"]  # confiança baixa não corta candidato visual
     assert out[0]["thumb"] == "thumb300"

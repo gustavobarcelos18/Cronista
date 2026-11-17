@@ -146,3 +146,31 @@ def test_report_keeps_each_producer_apart(db: Session, tmp_path: Path) -> None:
     assert "Fala transcrita (speech:vad-asr-a)" in page and "Fala transcrita (speech:vad-asr-b)" in page
     assert "fala (speech:vad-asr-a)" in page and "fala (speech:vad-asr-b)" in page  # faixas separadas
     assert ">risada<" in page  # tipo com um produtor só mantém o nome simples
+
+
+@needs_ffmpeg
+def test_report_has_video_section_with_thumbnails_when_settings_are_given(
+    db: Session, settings: Settings, analyzed: int
+) -> None:
+    page = render_session_report(db, analyzed, settings)
+    assert "<h2>Vídeo</h2>" in page and "Vídeo: movimento entre quadros" in page
+    assert "Estados de tela" in page
+    # os eventos de vídeo não aparecem misturados nas faixas de áudio
+    assert page.count("<h3>Eventos</h3>") == 1
+
+
+@needs_ffmpeg
+def test_only_limits_the_analysis_and_rejects_unknown_values(
+    db: Session, settings: Settings, fixture_folders: dict[str, Path]
+) -> None:
+    from cronista.audio.service import AnalysisError
+
+    assert ingest_folder(db, fixture_folders["normal"], settings, AlwaysFreeGate()).ok
+    session_id = db.scalars(select(RecordingSession.id)).one()
+    only_video = analyze_session(db, session_id, settings, AlwaysFreeGate(), None, "video")
+    executed = next(iter(only_video.files.values())).executed
+    assert set(executed) == {"video_signals", "video_scenes"} and not only_video.skipped
+    only_audio = analyze_session(db, session_id, settings, AlwaysFreeGate(), None, "audio")
+    assert "video_signals" not in next(iter(only_audio.files.values())).executed
+    with pytest.raises(AnalysisError, match="--only"):
+        analyze_session(db, session_id, settings, AlwaysFreeGate(), None, "tudo")

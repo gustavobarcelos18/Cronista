@@ -201,19 +201,27 @@ def _warnings(db: Session, media: MediaFile) -> list[str]:
     return out
 
 
-def _media_section(db: Session, media: MediaFile) -> str:
+def _media_section(db: Session, media: MediaFile, settings: Settings | None = None) -> str:
+    from cronista.video.report import is_video_event, video_section
+
     markers = list(
         db.scalars(select(Marker).where(Marker.media_file_id == media.id).order_by(Marker.media_frame))
     )
-    events = load_stored_events(db, media.id)
+    all_events = load_stored_events(db, media.id)
+    events = [e for e in all_events if not is_video_event(e)]
+    video_events = [e for e in all_events if is_video_event(e)]
     signals: dict[str, Signal] = {}
     result = _result_of(db, media, "audio_signals")
     if result is not None:
         signals = {n: load_signal(m) for n, m in signal_metas(result).items()}
+    video_signals: dict[str, Signal] = {}
+    video_result = _result_of(db, media, "video_signals")
+    if video_result is not None:
+        video_signals = {n: load_signal(m) for n, m in signal_metas(video_result).items()}
 
     total = max(
-        [s.end_frame for s in signals.values()]
-        + [s.event.evidence.end_frame for s in events]
+        [s.end_frame for s in [*signals.values(), *video_signals.values()]]
+        + [s.event.evidence.end_frame for s in all_events]
         + [m.media_frame for m in markers]
         + [1]
     )
@@ -227,6 +235,9 @@ def _media_section(db: Session, media: MediaFile) -> str:
         if name in signals:
             parts.append(line_chart(signals[name], title, markers, total, fixed))
     parts.append(event_lanes(events, markers, total))
+    proxy_result = _result_of(db, media, "proxy")
+    proxy = Path(str(proxy_result.data.get("proxy", ""))) if proxy_result else None
+    parts.append(video_section(video_events, video_signals, markers, total, settings, proxy))
 
     speech_by_producer: dict[str, list[StoredEvent]] = {}
     for stored in events:
@@ -260,11 +271,11 @@ def _media_section(db: Session, media: MediaFile) -> str:
     return f'<section class="card">{"".join(parts)}</section>'
 
 
-def render_session_report(db: Session, session_id: int) -> str:
+def render_session_report(db: Session, session_id: int, settings: Settings | None = None) -> str:
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise LookupError(f"Sessão {session_id} não existe (veja `cronista status`)")
-    body = "".join(_media_section(db, media) for media in session.media_files)
+    body = "".join(_media_section(db, media, settings) for media in session.media_files)
     if not session.media_files:
         body = '<p class="muted">Sessão sem arquivos.</p>'
     return (
@@ -279,7 +290,7 @@ def render_session_report(db: Session, session_id: int) -> str:
 
 
 def write_session_report(db: Session, session_id: int, settings: Settings, out: Path | None = None) -> Path:
-    page = render_session_report(db, session_id)
+    page = render_session_report(db, session_id, settings)
     path = out or settings.data_dir / "reports" / f"sessao-{session_id}.html"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(page, encoding="utf-8")

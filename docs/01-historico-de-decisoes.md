@@ -1198,6 +1198,7 @@ Verificado em vídeo sintético com verdade de campo (`devtools/synthetic_video.
 **No `claude_teste.mp4` (37 min) a análise leva cerca de 24 s** (≈ 90× o tempo real) e gera 214 eventos (28 menus, 10 loadings, 9 idles); **os números não foram
 conferidos contra gabarito nem de olho**, só a plausibilidade. Limiares são pontos de partida, sem corte aprovado (a 3C calibra).
 
+**Relatório de vídeo:** `cronista report` ganhou a seção "Vídeo" (estados de tela sobre o tempo, gráficos de movimento, parada, bordas e brilho, e tabela com miniatura do quadro do meio dos trechos mais longos de loading, menu e idle). `analyze --only audio|video` limita a análise.
 
 ## Decisões em aberto
 

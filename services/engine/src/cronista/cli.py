@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from enum import StrEnum
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 
@@ -34,6 +36,7 @@ from cronista.preview import PreviewError, build_preview
 from cronista.recorder.feedback import ConsoleFeedback
 from cronista.recorder.hotkeys import HotkeyConfigError
 from cronista.recorder.run import run_forever
+from cronista.video.models import build_video_models
 from cronista.watch import Processed
 from cronista.watch import serve as watch_serve
 
@@ -138,6 +141,7 @@ def analyze(
                 build_gate(settings),
                 build_models(settings),
                 only.value if only else None,
+                build_video_models(settings),
             )
         except AnalysisError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -385,6 +389,208 @@ def bench_audio(
     typer.echo(f"\n{target}")
 
 
+@app.command("bench-video")
+def bench_video(
+    session: Annotated[int, typer.Argument(help="Sessão cujo primeiro arquivo serve de amostra")],
+    models: Annotated[
+        str,
+        typer.Option(help="Candidatos separados por vírgula (veja CANDIDATES em video/models.py)"),
+    ] = "siglip-base,siglip2-base,siglip2-so400m,clip-b32",
+    truth: Annotated[
+        Path | None, typer.Option(help="CSV inicio_s,fim_s,rotulo para medir qualidade (opcional)")
+    ] = None,
+    file: Annotated[
+        str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro que existe)")
+    ] = None,
+    out: Annotated[Path | None, typer.Option(help="JSON de saída (padrão: data/bench/video-N.json)")] = None,
+) -> None:
+    """Benchmark dos modelos de embedding de quadro: velocidade, VRAM e acerto no gabarito pequeno."""
+    from cronista.audio.models import missing_ml_packages
+    from cronista.video.bench import load_truth, render_table, run_bench, write_results
+    from cronista.video.models import CANDIDATES, make_candidate
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    names = [n.strip() for n in models.split(",") if n.strip()]
+    unknown = [n for n in names if n not in CANDIDATES]
+    if unknown or missing_ml_packages():
+        typer.echo(
+            f"erro: candidatos desconhecidos {unknown} ou faltam pacotes {missing_ml_packages()}", err=True
+        )
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        candidates = db.scalars(
+            select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
+        )
+        existing = [
+            m for m in candidates if Path(m.path).is_file() and (file is None or file in Path(m.path).name)
+        ]
+        if not existing:
+            typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
+            raise typer.Exit(1)
+        artifact = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == existing[0].id, Artifact.stage == "proxy", Artifact.variant == ""
+            )
+        )
+        if artifact is None:
+            typer.echo("erro: sem proxy; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        proxy = Path(
+            str(
+                StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8")).data[
+                    "proxy"
+                ]
+            )
+        )
+    factories = {n: (lambda n=n: make_candidate(settings, n)) for n in names}
+    target = out or settings.data_dir / "bench" / f"video-{session}.json"
+    rows = run_bench(
+        settings,
+        proxy,
+        factories,
+        load_truth(truth) if truth else None,
+        save_dir=settings.data_dir / "bench" / f"video-{session}",
+        progress=lambda partial: write_results(partial, target),
+    )
+    typer.echo(render_table(rows))
+    write_results(rows, target)
+    typer.echo(f"\n{target}")
+
+
+@app.command("bench-audio-quality")
+def bench_audio_quality(
+    session: Annotated[int, typer.Argument(help="Sessão com o gabarito")],
+    gabarito: Annotated[Path, typer.Argument(help="CSV do gabarito deste arquivo")],
+    speech: Annotated[str, typer.Option(help="Candidatos de fala, separados por vírgula (ou vazio)")] = "",
+    events: Annotated[str, typer.Option(help="Candidatos de eventos no microfone (ou vazio)")] = "",
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    out: Annotated[
+        Path | None, typer.Option(help="JSON de saída (padrão: data/bench/audio-quality-N.json)")
+    ] = None,
+) -> None:
+    """Compara fala e eventos sonoros com o gabarito: WER, precisão, revocação, tempo e VRAM."""
+    from cronista.audio.bench_quality import AudioQualityRow, render_table, run_quality_bench, to_json
+    from cronista.audio.models import (
+        EVENT_CANDIDATES,
+        SPEECH_CANDIDATES,
+        make_event_candidate,
+        make_speech_candidate,
+        missing_ml_packages,
+    )
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    speech_names = [n.strip() for n in speech.split(",") if n.strip()]
+    event_names = [n.strip() for n in events.split(",") if n.strip()]
+    unknown = [n for n in speech_names if n not in SPEECH_CANDIDATES] + [
+        n for n in event_names if n not in EVENT_CANDIDATES
+    ]
+    if unknown or missing_ml_packages():
+        typer.echo(
+            f"erro: candidatos desconhecidos {unknown} ou faltam pacotes {missing_ml_packages()}", err=True
+        )
+        raise typer.Exit(1)
+    report = validate_gabarito(gabarito)
+    if not report.ok:
+        for err in report.errors:
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        item = _pick_media(db, session, file)
+        artifact = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == item.id, Artifact.stage == "audio", Artifact.variant == ""
+            )
+        )
+        if artifact is None:
+            typer.echo("erro: sem WAVs extraídos; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        wavs = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8")).data
+    target = out or settings.data_dir / "bench" / f"audio-quality-{session}.json"
+
+    def save(partial_rows: list[AudioQualityRow]) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(to_json(partial_rows), indent=2, ensure_ascii=False), encoding="utf-8")
+
+    rows = run_quality_bench(
+        settings,
+        wavs,
+        report.annotations,
+        {n: partial(make_speech_candidate, settings, n) for n in speech_names},
+        {n: partial(make_event_candidate, settings, n) for n in event_names},
+        settings.data_dir / "bench" / f"audio-quality-{session}",
+        progress=save,
+    )
+    typer.echo(render_table(rows))
+    typer.echo(f"\n{target}")
+
+
+@app.command("bench-vision")
+def bench_vision(
+    session: Annotated[int, typer.Argument(help="Sessão cujo primeiro arquivo serve de amostra")],
+    truth: Annotated[Path, typer.Argument(help="JSON do gabarito visual (telas e texto do HUD)")],
+    vlms: Annotated[str, typer.Option(help="VLMs separados por vírgula (ou vazio)")] = (
+        "qwen25vl-3b,qwen25vl-7b-4bit,qwen3vl-4b,qwen3vl-8b-4bit"
+    ),
+    ocr: Annotated[bool, typer.Option(help="Inclui o RapidOCR")] = True,
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    out: Annotated[Path | None, typer.Option(help="JSON de saída (padrão: data/bench/vision-N.json)")] = None,
+) -> None:
+    """Estado de tela por VLM, leitura de HUD (OCR e VLM) e efeito da resolução (360p, 720p e 1080p)."""
+    from cronista.video.bench_vision import (
+        VLM_CANDIDATES,
+        load_truth,
+        render_table,
+        run_vision_bench,
+    )
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    names = [n.strip() for n in vlms.split(",") if n.strip()]
+    unknown = [n for n in names if n not in VLM_CANDIDATES]
+    if unknown:
+        typer.echo(f"erro: VLMs desconhecidos {unknown}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        item = _pick_media(db, session, file)
+        artifact = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == item.id, Artifact.stage == "proxy", Artifact.variant == ""
+            )
+        )
+        if artifact is None:
+            typer.echo("erro: sem proxy; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        data = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8")).data
+        proxy, master = Path(str(data["proxy"])), Path(item.path)
+    target = out or settings.data_dir / "bench" / f"vision-{session}.json"
+    rows = run_vision_bench(
+        settings,
+        master,
+        proxy,
+        load_truth(truth),
+        names,
+        ocr,
+        settings.data_dir / "bench" / "vision-frames",
+        target,
+    )
+    typer.echo(render_table(rows))
+    typer.echo(f"\n{target}")
+
+
+@app.command("bench-report")
+def bench_report(
+    out: Annotated[Path, typer.Option(help="Pasta dos relatórios")] = Path("docs/benchmarks"),
+) -> None:
+    """Gera os relatórios Markdown dos benchmarks (tabelas automáticas; a análise à mão é preservada)."""
+    from cronista.bench_report import write_reports
+
+    settings = load_settings()
+    for path in write_reports(settings.data_dir / "bench", out):
+        typer.echo(str(path))
+
+
 @app.command("bench-quality")
 def bench_quality(
     session: Annotated[int, typer.Argument(help="Sessão analisada (`cronista analyze`)")],
@@ -463,3 +669,60 @@ def gabarito_ui(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(page, encoding="utf-8")
     typer.echo(f"{target}\n{len(events)} eventos viraram sugestões; abra o arquivo no navegador.")
+
+
+@app.command("broll-search")
+def broll_search(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    query: Annotated[str, typer.Argument(help='Texto em inglês, ex.: "a cave" ou "a sunset over the lake"')],
+    top: Annotated[int, typer.Option(help="Quantos resultados mostrar")] = 5,
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+) -> None:
+    """Busca B-roll da sessão por texto (precisa de `analyze` com `video_embedder` na configuração)."""
+    import numpy as np
+
+    from cronista.audio.events import load_stored_events
+    from cronista.video import broll as broll_lib
+
+    settings = load_settings()
+    models = build_video_models(settings)
+    if models.embedder is None:
+        typer.echo("erro: sem `video_embedder` na configuração (ou sem o grupo `ml`)", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        media = _pick_media(db, session, file)
+        art = db.scalar(
+            select(Artifact)
+            .where(Artifact.media_file_id == media.id, Artifact.stage == "video_embeddings")
+            .order_by(Artifact.id.desc())
+        )
+        stored = load_stored_events(db, media.id, kind="broll")
+    if art is None or not stored:
+        typer.echo("erro: sem B-roll nem embeddings; rode `cronista analyze` antes", err=True)
+        raise typer.Exit(1)
+    info = StageResult.model_validate_json(Path(art.result_path).read_text(encoding="utf-8"))
+    saved = info.data["embeddings"]
+    current = [models.embedder.name, models.embedder.version, models.embedder.options]
+    if saved["dim"] != models.embedder.dim or saved.get("embedder", current) != current:
+        typer.echo(
+            "erro: os embeddings da sessão vieram de outro modelo (`video_embedder` mudou); "
+            "rode `cronista analyze` de novo",
+            err=True,
+        )
+        raise typer.Exit(1)
+    emb = np.load(saved["path"], mmap_mode="r")
+    hits = broll_lib.search(
+        np.asarray(emb, dtype=np.float32),
+        models.embedder,
+        [s.event for s in stored],
+        query,
+        hop=60,
+        top=top,
+    )
+    for ev, score in hits:
+        a, b = ev.evidence.start_frame, ev.evidence.end_frame
+        tags = ", ".join(str(t) for t in ev.payload.get("tags", []))
+        typer.echo(
+            f"{frame_to_seconds(a):7.1f} s  +{(b - a) // 60:>3} s  sim={score:.3f}  "
+            f"util={ev.evidence.confidence:.2f}  {tags}"
+        )

@@ -24,14 +24,12 @@ class ScreenParams:
     dark_luma: float = 0.03
     dark_motion: float = 0.004
     # PROVISÓRIO: limiares calibrados só no claude_teste.mp4; a 3C os valida em dois gêneros.
-    # `idle` desligado: com bordas e parada não se separa personagem parado de página de texto escura
-    # (conferido de olho no claude_teste.mp4). Volta na 3B, com embeddings.
-    idle_enabled: bool = False
+    # `idle` não é detectado aqui: com bordas e parada não se separa personagem parado de página de texto
+    # escura. Vive na etapa `video_idle` (cena parada com o HUD inteiro, histórico §50).
     loading_min_s: float = 2.0
     still_min: float = 0.90  # fração de pixels parados para a tela contar como estática
     menu_edge: float = 0.12  # densidade de bordas de uma tela de menu (texto, caixas)
     menu_min_s: float = 3.0
-    idle_min_s: float = 5.0
     pan_shift_px: float = 1.5  # deslocamento global (em px de 160x90) de uma panorâmica
     pan_conf: float = 0.15
     still_shift_px: float = 0.5
@@ -88,12 +86,6 @@ def detect(signals: Mapping[str, FloatArray], params: ScreenParams) -> list[Scre
         out.append(
             ScreenSpan("menu", a, b, 0.7, {"edge_density": mean(edge, a, b), "still": mean(still, a, b)})
         )
-    if params.idle_enabled:
-        idle = static & (edge < params.menu_edge) & ~dark
-        for a, b in _runs(idle, round(params.idle_min_s * fps), gap):
-            out.append(
-                ScreenSpan("idle", a, b, 0.6, {"edge_density": mean(edge, a, b), "still": mean(still, a, b)})
-            )
 
     camera_len = round(params.camera_min_s * fps)
     panning = (shift >= params.pan_shift_px) & (conf >= params.pan_conf) & ~static & ~dark

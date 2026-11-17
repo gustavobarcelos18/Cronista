@@ -4,7 +4,7 @@ Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-
 Decisões que alimentam esta fase: [histórico §36, §38 e §45](01-historico-de-decisoes.md). Padrões herdados da Fase 2:
 [fase-2-analise-de-audio.md](fase-2-analise-de-audio.md) (variante de artefato, `Evidence`/`event`, sinais `.npy`, portas, gate de GPU).
 
-Status (2026-11-17): **3A implementada** em `fase/3-video`: leitor de frames, sinais visuais, heurística de menu/loading/idle, câmera e cortes, seção de vídeo no relatório HTML (faixa de estados, 4 gráficos, miniaturas dos trechos mais longos) e `analyze --only audio|video` (histórico §47). `pausa` passou para a 3B (precisa de embeddings); `orbita` ainda não. **Pendente da 3A:** conferir os resultados reais contra o vídeo (olho do criador) e calibrar na 3C. 3B e 3C não começaram.
+Status (2026-11-17): **3A implementada** em `fase/3-video`: leitor de frames, sinais visuais, heurística de menu/loading/idle, câmera e cortes, seção de vídeo no relatório HTML (faixa de estados, 4 gráficos, miniaturas dos trechos mais longos) e `analyze --only audio|video` (histórico §47). `pausa` passou para a 3B (precisa de embeddings); `orbita` ainda não. **Pendente da 3A:** conferir os resultados reais contra o vídeo (olho do criador) e calibrar na 3C. **3B implementada** (contextos, `novelty_ctx`, benchmarks, B-roll com utilidade/clima/HUD, tipos de menu, HUD oculto e `idle` pela cena parada com HUD inteiro; histórico §48–§50). **Pendente da 3B:** conferir contextos e B-roll de olho em mais sessões e provar o HUD oculto com um trecho real (F1/modo diretor). 3C não começou.
 
 ## Objetivo e aceite
 
@@ -106,10 +106,10 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 
 ### Critérios de aceite (3B)
 
-- [ ] Embeddings da sessão de teste em `prod`, retomáveis, com a GPU pausando quando o OBS grava.
+- [ ] (código e testes em CPU prontos, histórico §48) Embeddings da sessão de teste em `prod`, retomáveis, com a GPU pausando quando o OBS grava.
 - [ ] Contextos coerentes de olho na sessão de teste; `novelty_ctx` coexiste com `novelty` sem sobrescrevê-la (variante).
 - [ ] Busca por texto devolve tomadas plausíveis na sessão de teste.
-- [ ] Tabela de desempenho e a escolha SigLIP × CLIP registradas, com versões verificadas.
+- [x] Tabela de desempenho e a escolha SigLIP × CLIP registradas, com versões verificadas (histórico §49, `docs/benchmarks/`).
 
 ## 3C — Perfis, OCR, VLM e qualidade contra o gabarito
 
@@ -118,12 +118,12 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 ### Tarefas
 
 1. **Perfil genérico universal e perfis declarativos** (`profiles/*.yaml`): o núcleo roda com o perfil genérico; um perfil de
-   jogo só **acrescenta** (regiões de HUD, limiares ajustados, rótulos de contexto). Validado por Pydantic/JSON Schema; sem código por jogo.
+   jogo só **acrescenta** (regiões de HUD, limiares ajustados, rótulos de contexto, `camera_tools`: ferramentas de câmera do jogo para sugerir gravação de B-roll, histórico §50). Validado por Pydantic/JSON Schema; sem código por jogo.
    Interface `GameAdapter` apenas esboçada (leitores de mods ficam fora do escopo, seção 7 do plano).
 2. **OCR de HUD** (RapidOCR, ONNX), **só em regiões definidas no perfil**, lido em frames do **master** (no proxy 360p o texto fica ilegível).
    Amostragem baixa (ex.: 1 frame a cada poucos segundos) e só nos trechos pedidos. Saída: `event` `hud_texto` com a citação em `quote`.
    ⚠️ Verificar a versão do RapidOCR e se o runtime ONNX com CUDA convive com o PyTorch do ambiente `ml`.
-3. **VLM local** (Ollama + Qwen-VL, ⚠️ confirmar o modelo disponível para 12 GB) **só em trechos candidatos** (estado de tela
+3. **VLM local** (`transformers` + Qwen3-VL 4B, sem Ollama; histórico §49) **só em trechos candidatos** (estado de tela
    incerto, B-roll, momentos). Saída em JSON Schema validada por Pydantic, uma pergunta fechada por vez (histórico §40); nunca descrição livre em massa.
 4. **`cronista bench-video-quality`** (mesmo desenho do `bench-quality` da 2C): lê o gabarito e os eventos e calcula, por classe
    (`menu`, `loading`, `idle`, `cinematica`), precisão, revocação e erro de bordas em quadros, com tolerância configurável.
@@ -131,6 +131,28 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
    perfil. Se uma classe só funciona com perfil, registrar isso (o aceite exige o genérico).
 6. **Teste de plugabilidade:** adicionar um perfil de exemplo sem alterar uma linha do núcleo (teste automatizado que falha se o núcleo importar o perfil).
 7. **Números de corte** aprovados por você **antes** do benchmark final; escolha de modelos e versões fixadas no plano (seção 5.2).
+
+### Plano de execução da 3C (2026-11-17)
+
+Branch `fase/3c-perfis` a partir da `main`, depois do merge do PR #13 (3B). Cinco blocos; o 1 e o 2 não dependem um do outro e começam já.
+
+| Bloco | O que entrega | Depende de | Onde roda |
+|---|---|---|---|
+| **3C-1 Gabarito visual e métricas** | `gabarito-ui` com **candidatos visuais** (miniatura do trecho de menu/loading/idle/hud_oculto: aceitar, rejeitar ou ajustar bordas, como as sugestões do Whisper na 2C); classe nova `hud_oculto` no gabarito; `cronista bench-video-quality` (precisão, revocação e erro de bordas por classe, tolerância configurável); relatório com a medida **da heurística atual** (linha de base) | Você anotar | `dev` (código), `prod` (mídia real) |
+| **3C-2 Perfis e plugabilidade** | Schema Pydantic + JSON Schema do perfil (`profiles/*.yaml`): `hud_regions` (nome, retângulo relativo, tipo de leitura), `thresholds` (ajustes sobre o genérico), `context_labels`, `camera_tools`, `objetivos`/`regras`; perfil genérico embutido; carregador; `profiles/exemplo.yaml` (Minecraft: só dados, sem código); **teste que falha se o núcleo importar ou citar um perfil** | nada | `dev` |
+| **3C-3 OCR do HUD** | Porta `HudReader` + adaptador RapidOCR 3.10 (CPU, ONNX); etapa `video_hud_text` lê **só as regiões do perfil**, em frames do **master a 720p**, 1 frame a cada poucos segundos, só nos trechos pedidos; eventos `hud_texto` com `quote`; o bioma do minimapa (ex.: "spider_caves") vira tag de tema do B-roll | 3C-2 | `prod` (master) |
+| **3C-4 VLM local** | Porta `ScreenVLM` + adaptador `transformers` com Qwen3-VL 4B (4 bits se o bitsandbytes funcionar no Windows; senão modelo que caiba em 12 GB); **uma pergunta fechada por vez**, JSON Schema validado por Pydantic; usos: (a) **nomear cada tipo de menu** (7 perguntas no `claude_teste`, não 28), (b) desempate de estado de tela duvidoso, (c) confirmar clima/tema de B-roll candidato ("há inimigo na imagem?"); nunca descrição livre em massa, nunca em stream | 3C-1 (para medir) | `prod` (GPU, com o gate) |
+| **3C-5 Calibração e corte final** | Limiares da 3A/3B (`menu_edge`, `dark_luma`, `hud_full`, `hidden_match`, `similarity` de menu) ajustados **por sessão** a partir da linha de base ou por perfil; propor números de corte; **você aprova**; benchmark final; registrar o que só funciona com perfil | 3C-1 a 3C-4, aprovação | `prod` |
+
+**Ordem sugerida:** 3C-2 e 3C-1 (código) em paralelo, enquanto você anota; depois 3C-3, 3C-4 e por fim 3C-5. Cada bloco é um conjunto pequeno de commits; PR para a `main` ao fim da 3C, com `/code-review`.
+
+**O que preciso de você:**
+1. **Anotar o gabarito visual** em sessões que já existem (`claude_teste.mp4`, 37 min; sessões 2 e 3): com os candidatos da 3C-1 é confirmar ou rejeitar miniaturas, algo em torno de 30–60 min, sem gravar nada.
+2. **Gravar ~30 s com o HUD escondido** (F1 no Minecraft, modo diretor ou Replay Mod) no meio de uma sessão normal: prova o HUD oculto e entra no gabarito.
+3. **Escolher o segundo gênero** (item 4 de "Em aberto") para provar que o genérico funciona fora do primeiro jogo; basta uma sessão curta (~20 min).
+4. **Autorizar o download do Qwen3-VL 4B** (tamanho a registrar antes de baixar) e **aprovar os números de corte** (abaixo) quando eu os propuser.
+
+**Aceite da 3C-1:** `bench-video-quality` roda no `claude_teste.mp4` e imprime precisão/revocação por classe; os números de hoje (heurística da 3A/3B) ficam registrados como linha de base no histórico.
 
 ### Números de corte (proposta inicial, a validar; não decidida)
 

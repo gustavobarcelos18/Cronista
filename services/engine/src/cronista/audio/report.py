@@ -27,6 +27,7 @@ TICKS_S = (10, 30, 60, 300, 600, 1800, 3600, 7200, 14400)
 # nome do sinal → (título, unidade, faixa fixa do eixo ou None para automática)
 CHARTS: tuple[tuple[str, str, tuple[float, float] | None], ...] = (
     ("game.novelty", "Jogo: novidade em relação à sessão", None),
+    ("game.novelty_ctx", "Jogo: novidade em relação ao contexto visual", None),
     ("game.periodicity", "Jogo: periodicidade (rotina)", (0.0, 1.0)),
     ("game.energy_db", "Jogo: energia (dBFS)", None),
     ("mic.energy_db", "Microfone: energia (dBFS)", None),

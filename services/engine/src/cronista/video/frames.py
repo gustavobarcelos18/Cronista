@@ -40,14 +40,43 @@ def iter_gray_blocks(
     between_blocks: Callable[[], None] = lambda: None,
 ) -> Iterator[GrayFrames]:
     """Blocos `(n, altura, largura)` de quadros em cinza, a `sample_fps`, do começo ao fim do vídeo."""
+    for data in _iter_raw(settings, video, sample_fps, width, height, "gray", 1, block, between_blocks):
+        yield data.reshape(-1, height, width)
+
+
+def iter_rgb_blocks(
+    settings: Settings,
+    video: Path,
+    *,
+    sample_fps: int = 1,
+    size: int = 224,
+    block: int = 64,
+    between_blocks: Callable[[], None] = lambda: None,
+) -> Iterator[npt.NDArray[np.uint8]]:
+    """Blocos `(n, size, size, 3)` RGB, a `sample_fps`, esticados para o quadrado que o modelo espera."""
+    for data in _iter_raw(settings, video, sample_fps, size, size, "rgb24", 3, block, between_blocks):
+        yield data.reshape(-1, size, size, 3)
+
+
+def _iter_raw(
+    settings: Settings,
+    video: Path,
+    sample_fps: int,
+    width: int,
+    height: int,
+    pix_fmt: str,
+    channels: int,
+    block: int,
+    between_blocks: Callable[[], None],
+) -> Iterator[npt.NDArray[np.uint8]]:
     if FPS % sample_fps:
         raise ValueError(f"sample_fps={sample_fps} precisa dividir {FPS}")
     cmd = [
         settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(video),
-        "-an", "-vf", f"fps={sample_fps},scale={width}:{height}:flags=area,format=gray",
+        "-an", "-vf", f"fps={sample_fps},scale={width}:{height}:flags=area,format={pix_fmt}",
         "-f", "rawvideo", "-",
     ]  # fmt: skip
-    size = width * height
+    size = width * height * channels
     # stderr em arquivo: um pipe que ninguém drena enche (64 KB) e trava o ffmpeg com o stdout parado.
     with tempfile.TemporaryFile() as err:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
@@ -58,7 +87,7 @@ def iter_gray_blocks(
                 data = proc.stdout.read(size * block)
                 usable = len(data) // size * size
                 if usable:
-                    yield np.frombuffer(data[:usable], dtype=np.uint8).reshape(-1, height, width)
+                    yield np.frombuffer(data[:usable], dtype=np.uint8)
                 if len(data) < size * block:  # fim do fluxo (o pipe só devolve menos no EOF)
                     break
         finally:

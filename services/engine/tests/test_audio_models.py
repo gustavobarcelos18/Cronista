@@ -139,7 +139,7 @@ def test_service_stores_events_once_and_keeps_variants_apart(
 
     first = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
     assert first.ok and not first.skipped
-    audio_events = {k: v for k, v in first.events.items() if "video_scenes" not in k}
+    audio_events = {k: v for k, v in first.events.items() if "video_" not in k}
     # fala, risada no jogo e risada no microfone (+ o detector de exclamação, que não achou nada)
     assert sorted(audio_events.values()) == [0, 1, 1, 1]
     again = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
@@ -179,7 +179,7 @@ def test_without_models_only_cpu_signals_run_and_the_report_says_what_was_skippe
     ingest_folder(db, fixture_folders["normal"], settings, AlwaysFreeGate())
     session_id = db.scalars(select(RecordingSession.id)).one()
     report = analyze_session(db, session_id, settings, AlwaysFreeGate())
-    audio_events = {k: v for k, v in report.events.items() if "video_scenes" not in k}
+    audio_events = {k: v for k, v in report.events.items() if "video_" not in k}
     assert report.ok and len(report.skipped) == 2 and not any(audio_events.values())
     (file_report,) = report.files.values()
     assert "audio_signals" in file_report.executed

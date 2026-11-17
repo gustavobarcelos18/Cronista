@@ -28,6 +28,7 @@ ml = [
     "silero-vad>=6.2,<7",
     "transformers>=5.23,<6",
     "psutil>=7,<8",
+    "sentencepiece>=0.2,<1",  # tokenizer do SigLIP (busca por texto, 3B)
 ]
 dev = [
     "pytest>=8.0",
@@ -35,6 +36,13 @@ dev = [
     "mypy>=1.11",
     "types-PyYAML",
     "websockets>=17.4",
+]
+bench = [
+    "accelerate>=1.16.0",
+    "bitsandbytes>=0.50.2",
+    "pillow>=13.0.0",
+    "rapidocr>=3.10.0",
+    "torchvision>=0.26",
 ]
 
 [build-system]
@@ -86,6 +94,7 @@ ignore_missing_imports = true  # sem tipos publicados
 # O índice CUDA só vale no PC de casa (Windows); em outras plataformas o torch vem do PyPI.
 torch = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
 torchaudio = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
+torchvision = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
 
 [[tool.uv.index]]
 name = "pytorch-cu128"

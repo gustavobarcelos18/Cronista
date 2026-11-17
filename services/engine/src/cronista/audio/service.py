@@ -16,6 +16,7 @@ from cronista.ingest.stages import ingest_stages
 from cronista.pipeline import GpuGate, StageFailedError, run_pipeline
 from cronista.pipeline.runner import PipelineReport
 from cronista.pipeline.stage import Stage, stage_key, stage_variant
+from cronista.video.ports import VideoModels
 from cronista.video.stages import video_stages
 
 
@@ -43,6 +44,7 @@ def analyze_session(
     gate: GpuGate,
     models: AudioModels | None = None,
     only: str | None = None,
+    video_models: VideoModels | None = None,
 ) -> AnalysisReport:
     """Roda as etapas de análise (áudio e vídeo) em cada arquivo e grava os eventos no banco.
 
@@ -65,7 +67,7 @@ def analyze_session(
 
     analysis: list[Stage] = [
         *([] if only == "video" else analysis_stages(models)),
-        *([] if only == "audio" else video_stages()),
+        *([] if only == "audio" else video_stages(video_models, with_audio=only is None)),
     ]
     stages = [*ingest_stages(), *analysis]
     for media in session.media_files:

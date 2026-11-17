@@ -324,9 +324,9 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 |---|---|---|
 | Processamento | **Python 3.12 + uv** | Ecossistema de áudio/vídeo/ML; roda nativo no Windows com CUDA |
 | Vídeo | **FFmpeg** (NVDEC/NVENC) + PySceneDetect + OpenCV | Padrão da indústria; usa a GPU |
-| Transcrição | faster-whisper (large-v3-turbo, int8_float16 — histórico §44) | Roda bem em 12 GB; só nos trechos de fala |
-| Áudio | Silero VAD (o mesmo que o faster-whisper usa no filtro de VAD), DeepFilterNet **só se melhorar o WER no benchmark**, classificador de eventos (**AST/AudioSet** primeiro candidato na 2B; PANNs/BEATs/CLAP seguem candidatos da 2C), librosa | Fala × ruído × eventos sonoros |
-| Visão | SigLIP/CLIP (embeddings a 1–2 fps), OCR (**RapidOCR**, ONNX) **em frames do master**, VLM local via Ollama (Qwen-VL) **só em candidatos** | Barato no volume, inteligente onde importa |
+| Transcrição | faster-whisper (**large-v3-turbo**, int8_float16 — histórico §44; confirmado no benchmark: 1,1% de erro e 10 h em ~31 min contra 3,1% e ~57 min do large-v3, com viés a favor do turbo, histórico §49) | Roda bem em 12 GB; só nos trechos de fala |
+| Áudio | Silero VAD (o mesmo que o faster-whisper usa no filtro de VAD), DeepFilterNet **só se melhorar o WER no benchmark**, classificador de eventos (**AST/AudioSet** fixado para risada e eventos do jogo; **CLAP** é candidato para exclamação, revocação 63% mas precisão 29–36%, ainda não adotado; PANNs/BEATs não testados — histórico §49), librosa | Fala × ruído × eventos sonoros |
+| Visão | Embeddings a 1 fps: **SigLIP 2 base** (`google/siglip2-base-patch16-224`) nos contextos e **SigLIP 2 large** (`google/siglip2-large-patch16-384`) só na busca de B-roll por texto; OCR (**RapidOCR 3.10**, ONNX, CPU) **em frames do master a 720p**, só na região do perfil (em 360p nenhum leitor lê o HUD); VLM local pelo `transformers` (**Qwen3-VL 4B**, `Qwen/Qwen3-VL-4B-Instruct`, 360p, sem Ollama) **só em candidatos**; números e limites em [docs/benchmarks](benchmarks/00-recomendacoes.md), histórico §49 | Barato no volume, inteligente onde importa |
 | LLM local | Ollama (Qwen ~14B quantizado) | Classificação e resumos em massa sem custo |
 | LLM de roteiro | **Claude Code (Pro)** via skills do repositório | Melhor qualidade de escrita, custo zero extra |
 | API/Jobs | FastAPI + fila de jobs persistida no banco | Simples para um usuário; troca por Redis depois, se precisar |
@@ -521,6 +521,8 @@ fixo a partir disso.
 - **Detectar** (Fase 3): movimento de câmera (fluxo óptico: parada, panorâmica, órbita), HUD oculto, beleza visual
   (preditor de estética sobre embeddings CLIP) e cenas por texto ("pôr do sol", "vista da base").
   O resultado vai para uma **biblioteca de B-roll** com tags, usada em aberturas, transições de dia e respiros.
+  Sob a narração o B-roll **alterna**: uma sequência de tomadas (uma nova a cada 4–7 s, sem repetir nem pôr contextos parecidos em seguida), a primeira mais próxima do assunto (busca por texto) e as demais do mesmo tema ou, faltando, cenas calmas de boa utilidade (histórico §50). A nota de B-roll é de **utilidade** (cena de jogo, não menu/tela preta), nunca de beleza: cena escura ou medonha serve se o assunto pede.
+  O B-roll **sempre precisa fazer sentido com a narração**: só entra tomada cuja busca por texto passa de um limiar; sem tomada à altura o trecho fica **"falta tomada"** (cena calma genérica só se o criador aceitar). Cada "falta tomada" vira uma **sugestão de gravação** ao criador (tema, duração e movimento de câmera: "narração sobre a base aos 3:20: grave uma panorâmica de ~20 s"). O núcleo sugere só "tomada de câmera livre"; a **ferramenta do jogo** (Replay Mod no Minecraft, modo diretor no GTA, câmera de foto etc.) vem de um campo `camera_tools` do perfil YAML do jogo (3C), sem `if jogo` no núcleo (histórico §50).
 - **Timelapse de construção** (Fase 6), em três níveis de qualidade:
   1. *Automático*: pega frames da gravação normal em que a construção aparece de ângulo parecido
      (similaridade + feature matching/homografia para alinhar) e monta um "progresso". Qualidade variável.
@@ -1081,6 +1083,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Trilhas da timeline: V1 gameplay, V2 efeitos renderizados, V3 B-roll, V4 overlays, V5 cartelas; A1 jogo, A2 voz
   ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados (seção 6.3).
 - CI em Ubuntu e Windows; configuração versionada sem caminhos pessoais + `*.local.yaml` fora do git (seção 5.6).
+- **Fase 3B (2026-11-17, histórico §48–§50):** contextos visuais por embedding (SigLIP 2 base nos contextos, large só na busca de B-roll); **B-roll** com nota de **utilidade** (nunca beleza), tags, **clima** (bonito, sombrio, perigoso, calmo) e estado do HUD; sob a narração o B-roll **alterna**, sempre casando com o assunto, e sem tomada à altura o app **sugere gravar** (ferramenta do jogo em `camera_tools` do perfil, 3C); **tipos de menu** por embedding centrado na média (sem nome; nomear é do VLM/criador, peso é da Fase 4); **HUD oculto** universal por gabarito estável da sessão (experimental, não validado com HUD escondido); **`idle`** = cena parada com o HUD inteiro à vista (substitui a heurística da 3A, removida; 1 acerto no `claude_teste`, recalibrar na 3C).
 - ~~Benchmark da Fase 1 só de desempenho~~: **substituído** (histórico §36): benchmarks de desempenho e de qualidade (WER, precisão) ocorrem na Fase 2; a 1C não faz benchmark de modelos (seções 6.1 e 7).
 - ~~Sem Claude disponível, o roteiro não cai para o LLM local: fallback = `NullProvider` (Fase 5).~~ **Ajustada em
   2026-11-16 (histórico §40):** fallback = `NullProvider`; o `LocalScriptProvider` experimental só entra se passar no

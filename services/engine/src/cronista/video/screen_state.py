@@ -19,8 +19,13 @@ FloatArray = npt.NDArray[np.float32]
 @dataclass(frozen=True)
 class ScreenParams:
     sample_fps: int = 5
-    dark_luma: float = 0.10  # luminância média abaixo disso é tela escura
-    dark_motion: float = 0.01
+    # Loading = tela quase preta e imóvel. 0,10 pegava cena escura de jogo com HUD (brilho 0,04 a 0,09 no
+    # claude_teste.mp4, conferido de olho pelo criador); por isso 0,03 e movimento quase nulo.
+    dark_luma: float = 0.03
+    dark_motion: float = 0.004
+    # `idle` desligado: com bordas e parada não se separa personagem parado de página de texto escura
+    # (conferido de olho no claude_teste.mp4). Volta na 3B, com embeddings.
+    idle_enabled: bool = False
     loading_min_s: float = 2.0
     still_min: float = 0.90  # fração de pixels parados para a tela contar como estática
     menu_edge: float = 0.12  # densidade de bordas de uma tela de menu (texto, caixas)
@@ -81,11 +86,12 @@ def detect(signals: Mapping[str, FloatArray], params: ScreenParams) -> list[Scre
         out.append(
             ScreenSpan("menu", a, b, 0.7, {"edge_density": mean(edge, a, b), "still": mean(still, a, b)})
         )
-    idle = static & (edge < params.menu_edge) & ~dark
-    for a, b in _runs(idle, round(params.idle_min_s * fps), gap):
-        out.append(
-            ScreenSpan("idle", a, b, 0.6, {"edge_density": mean(edge, a, b), "still": mean(still, a, b)})
-        )
+    if params.idle_enabled:
+        idle = static & (edge < params.menu_edge) & ~dark
+        for a, b in _runs(idle, round(params.idle_min_s * fps), gap):
+            out.append(
+                ScreenSpan("idle", a, b, 0.6, {"edge_density": mean(edge, a, b), "still": mean(still, a, b)})
+            )
 
     camera_len = round(params.camera_min_s * fps)
     panning = (shift >= params.pan_shift_px) & (conf >= params.pan_conf) & ~static & ~dark

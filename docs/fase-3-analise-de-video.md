@@ -90,7 +90,7 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 1. **Porta `FrameEmbedder`** (`video/ports.py`) com fake determinístico para teste e adaptador real **SigLIP ou CLIP**
    (⚠️ escolher por benchmark; ONNX Runtime ou PyTorch, conforme o padrão da seção 5.2). 1–2 fps sobre o proxy, em lotes, com o gate de GPU.
    Embeddings como `.npy` (N × D, `float16`) no cache; só a referência no `result.json`.
-2. **Contexto visual:** agrupar cenas parecidas (clustering sobre os embeddings, p. ex. por similaridade de cosseno com limiar, ou HDBSCAN;
+2. **Contexto visual (e tipo de menu):** agrupar cenas parecidas (clustering sobre os embeddings, p. ex. por similaridade de cosseno com limiar, ou HDBSCAN;
    ⚠️ decidir e registrar) em **contextos** numerados por sessão (ex.: "base", "mina", "menu", "mundo aberto"), sem nome por jogo.
    Saída: `event` `contexto` com id do grupo e confiança; um frame representativo por contexto.
 3. **Linha de base do áudio por contexto** (promessa da seção 3 do plano): recalcular `novelty` do jogo com a mediana
@@ -99,6 +99,7 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 4. **Biblioteca de B-roll** (seção 6.2): para trechos com câmera parada/panorâmica/órbita e HUD oculto, calcular um preditor de
    beleza simples (estético sobre os embeddings) e **busca por texto** ("pôr do sol", "vista da base") via embedding de texto do mesmo modelo.
    Tabela `broll_clip` (migração nova): arquivo, intervalo em quadros, movimento, nota de beleza, tags, frame de capa. Uso real na Fase 6.
+5a. **Tipo de menu e `idle` de verdade:** menus parecidos agrupados por embedding (configuração, inventário, diálogo, mapa) e nomeados pelo VLM só nos grupos; peso por tipo na Fase 4. `idle` (personagem parado com o jogo rodando) só volta aqui, porque a heurística de 3A não o separa de página de texto escura (histórico §47).
 5. **Detecção de HUD oculto** (universal): regiões de borda sem estrutura estável por longos períodos; confiança baixa, serve de pista para B-roll.
 6. **Benchmark de desempenho** (`cronista bench-video`): fps de embeddings, VRAM, tempo para 10 h extrapolado de 10 min, como o `bench-audio`; registrar no histórico.
 7. **Relatório:** mapa de contextos (miniatura + tempo total) e a galeria de B-roll candidato.

@@ -50,7 +50,7 @@ def test_continuidade_entre_blocos_nao_muda_os_sinais() -> None:
 
 def test_detecta_loading_menu_idle_e_nao_confunde_jogabilidade() -> None:
     frames, truth = build()
-    spans = detect(_signals(frames, 40), ScreenParams())
+    spans = detect(_signals(frames, 40), ScreenParams(idle_enabled=True))
     by_kind: dict[str, list[tuple[float, float]]] = {}
     for sp in spans:
         by_kind.setdefault(sp.kind, []).append((sp.start / 5, sp.end / 5))
@@ -96,7 +96,7 @@ def test_etapas_leem_o_proxy_e_geram_eventos(tmp_path: Path, settings: Settings)
 
     events = events_from_result(scenes) or []
     kinds = {e.kind for e in events}
-    assert {"loading", "menu", "idle", "cena"} <= kinds
+    assert {"loading", "menu", "cena"} <= kinds and "idle" not in kinds  # idle desligado por padrão
     loading = next(e for e in events if e.kind == "loading")
     expected = next(t for t in truth if t.kind == "loading")
     assert abs(loading.evidence.start_frame / 60 - expected.start_s) <= 0.5
@@ -114,3 +114,16 @@ def test_proxy_ausente_e_erro_claro(tmp_path: Path, settings: Settings) -> None:
     )
     with pytest.raises(StageError, match="proxy não encontrado"):
         VideoSignalsStage().run(ctx)
+
+
+def test_idle_vem_desligado_e_cena_escura_com_hud_nao_e_loading() -> None:
+    frames, _ = build()
+    kinds = {sp.kind for sp in detect(_signals(frames, 40), ScreenParams())}
+    assert "idle" not in kinds and {"loading", "menu"} <= kinds
+
+    # cena escura de jogo (brilho ~0,05) com HUD fixa e leve ruído: o que o criador viu no claude_teste.mp4
+    rng = np.random.default_rng(3)
+    dark = np.full((60, 180, 320), 13, dtype=np.uint8)
+    dark[:, 150:170, 20:200] = 90  # HUD
+    dark = np.clip(dark + rng.integers(-2, 3, size=dark.shape), 0, 255).astype(np.uint8)
+    assert not [sp for sp in detect(_signals(dark, 30), ScreenParams()) if sp.kind == "loading"]

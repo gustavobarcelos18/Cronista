@@ -1200,6 +1200,11 @@ conferidos contra gabarito nem de olho**, só a plausibilidade. Limiares são po
 
 **Relatório de vídeo:** `cronista report` ganhou a seção "Vídeo" (estados de tela sobre o tempo, gráficos de movimento, parada, bordas e brilho, e tabela com miniatura do quadro do meio dos trechos mais longos de loading, menu e idle). `analyze --only audio|video` limita a análise.
 
+**Conferência de olho do criador no `claude_teste.mp4` (2026-11-17):**
+- **loading:** os 6 trechos mostrados eram cena escura de jogo com HUD (brilho 0,04–0,09), nenhum era loading. Corte apertado (brilho < 0,03 e quase nenhum movimento); no mesmo vídeo caíram de 10 para 0 trechos. Não há medida de revocação de loading real (talvez o vídeo não tenha nenhum).
+- **menu:** os 6 trechos mostrados eram menus de verdade. Observação do criador: **menu de configuração e inventário não têm a mesma relevância**. A heurística só diz "tela de interface parada"; o **tipo** do menu (configuração, inventário, diálogo, mapa) e o peso de cada um na relevância ficam para a 3B/3C (embeddings agrupando menus parecidos, VLM só para nomear) e para a Fase 4.
+- **idle:** os trechos mostrados eram páginas de texto escuras e um inventário sobre o jogo, não "personagem parado". Com bordas e parada não se separa uma coisa da outra. `idle` ficou **desligado por padrão** (`ScreenParams.idle_enabled`) até a 3B. Limite de fundo: em 160x90 o texto pequeno some; se faltar resolução, subir para 320x180 (custo a medir).
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

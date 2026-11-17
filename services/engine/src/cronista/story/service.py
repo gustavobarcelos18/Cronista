@@ -14,7 +14,7 @@ from cronista.audio.events import load_active_events
 from cronista.db.models import Marker, Objective, RecordingSession
 from cronista.domain.evidence import AnalysisEvent
 from cronista.relevance.engine import Segment
-from cronista.relevance.service import load_segments
+from cronista.review.decisions import load_effective_segments
 from cronista.story.arc import Chapter, allocate_time, build_chapters
 from cronista.story.objectives import (
     DiscoveryReport,
@@ -60,7 +60,7 @@ def build_story(
     discovery = DiscoveryReport()
     known = [o.title for o in db.scalars(select(Objective).where(Objective.project_id == project.id))]
     for media in sorted(session.media_files, key=lambda m: m.ordinal):
-        segments = load_segments(db, media.id)
+        segments = load_effective_segments(db, media.id)
         if not segments:
             continue
         files.append((media.id, segments))

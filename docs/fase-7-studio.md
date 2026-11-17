@@ -25,5 +25,5 @@ Plano de execução (detalhes do produto na seção "Fase 7" do [plano mestre](0
   waveform clicável com os segmentos sobrepostos e sinais por segmento (`apps/studio/app/revisao.tsx`).
   **Falta:** conferir no navegador com mídia real (`prod`).
 - **7C parcial**: tabela só de inserção `segment_decision` (migração 0008; aceito/rejeitado/ajustado, a última linha vale),
-  `POST /media/{id}/segments/{início}/decision` e botões Aceitar/Rejeitar/Ajustar no Studio. **Falta:** a montagem
+  `POST /media/{id}/segments/{início}/decision` e botões Aceitar/Rejeitar/Ajustar no Studio. **Montagem, roteiro e Shorts já respeitam as decisões** (`review/decisions.py::load_effective_segments`). **Falta:**
   (`assembly`) passar a respeitar as decisões, edição de roteiro e re-exportar só as etapas afetadas pelo cache por hash.

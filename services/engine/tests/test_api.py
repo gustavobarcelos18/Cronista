@@ -117,3 +117,21 @@ def test_api_decisoes_so_insercao(settings: Settings, db: Session) -> None:
     assert client.get("/media/1/segments").json()[0]["decision"] == "ajustado"
     rows = db.query(SegmentDecision).order_by(SegmentDecision.id).all()
     assert [r.decision for r in rows] == ["rejeitado", "ajustado"] and rows[1].replaces_id == rows[0].id
+
+
+def test_segmentos_efetivos_aplicam_decisoes(db: Session) -> None:
+    from cronista.audio.events import replace_events
+    from cronista.relevance.engine import RelevanceParams, Segment
+    from cronista.relevance.service import segments_to_events
+    from cronista.review.decisions import load_effective_segments, record_decision
+
+    _seed(db)
+    segs = [Segment(10, 20, "momento", 0.8), Segment(30, 40, "momento", 0.7), Segment(50, 60, "momento", 0.6)]
+    replace_events(db, 1, "relevance", "", segments_to_events(segs, RelevanceParams()))
+    record_decision(db, 1, 10, "rejeitado")
+    record_decision(db, 1, 30, "ajustado", 32.4, 38.6)
+    record_decision(db, 1, 50, "aceito")
+    out = load_effective_segments(db, 1)
+    assert [(s.start_s, s.end_s) for s in out] == [(32, 39), (50, 60)]
+    record_decision(db, 1, 10, "aceito")  # a última decisão vale
+    assert [s.start_s for s in load_effective_segments(db, 1)] == [10, 32, 50]

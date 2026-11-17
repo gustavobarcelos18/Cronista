@@ -307,5 +307,6 @@ def _score(
         classe = "jogo"
     return Segment(
         a, b, classe, round(score, 3), reasons, ids,
-        {"fala": round(sp, 3), "emocao": round(em, 3), "pausa": round(pa, 3), "marcador": mk},
+        {"fala": round(sp, 3), "emocao": round(em, 3), "pausa": round(pa, 3), "marcador": mk,
+         "novidade": novel},
     )  # fmt: skip

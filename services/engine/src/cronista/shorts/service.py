@@ -11,7 +11,7 @@ from cronista.assembly.plan import WordSpan
 from cronista.audio.events import load_active_events
 from cronista.db.models import Marker, RecordingSession
 from cronista.relevance.engine import EMOTION
-from cronista.relevance.service import load_segments
+from cronista.review.decisions import load_effective_segments
 from cronista.shorts.candidates import (
     Emotion,
     FileMaterial,
@@ -30,7 +30,7 @@ def build_shorts(db: Session, session_id: int, params: ShortsParams | None = Non
         raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
     materials: list[FileMaterial] = []
     for media in sorted(session.media_files, key=lambda m: m.ordinal):
-        segments = load_segments(db, media.id)
+        segments = load_effective_segments(db, media.id)
         if not segments:
             continue
         marks = {

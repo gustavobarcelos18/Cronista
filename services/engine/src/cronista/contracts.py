@@ -6,12 +6,48 @@ import json
 
 from pydantic import TypeAdapter
 
+from cronista.api.app import (
+    DecisionIn,
+    EventOut,
+    ExportStatusOut,
+    FeedbackIn,
+    FeedbackOut,
+    JobOut,
+    LearningOut,
+    MarkerOut,
+    MediaFileOut,
+    ProgressOut,
+    ScriptOut,
+    SegmentOut,
+    SessionOut,
+    WaveformOut,
+)
 from cronista.domain.models import MarkerKind, MediaProbe, StageResult
+from cronista.review.panel import SeriesPanelOut, SeriesRowOut
 
 
 def build_schema() -> dict[str, object]:
     defs: dict[str, object] = {}
-    for model in (MediaProbe, StageResult):
+    for model in (
+        MediaProbe,
+        StageResult,
+        MediaFileOut,
+        SessionOut,
+        JobOut,
+        MarkerOut,
+        SegmentOut,
+        DecisionIn,
+        FeedbackIn,
+        FeedbackOut,
+        LearningOut,
+        ProgressOut,
+        SeriesRowOut,
+        SeriesPanelOut,
+        ExportStatusOut,
+        ScriptOut,
+        EventOut,
+        WaveformOut,
+    ):
         schema = model.model_json_schema(ref_template="#/$defs/{model}")
         defs.update(schema.pop("$defs", {}))
         defs[model.__name__] = schema

@@ -72,10 +72,13 @@ def relevance_session(
     db: Session, session_id: int, params: RelevanceParams | None = None
 ) -> list[FileRelevance]:
     """Recalcula e grava os segmentos de cada arquivo da sessão (substitui os anteriores)."""
-    params = params or RelevanceParams()
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise RelevanceError(f"sessão {session_id} não existe (veja `cronista status`)")
+    if params is None:  # pesos aceitos pelo criador no Studio (7E); sem calibração, os padrão
+        from cronista.review.learning import params_for_project
+
+        params = params_for_project(db, session.project_id)
     return [_one_file(db, m, params) for m in sorted(session.media_files, key=lambda m: m.ordinal)]
 
 

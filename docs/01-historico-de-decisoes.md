@@ -1306,6 +1306,34 @@ manifesto; versão completa idêntica é reaproveitada, interrompida é continua
 (nunca apaga a anterior). Timelapses passam para `<base>/timelapses`. Pausa: `build_gate` do ambiente consultado antes
 de cada timelapse e da mixagem. Não interrompe um FFmpeg já em curso. 425 testes verdes.
 
+## 55. Fase 7A: API local do Studio (2026-11-17)
+
+Fase 7 dividida em 7A–7E (`docs/fase-7-studio.md`). A 7A entrega a API FastAPI só de leitura (`cronista api`, porta 8000,
+CORS apenas para `localhost:3000`); o comando `serve` já era o watcher do OBS, então a API é `api`. Escrita (decisões do
+criador) fica para a 7C.
+
+## 56. Fase 7B–7E: Studio de revisão e aprendizado (2026-11-18)
+
+Decisões tomadas ao implementar o Studio (`docs/fase-7-studio.md`):
+
+1. **Decisões do criador só por inserção** (`segment_decision`): aceito / rejeitado / ajustado, vale a última linha, a anterior
+   fica no histórico (padrão da 5A). A decisão fica presa à janela do segmento (`seg_start_s` + `seg_end_s`): se a relevância
+   for recalculada e a janela mudar, a decisão deixa de valer, em vez de cair em outro trecho que comece no mesmo segundo.
+   Ajuste não pode passar da duração do arquivo nem invadir outro segmento.
+2. **Roteiro, montagem e Shorts leem os segmentos efetivos** (`load_effective_segments`): rejeitar tira o trecho, ajustar
+   troca os limites. A montagem re-exporta pelo cache por hash (plano + roteiro): decisões iguais reaproveitam a versão.
+3. **Edição de roteiro** valida como o `roteiro-import` e guarda cada versão anterior em `roteiro.v<N>.json`; a gravação é
+   feita em temporário antes de trocar, para uma falha não apagar o roteiro vigente.
+4. **API local sem autenticação, só em 127.0.0.1**: escrita só aceita a origem do Studio (`Origin` fora da lista → 403),
+   porque POST sem corpo é "requisição simples" e o CORS não impede um site qualquer de dispará-lo. Migrações Alembic rodam
+   uma vez na partida e sob lock (o Alembic não é thread-safe); progresso por SSE assíncrono com teto de 6 h.
+5. **Recalibração por manter/tirar** (7E): regressão logística pequena sobre marcador, emoção, fala, novidade e pausa,
+   encolhida para os pesos padrão com `n/(n+30)`; mínimo de 20 decisões, 5 de cada lado; proposta explicada em português e
+   **só vale depois de aceita** (`weight_calibration`, só inserção). Limite conhecido: só usa trechos que o criador decidiu,
+   o que enviesa para quem já tem nota extrema; a proposta avisa disso.
+6. **Feedback em texto livre (Q26/Q27)** fica guardado sem interpretação (`feedback`). O LLM local só entra se passar o
+   benchmark da seção 6.1 (precisa da GPU de `prod`); até lá, nada ajusta a edição a partir do texto.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

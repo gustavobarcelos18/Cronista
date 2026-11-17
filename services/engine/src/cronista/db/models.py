@@ -212,3 +212,52 @@ class NarrativeLink(Base):
     hypothesis: Mapped[bool] = mapped_column(default=True)
     """Sem evidência a relação fica como hipótese (plano da 5A)."""
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class SegmentDecision(Base):
+    """Decisão do criador sobre um segmento (Fase 7C). Só inserção: vale a última linha não substituída.
+
+    O segmento é identificado por `(media_file_id, seg_start_s)`, início da relevância. `ajustado`
+    guarda os novos limites em `start_s`/`end_s` (segundos do arquivo).
+    """
+
+    __tablename__ = "segment_decision"
+    __table_args__ = (Index("ix_segment_decision_seg", "media_file_id", "seg_start_s"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    media_file_id: Mapped[int] = mapped_column(ForeignKey("media_file.id"))
+    seg_start_s: Mapped[int] = mapped_column(Integer)
+    seg_end_s: Mapped[int | None] = mapped_column(Integer, default=None)
+    """Fim do segmento no momento da decisão; prende a decisão àquela janela (nulo = só pelo início)."""
+    decision: Mapped[str] = mapped_column(String(12))  # aceito | rejeitado | ajustado
+    start_s: Mapped[float | None] = mapped_column(Float, default=None)
+    end_s: Mapped[float | None] = mapped_column(Float, default=None)
+    replaces_id: Mapped[int | None] = mapped_column(ForeignKey("segment_decision.id"), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class WeightCalibration(Base):
+    """Pesos de relevância aceitos pelo criador para um projeto (7E). Só inserção: vale a última linha."""
+
+    __tablename__ = "weight_calibration"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id"))
+    weights: Mapped[str] = mapped_column(Text)  # JSON: w_marker, w_emotion, w_speech, w_novelty, w_pause
+    n_decisions: Mapped[int] = mapped_column(Integer)
+    explanation: Mapped[str] = mapped_column(Text, default="[]", server_default="[]")  # JSON: linhas legíveis
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Feedback(Base):
+    """Feedback em texto livre (Q26/Q27). Só inserção; `interpretation` vazio até o benchmark do LLM local."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id"))
+    media_file_id: Mapped[int | None] = mapped_column(ForeignKey("media_file.id"), default=None)
+    seg_start_s: Mapped[int | None] = mapped_column(Integer, default=None)
+    text: Mapped[str] = mapped_column(Text)
+    interpretation: Mapped[str | None] = mapped_column(Text, default=None)  # JSON validado, quando houver
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

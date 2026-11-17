@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -12,6 +13,8 @@ from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
+_UPGRADE_LOCK = threading.Lock()
+"""O Alembic tem um proxy global de operações: dois `upgrade` simultâneos (threads da API) se atropelam."""
 
 
 def make_engine(db_path: Path) -> Engine:
@@ -33,13 +36,16 @@ def upgrade_db(engine: Engine) -> None:
     cfg = Config()
     cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
     cfg.attributes["connection_url"] = engine.url.render_as_string(hide_password=False)
-    command.upgrade(cfg, "head")
+    with _UPGRADE_LOCK:
+        command.upgrade(cfg, "head")
 
 
 @contextmanager
-def open_db(db_path: Path) -> Iterator[Session]:
+def open_db(db_path: Path, *, migrate: bool = True) -> Iterator[Session]:
+    """`migrate=False` pula o Alembic (a API migra uma vez na partida e reabre o banco a cada requisição)."""
     engine = make_engine(db_path)
-    upgrade_db(engine)
+    if migrate:
+        upgrade_db(engine)
     factory = sessionmaker(engine, expire_on_commit=False)
     try:
         with factory() as session:

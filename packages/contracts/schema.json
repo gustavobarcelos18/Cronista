@@ -1,5 +1,321 @@
 {
   "$defs": {
+    "DecisionIn": {
+      "properties": {
+        "decision": {
+          "enum": [
+            "aceito",
+            "rejeitado",
+            "ajustado"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "end_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End S"
+        },
+        "start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start S"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "title": "DecisionIn",
+      "type": "object"
+    },
+    "EventOut": {
+      "properties": {
+        "confidence": {
+          "title": "Confidence",
+          "type": "number"
+        },
+        "end_s": {
+          "title": "End S",
+          "type": "number"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quote"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "start_s": {
+          "title": "Start S",
+          "type": "number"
+        },
+        "variant": {
+          "title": "Variant",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "variant",
+        "kind",
+        "start_s",
+        "end_s",
+        "source",
+        "confidence",
+        "quote"
+      ],
+      "title": "EventOut",
+      "type": "object"
+    },
+    "ExportStatusOut": {
+      "properties": {
+        "directory": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Directory"
+        },
+        "message": {
+          "default": "",
+          "title": "Message",
+          "type": "string"
+        },
+        "problems": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Problems",
+          "type": "array"
+        },
+        "reused": {
+          "default": false,
+          "title": "Reused",
+          "type": "boolean"
+        },
+        "state": {
+          "enum": [
+            "idle",
+            "running",
+            "done",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "ExportStatusOut",
+      "type": "object"
+    },
+    "FeedbackIn": {
+      "properties": {
+        "seg_start_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seg Start S"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "FeedbackIn",
+      "type": "object"
+    },
+    "FeedbackOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "interpreted": {
+          "title": "Interpreted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "interpreted"
+      ],
+      "title": "FeedbackOut",
+      "type": "object"
+    },
+    "JobOut": {
+      "properties": {
+        "attempts": {
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Error"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "media_file_id": {
+          "title": "Media File Id",
+          "type": "integer"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "variant": {
+          "title": "Variant",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "media_file_id",
+        "stage",
+        "variant",
+        "status",
+        "attempts",
+        "error"
+      ],
+      "title": "JobOut",
+      "type": "object"
+    },
+    "LearningOut": {
+      "description": "Proposta de recalibração dos pesos por manter/tirar (7E); `weights` é nulo enquanto faltam decisões.",
+      "properties": {
+        "applied": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Applied"
+        },
+        "explanation": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Explanation",
+          "type": "array"
+        },
+        "n_decisions": {
+          "default": 0,
+          "title": "N Decisions",
+          "type": "integer"
+        },
+        "needed": {
+          "title": "Needed",
+          "type": "integer"
+        },
+        "weights": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weights"
+        }
+      },
+      "required": [
+        "needed"
+      ],
+      "title": "LearningOut",
+      "type": "object"
+    },
     "MarkerKind": {
       "enum": [
         "momento",
@@ -13,6 +329,91 @@
       ],
       "title": "MarkerKind",
       "type": "string"
+    },
+    "MarkerOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "marker_id": {
+          "title": "Marker Id",
+          "type": "string"
+        },
+        "media_file_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Media File Id"
+        },
+        "media_frame": {
+          "title": "Media Frame",
+          "type": "integer"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "warning": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Warning"
+        }
+      },
+      "required": [
+        "id",
+        "marker_id",
+        "kind",
+        "media_file_id",
+        "media_frame",
+        "source",
+        "warning"
+      ],
+      "title": "MarkerOut",
+      "type": "object"
+    },
+    "MediaFileOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "ordinal": {
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "size_bytes": {
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "ordinal",
+        "size_bytes"
+      ],
+      "title": "MediaFileOut",
+      "type": "object"
     },
     "MediaProbe": {
       "description": "Resultado do `ffprobe` de um arquivo de gravação.",
@@ -115,6 +516,385 @@
       "title": "MediaProbe",
       "type": "object"
     },
+    "ProgressOut": {
+      "description": "Jobs da sessão por estado; `active` vale enquanto houver job pendente ou rodando.",
+      "properties": {
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "current": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current"
+        },
+        "done": {
+          "title": "Done",
+          "type": "integer"
+        },
+        "failed": {
+          "title": "Failed",
+          "type": "integer"
+        },
+        "pending": {
+          "title": "Pending",
+          "type": "integer"
+        },
+        "running": {
+          "title": "Running",
+          "type": "integer"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "pending",
+        "running",
+        "done",
+        "failed",
+        "active"
+      ],
+      "title": "ProgressOut",
+      "type": "object"
+    },
+    "Script": {
+      "properties": {
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/ScriptLine"
+          },
+          "title": "Lines",
+          "type": "array"
+        },
+        "provider": {
+          "default": "desconhecido",
+          "title": "Provider",
+          "type": "string"
+        },
+        "version": {
+          "default": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "title": "Script",
+      "type": "object"
+    },
+    "ScriptLine": {
+      "description": "Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5).",
+      "properties": {
+        "est_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est S"
+        },
+        "justification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Justification"
+        },
+        "kind": {
+          "default": "narracao",
+          "enum": [
+            "narracao",
+            "antecipacao"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "segment_id": {
+          "minLength": 3,
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start S"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "text"
+      ],
+      "title": "ScriptLine",
+      "type": "object"
+    },
+    "ScriptOut": {
+      "properties": {
+        "script": {
+          "$ref": "#/$defs/Script"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "script"
+      ],
+      "title": "ScriptOut",
+      "type": "object"
+    },
+    "SegmentOut": {
+      "properties": {
+        "adj_end_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adj End S"
+        },
+        "adj_start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adj Start S"
+        },
+        "classe": {
+          "title": "Classe",
+          "type": "string"
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision"
+        },
+        "end_s": {
+          "title": "End S",
+          "type": "integer"
+        },
+        "features": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Features",
+          "type": "object"
+        },
+        "markers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Markers",
+          "type": "array"
+        },
+        "razoes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Razoes",
+          "type": "array"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "start_s": {
+          "title": "Start S",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_s",
+        "end_s",
+        "classe",
+        "score",
+        "razoes",
+        "markers",
+        "features"
+      ],
+      "title": "SegmentOut",
+      "type": "object"
+    },
+    "SeriesPanelOut": {
+      "properties": {
+        "maximo_min": {
+          "default": 50.0,
+          "title": "Maximo Min",
+          "type": "number"
+        },
+        "meta_min": {
+          "default": 40.0,
+          "title": "Meta Min",
+          "type": "number"
+        },
+        "minimo_min": {
+          "default": 30.0,
+          "title": "Minimo Min",
+          "type": "number"
+        },
+        "por_classe_min": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Por Classe Min",
+          "type": "object"
+        },
+        "sessoes": {
+          "items": {
+            "$ref": "#/$defs/SeriesRowOut"
+          },
+          "title": "Sessoes",
+          "type": "array"
+        },
+        "situacao": {
+          "enum": [
+            "faltando",
+            "no_alvo",
+            "acima"
+          ],
+          "title": "Situacao",
+          "type": "string"
+        },
+        "total_min": {
+          "title": "Total Min",
+          "type": "number"
+        }
+      },
+      "required": [
+        "total_min",
+        "situacao",
+        "por_classe_min",
+        "sessoes"
+      ],
+      "title": "SeriesPanelOut",
+      "type": "object"
+    },
+    "SeriesRowOut": {
+      "properties": {
+        "acumulado_min": {
+          "title": "Acumulado Min",
+          "type": "number"
+        },
+        "dias": {
+          "title": "Dias",
+          "type": "integer"
+        },
+        "gravado_h": {
+          "title": "Gravado H",
+          "type": "number"
+        },
+        "por_classe_min": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Por Classe Min",
+          "type": "object"
+        },
+        "produto_min": {
+          "title": "Produto Min",
+          "type": "number"
+        },
+        "sessao": {
+          "title": "Sessao",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sessao",
+        "gravado_h",
+        "produto_min",
+        "acumulado_min",
+        "dias",
+        "por_classe_min"
+      ],
+      "title": "SeriesRowOut",
+      "type": "object"
+    },
+    "SessionOut": {
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/MediaFileOut"
+          },
+          "title": "Files",
+          "type": "array"
+        },
+        "folder": {
+          "title": "Folder",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "project": {
+          "title": "Project",
+          "type": "string"
+        },
+        "project_id": {
+          "title": "Project Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "project",
+        "folder",
+        "files"
+      ],
+      "title": "SessionOut",
+      "type": "object"
+    },
     "StageResult": {
       "description": "Saída de uma etapa do pipeline, persistida como `result.json` no cache.",
       "properties": {
@@ -139,6 +919,41 @@
         }
       },
       "title": "StageResult",
+      "type": "object"
+    },
+    "WaveformOut": {
+      "description": "Envelope de energia (dBFS) por faixa, em até `points` buckets uniformes (máximo de cada bucket).",
+      "properties": {
+        "duration_s": {
+          "title": "Duration S",
+          "type": "number"
+        },
+        "game": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Game",
+          "type": "array"
+        },
+        "mic": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Mic",
+          "type": "array"
+        },
+        "points": {
+          "title": "Points",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "duration_s",
+        "points",
+        "game",
+        "mic"
+      ],
+      "title": "WaveformOut",
       "type": "object"
     }
   },

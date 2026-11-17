@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
 import typer
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from cronista.audio.models import build_models
 from cronista.audio.report import write_session_report
@@ -34,6 +36,26 @@ from cronista.recorder.hotkeys import HotkeyConfigError
 from cronista.recorder.run import run_forever
 from cronista.watch import Processed
 from cronista.watch import serve as watch_serve
+
+
+class AnalysisPart(StrEnum):
+    AUDIO = "audio"
+    VIDEO = "video"
+
+
+def _pick_media(db: Session, session: int, file: str | None) -> MediaFile:
+    """Primeiro arquivo da sessão (ou o primeiro cujo nome contém `file`); sai com erro se não houver."""
+    media = [
+        m
+        for m in db.scalars(
+            select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
+        )
+        if file is None or file in Path(m.path).name
+    ]
+    if not media:
+        typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
+        raise typer.Exit(1)
+    return media[0]
 
 
 def _force_utf8_output() -> None:
@@ -101,7 +123,7 @@ def status() -> None:
 @app.command()
 def analyze(
     session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
-    only: Annotated[str | None, typer.Option(help="`audio` ou `video` (padrão: os dois)")] = None,
+    only: Annotated[AnalysisPart | None, typer.Option(help="`audio` ou `video` (padrão: os dois)")] = None,
 ) -> None:
     """Análise da sessão: áudio (sinais, fala, eventos) e vídeo (cenas, menu, loading, idle, câmera)."""
     settings = load_settings()
@@ -110,7 +132,12 @@ def analyze(
         recover_orphans(db)
         try:
             report = analyze_session(
-                db, session, settings, build_gate(settings), build_models(settings), only
+                db,
+                session,
+                settings,
+                build_gate(settings),
+                build_models(settings),
+                only.value if only else None,
             )
         except AnalysisError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -377,20 +404,11 @@ def bench_quality(
             typer.echo(f"erro: {err}", err=True)
         raise typer.Exit(1)
     with open_db(settings.db_path) as db:
-        media = [
-            m
-            for m in db.scalars(
-                select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
-            )
-            if file is None or file in Path(m.path).name
-        ]
-        if not media:
-            typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
-            raise typer.Exit(1)
+        item = _pick_media(db, session, file)
         # Métricas do microfone: eventos da faixa do jogo (música, explosão) não entram na conta.
         events = [
             s.event
-            for s in load_stored_events(db, media[0].id)
+            for s in load_stored_events(db, item.id)
             if s.event.kind == "fala" or s.variant.startswith("mic")
         ]
     if not events:
@@ -417,22 +435,13 @@ def gabarito_ui(
 ) -> None:
     """Gera uma página para anotar o gabarito vendo o vídeo, com sugestões da análise já preenchidas."""
     from cronista.audio.annotate_ui import build_suggestions, render_annotator
-    from cronista.audio.events import load_events
+    from cronista.audio.events import load_stored_events
+    from cronista.video.report import is_video_event
 
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
-        media = [
-            m
-            for m in db.scalars(
-                select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
-            )
-            if file is None or file in Path(m.path).name
-        ]
-        if not media:
-            typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
-            raise typer.Exit(1)
-        item = media[0]
+        item = _pick_media(db, session, file)
         proxy = db.scalar(
             select(Artifact).where(
                 Artifact.media_file_id == item.id, Artifact.stage == "proxy", Artifact.variant == ""
@@ -445,7 +454,9 @@ def gabarito_ui(
         proxy_path = Path(result.data["proxy"])
         events = [
             (e.kind, e.evidence.start_frame, e.evidence.end_frame, e.evidence.confidence, e.evidence.quote)
-            for e in load_events(db, item.id)
+            for s in load_stored_events(db, item.id)
+            if not is_video_event(s)  # o anotador é de áudio; cenas e menus não são sugestões
+            for e in [s.event]
         ]
     page = render_annotator(proxy_path, build_suggestions(events), Path(item.path).name)
     target = out or settings.data_dir / "gabarito" / f"anotar-{session}.html"

@@ -51,13 +51,13 @@ def analyze_session(
     As etapas de ingestão entram na lista só para fornecerem os WAVs (vêm do cache). Cada etapa com eventos
     substitui no banco os eventos da sua própria execução, então repetir o comando não duplica nada.
     """
+    if only not in (None, "audio", "video"):
+        raise AnalysisError(f"--only deve ser 'audio' ou 'video' (veio '{only}')")
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise AnalysisError(f"Sessão {session_id} não existe (veja `cronista status`)")
     models = models or AudioModels()
     report = AnalysisReport(session_id=session_id)
-    if only not in (None, "audio", "video"):
-        raise AnalysisError(f"--only deve ser 'audio' ou 'video' (veio '{only}')")
     if only != "video" and (models.detector is None or models.transcriber is None):
         report.skipped.append("fala (sem detector de voz e transcritor nesta máquina)")
     if only != "video" and models.classifier is None:

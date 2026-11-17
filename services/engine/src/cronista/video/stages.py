@@ -44,6 +44,7 @@ class VideoSignalsStage:
             raise StageError(f"proxy não encontrado: {proxy} (rode a ingestão de novo)")
         chunks: dict[str, list[FloatArray]] = {name: [] for name in SIGNAL_NAMES}
         previous = None
+        # Sem GPU, mas todo processamento pausa com o OBS gravando ou jogo em tela cheia (CLAUDE.md).
         for frames in vframes.iter_gray_blocks(ctx.settings, proxy, between_blocks=ctx.wait_for_gpu):
             result = block_signals(frames, previous, self.signal_params)
             previous = (result.last_frame, result.last_hist)

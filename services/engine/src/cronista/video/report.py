@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import html
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from cronista.audio.events import StoredEvent
@@ -61,7 +62,7 @@ def thumbnail(settings: Settings, proxy: Path, frame: int) -> str | None:
 def state_lanes(events: list[StoredEvent], markers: list[Marker], total_frames: int) -> str:
     kinds = [k for k in (*STATE_KINDS, "movimento_camera", "cena") if any(e.event.kind == k for e in events)]
     if not kinds:
-        return '<p class="muted">Nenhum estado de tela detectado.</p>'
+        return '<h3>Estados de tela</h3><p class="muted">Nenhum estado de tela detectado.</p>'
     lane_h = 16
     height = PAD_T + PAD_B + lane_h * len(kinds)
     rows: list[str] = []
@@ -71,9 +72,14 @@ def state_lanes(events: list[StoredEvent], markers: list[Marker], total_frames: 
             f'<text x="{PAD_L - 6}" y="{y + 12}" font-size="10" fill="var(--muted)" text-anchor="end">'
             f"{html.escape(kind)}</text>"
         )
+        drawn: set[int] = set()  # cortes de cena são muitos: um retângulo por pixel de largura basta
         for stored in (e for e in events if e.event.kind == kind):
             ev = stored.event.evidence
             x0, x1 = _x(ev.start_frame, total_frames), _x(ev.end_frame, total_frames)
+            if kind == "cena":
+                if round(x0) in drawn:
+                    continue
+                drawn.add(round(x0))
             detail = stored.event.payload.get("tipo", "")
             tip = html.escape(
                 f"{kind} {detail} {fmt_time(ev.start_frame)} a {fmt_time(ev.end_frame)}".replace("  ", " ")
@@ -107,15 +113,25 @@ def state_table(events: list[StoredEvent], settings: Settings | None, proxy: Pat
             continue
         shown = items[:THUMBS_PER_KIND]
         rows = []
-        for stored in sorted(shown, key=lambda e: e.event.evidence.start_frame):
+        ordered = sorted(shown, key=lambda e: e.event.evidence.start_frame)
+        thumbs: list[str | None] = [None] * len(ordered)
+        if settings is not None and proxy is not None and proxy.is_file():
+            with ThreadPoolExecutor(max_workers=4) as pool:  # um ffmpeg por miniatura, em paralelo
+                thumbs = list(
+                    pool.map(
+                        lambda e: thumbnail(
+                            settings, proxy, (e.event.evidence.start_frame + e.event.evidence.end_frame) // 2
+                        ),
+                        ordered,
+                    )
+                )
+        for stored, data in zip(ordered, thumbs, strict=True):
             ev = stored.event.evidence
             seconds = (ev.end_frame - ev.start_frame) / FPS
             image = ""
-            if settings is not None and proxy is not None and proxy.is_file():
-                data = thumbnail(settings, proxy, (ev.start_frame + ev.end_frame) // 2)
-                if data:
-                    alt = html.escape(f"{kind} em {fmt_time(ev.start_frame)}")
-                    image = f'<img src="{data}" alt="{alt}" width="160">'
+            if data:
+                alt = html.escape(f"{kind} em {fmt_time(ev.start_frame)}")
+                image = f'<img src="{data}" alt="{alt}" width="160">'
             rows.append(
                 f'<tr><td class="num">{fmt_time(ev.start_frame)}</td><td class="num">{seconds:.0f} s</td>'
                 f'<td class="num">{ev.confidence:.2f}</td><td>{image}</td></tr>'

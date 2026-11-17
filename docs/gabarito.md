@@ -24,7 +24,7 @@ inicio,fim,classe,nota
 | Classe | O que anotar | Quem usa |
 |---|---|---|
 | `fala` | o criador falando | Fase 2: WER do Whisper |
-| `risada`, `grito` | risada e grito do criador | Fase 2: classificador de eventos |
+| `risada`, `exclamacao` | risada e exclamação/grito de emoção alta (`grito` é apelido legado; histórico §46) | Fase 2: classificador de eventos |
 | `teclado`, `respiracao` | ruído que **não** deve gerar evento | Fase 2: aceite (falsos positivos) |
 | `farm` | trecho repetitivo/rotina | Fases 2 e 4: rotina, timelapse |
 | `momento` | momento legal | Fase 4: ≥ 85% no topo dos candidatos |

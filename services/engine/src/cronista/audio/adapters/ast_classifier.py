@@ -59,6 +59,7 @@ class AstSoundClassifier:
         block_s: float = 300.0,
         batch: int = 16,
         min_report: float = 0.1,
+        window_s: float = WINDOW_S,
     ) -> None:
         self.version = package_version("transformers")
         self.options: dict[str, Any] = {
@@ -68,6 +69,7 @@ class AstSoundClassifier:
             "block_s": block_s,
             "batch": batch,
             "min_report": min_report,
+            "window_s": window_s,
         }
         self._root = download_root
         self._extractor: Any = None
@@ -120,12 +122,13 @@ class AstSoundClassifier:
             pause()
             group = centers[first : first + per_block]
             # Uma leitura por bloco, com o contexto da janela dos dois lados.
-            lo = float(group[0]) - WINDOW_S / 2
-            audio = read_segment(wav, lo, float(group[-1]) + WINDOW_S / 2)
-            win = int(WINDOW_S * MODEL_RATE)
+            half = float(opts["window_s"]) / 2
+            lo = float(group[0]) - half
+            audio = read_segment(wav, lo, float(group[-1]) + half)
+            win = int(float(opts["window_s"]) * MODEL_RATE)
             windows = []
             for c in group:
-                begin = round((float(c) - WINDOW_S / 2 - lo) * MODEL_RATE)
+                begin = round((float(c) - half - lo) * MODEL_RATE)
                 windows.append(audio[begin : begin + win])
             for i in range(0, len(windows), int(opts["batch"])):
                 matrix = self._scores(windows[i : i + int(opts["batch"])])

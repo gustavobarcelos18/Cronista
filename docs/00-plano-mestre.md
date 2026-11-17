@@ -165,10 +165,11 @@ Volume absoluto não serve como sinal. A estratégia tem quatro camadas:
    - VAD neural (Silero VAD) separa fala de não-fala. Clique de teclado e respiração são não-fala e são descartados.
    - Supressão de ruído (DeepFilterNet) antes da transcrição **só se o benchmark de qualidade (início da Fase 2, com o gabarito) mostrar que melhora o WER**:
      o Whisper já é robusto a ruído, e áudio filtrado às vezes piora a transcrição.
-   - Características usadas: fala, risada, grito, aumento súbito de tom/energia **em relação à sua média da sessão**.
+   - Características usadas: fala, risada, exclamação (grito ou fala de emoção alta, sem separar os dois; histórico §46), aumento súbito de tom/energia **em relação à sua média da sessão**.
    - Risada e grito costumam cair como não-fala no VAD. Por isso o classificador de eventos sonoros (o mesmo da faixa
      do jogo) roda também na faixa do microfone, só para os rótulos de risada e grito. O VAD decide o que vai para a
      transcrição; teclado e respiração continuam descartados nos dois caminhos.
+     **Atualização 2C (histórico §46):** o AST não achou os gritos; o microfone usa um AST de janela de 2 s para risada e um detector de energia e altura da voz para `exclamacao` (experimental).
 3. **Jogo → classificar o som, não medir o volume.**
    - Classificador de eventos sonoros pré-treinado (PANNs/BEATs/CLAP), com rótulos como explosão, música, impacto, multidão.
    - **Linha de base adaptativa:** mediana móvel por sessão e por "contexto visual" (descoberto automaticamente agrupando cenas parecidas, ex.: menu, área aberta, cidade, caverna; nada declarado por jogo). Pisada em pedra

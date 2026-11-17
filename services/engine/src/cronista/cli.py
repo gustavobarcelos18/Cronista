@@ -353,3 +353,99 @@ def bench_audio(
     target = out or settings.data_dir / "bench" / f"audio-{session}.json"
     write_results(rows, target)
     typer.echo(f"\n{target}")
+
+
+@app.command("bench-quality")
+def bench_quality(
+    session: Annotated[int, typer.Argument(help="Sessão analisada (`cronista analyze`)")],
+    gabarito: Annotated[Path, typer.Argument(help="CSV do gabarito deste arquivo")],
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    tolerance: Annotated[float, typer.Option(help="Tolerância de eventos, em segundos")] = 1.0,
+) -> None:
+    """Compara eventos e transcrição do banco com o gabarito (WER, risada, grito, teclado, farm)."""
+    from cronista.audio.events import load_stored_events
+    from cronista.audio.quality import Utterance, evaluate, render
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    report = validate_gabarito(gabarito)
+    if not report.ok:
+        for err in report.errors:
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        media = [
+            m
+            for m in db.scalars(
+                select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
+            )
+            if file is None or file in Path(m.path).name
+        ]
+        if not media:
+            typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
+            raise typer.Exit(1)
+        # Métricas do microfone: eventos da faixa do jogo (música, explosão) não entram na conta.
+        events = [
+            s.event
+            for s in load_stored_events(db, media[0].id)
+            if s.event.kind == "fala" or s.variant.startswith("mic")
+        ]
+    if not events:
+        typer.echo("erro: sem eventos no banco; rode `cronista analyze` antes", err=True)
+        raise typer.Exit(1)
+    utterances = [
+        Utterance(e.evidence.start_frame, e.evidence.end_frame, e.evidence.quote or "")
+        for e in events
+        if e.kind == "fala"
+    ]
+    marks = [(e.kind, (e.evidence.start_frame, e.evidence.end_frame)) for e in events if e.kind != "fala"]
+    routines = [iv for kind, iv in marks if kind == "rotina"]
+    total = max([a.end_frame for a in report.annotations] + [iv[1] for _, iv in marks], default=0)
+    typer.echo(render(evaluate(report.annotations, utterances, marks, routines, total, tolerance)))
+    if not routines:
+        typer.echo("aviso: a análise ainda não grava eventos `rotina`; revocação de farm não é confiável")
+
+
+@app.command("gabarito-ui")
+def gabarito_ui(
+    session: Annotated[int, typer.Argument(help="Sessão analisada")],
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    out: Annotated[Path | None, typer.Option(help="HTML de saída")] = None,
+) -> None:
+    """Gera uma página para anotar o gabarito vendo o vídeo, com sugestões da análise já preenchidas."""
+    from cronista.audio.annotate_ui import build_suggestions, render_annotator
+    from cronista.audio.events import load_events
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        media = [
+            m
+            for m in db.scalars(
+                select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
+            )
+            if file is None or file in Path(m.path).name
+        ]
+        if not media:
+            typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
+            raise typer.Exit(1)
+        item = media[0]
+        proxy = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == item.id, Artifact.stage == "proxy", Artifact.variant == ""
+            )
+        )
+        if proxy is None:
+            typer.echo("erro: sem proxy; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        result = StageResult.model_validate_json(Path(proxy.result_path).read_text(encoding="utf-8"))
+        proxy_path = Path(result.data["proxy"])
+        events = [
+            (e.kind, e.evidence.start_frame, e.evidence.end_frame, e.evidence.confidence, e.evidence.quote)
+            for e in load_events(db, item.id)
+        ]
+    page = render_annotator(proxy_path, build_suggestions(events), Path(item.path).name)
+    target = out or settings.data_dir / "gabarito" / f"anotar-{session}.html"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(page, encoding="utf-8")
+    typer.echo(f"{target}\n{len(events)} eventos viraram sugestões; abra o arquivo no navegador.")

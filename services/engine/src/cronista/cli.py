@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from enum import StrEnum
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 
@@ -454,6 +456,139 @@ def bench_video(
     typer.echo(render_table(rows))
     write_results(rows, target)
     typer.echo(f"\n{target}")
+
+
+@app.command("bench-audio-quality")
+def bench_audio_quality(
+    session: Annotated[int, typer.Argument(help="Sessão com o gabarito")],
+    gabarito: Annotated[Path, typer.Argument(help="CSV do gabarito deste arquivo")],
+    speech: Annotated[str, typer.Option(help="Candidatos de fala, separados por vírgula (ou vazio)")] = "",
+    events: Annotated[str, typer.Option(help="Candidatos de eventos no microfone (ou vazio)")] = "",
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    out: Annotated[
+        Path | None, typer.Option(help="JSON de saída (padrão: data/bench/audio-quality-N.json)")
+    ] = None,
+) -> None:
+    """Compara fala e eventos sonoros com o gabarito: WER, precisão, revocação, tempo e VRAM."""
+    from cronista.audio.bench_quality import AudioQualityRow, render_table, run_quality_bench, to_json
+    from cronista.audio.models import (
+        EVENT_CANDIDATES,
+        SPEECH_CANDIDATES,
+        make_event_candidate,
+        make_speech_candidate,
+        missing_ml_packages,
+    )
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    speech_names = [n.strip() for n in speech.split(",") if n.strip()]
+    event_names = [n.strip() for n in events.split(",") if n.strip()]
+    unknown = [n for n in speech_names if n not in SPEECH_CANDIDATES] + [
+        n for n in event_names if n not in EVENT_CANDIDATES
+    ]
+    if unknown or missing_ml_packages():
+        typer.echo(
+            f"erro: candidatos desconhecidos {unknown} ou faltam pacotes {missing_ml_packages()}", err=True
+        )
+        raise typer.Exit(1)
+    report = validate_gabarito(gabarito)
+    if not report.ok:
+        for err in report.errors:
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        item = _pick_media(db, session, file)
+        artifact = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == item.id, Artifact.stage == "audio", Artifact.variant == ""
+            )
+        )
+        if artifact is None:
+            typer.echo("erro: sem WAVs extraídos; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        wavs = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8")).data
+    target = out or settings.data_dir / "bench" / f"audio-quality-{session}.json"
+
+    def save(partial_rows: list[AudioQualityRow]) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(to_json(partial_rows), indent=2, ensure_ascii=False), encoding="utf-8")
+
+    rows = run_quality_bench(
+        settings,
+        wavs,
+        report.annotations,
+        {n: partial(make_speech_candidate, settings, n) for n in speech_names},
+        {n: partial(make_event_candidate, settings, n) for n in event_names},
+        settings.data_dir / "bench" / f"audio-quality-{session}",
+        progress=save,
+    )
+    typer.echo(render_table(rows))
+    typer.echo(f"\n{target}")
+
+
+@app.command("bench-vision")
+def bench_vision(
+    session: Annotated[int, typer.Argument(help="Sessão cujo primeiro arquivo serve de amostra")],
+    truth: Annotated[Path, typer.Argument(help="JSON do gabarito visual (telas e texto do HUD)")],
+    vlms: Annotated[str, typer.Option(help="VLMs separados por vírgula (ou vazio)")] = (
+        "qwen25vl-3b,qwen25vl-7b-4bit,qwen3vl-4b,qwen3vl-8b-4bit"
+    ),
+    ocr: Annotated[bool, typer.Option(help="Inclui o RapidOCR")] = True,
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+    out: Annotated[Path | None, typer.Option(help="JSON de saída (padrão: data/bench/vision-N.json)")] = None,
+) -> None:
+    """Estado de tela por VLM, leitura de HUD (OCR e VLM) e efeito da resolução (360p, 720p e 1080p)."""
+    from cronista.video.bench_vision import (
+        VLM_CANDIDATES,
+        load_truth,
+        render_table,
+        run_vision_bench,
+    )
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    names = [n.strip() for n in vlms.split(",") if n.strip()]
+    unknown = [n for n in names if n not in VLM_CANDIDATES]
+    if unknown:
+        typer.echo(f"erro: VLMs desconhecidos {unknown}", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        item = _pick_media(db, session, file)
+        artifact = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == item.id, Artifact.stage == "proxy", Artifact.variant == ""
+            )
+        )
+        if artifact is None:
+            typer.echo("erro: sem proxy; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        data = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8")).data
+        proxy, master = Path(str(data["proxy"])), Path(item.path)
+    target = out or settings.data_dir / "bench" / f"vision-{session}.json"
+    rows = run_vision_bench(
+        settings,
+        master,
+        proxy,
+        load_truth(truth),
+        names,
+        ocr,
+        settings.data_dir / "bench" / "vision-frames",
+        target,
+    )
+    typer.echo(render_table(rows))
+    typer.echo(f"\n{target}")
+
+
+@app.command("bench-report")
+def bench_report(
+    out: Annotated[Path, typer.Option(help="Pasta dos relatórios")] = Path("docs/benchmarks"),
+) -> None:
+    """Gera os relatórios Markdown dos benchmarks (tabelas automáticas; a análise à mão é preservada)."""
+    from cronista.bench_report import write_reports
+
+    settings = load_settings()
+    for path in write_reports(settings.data_dir / "bench", out):
+        typer.echo(str(path))
 
 
 @app.command("bench-quality")

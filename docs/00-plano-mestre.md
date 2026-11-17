@@ -326,7 +326,7 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 | Vídeo | **FFmpeg** (NVDEC/NVENC) + PySceneDetect + OpenCV | Padrão da indústria; usa a GPU |
 | Transcrição | faster-whisper (large-v3-turbo, int8_float16 — histórico §44) | Roda bem em 12 GB; só nos trechos de fala |
 | Áudio | Silero VAD (o mesmo que o faster-whisper usa no filtro de VAD), DeepFilterNet **só se melhorar o WER no benchmark**, classificador de eventos (**AST/AudioSet** primeiro candidato na 2B; PANNs/BEATs/CLAP seguem candidatos da 2C), librosa | Fala × ruído × eventos sonoros |
-| Visão | SigLIP/CLIP (embeddings a 1–2 fps), OCR (**RapidOCR**, ONNX) **em frames do master**, VLM local via Ollama (Qwen-VL) **só em candidatos** | Barato no volume, inteligente onde importa |
+| Visão | SigLIP/CLIP (embeddings a 1–2 fps), OCR (**RapidOCR**, ONNX) **em frames do master**, VLM local pelo `transformers` (Qwen3-VL 4B; histórico §49, sem Ollama) **só em candidatos** | Barato no volume, inteligente onde importa |
 | LLM local | Ollama (Qwen ~14B quantizado) | Classificação e resumos em massa sem custo |
 | LLM de roteiro | **Claude Code (Pro)** via skills do repositório | Melhor qualidade de escrita, custo zero extra |
 | API/Jobs | FastAPI + fila de jobs persistida no banco | Simples para um usuário; troca por Redis depois, se precisar |

@@ -1253,6 +1253,16 @@ Implementado sem baixar modelo nenhum (verificado em CPU, com embedder falso e v
 `siglip2-giant` travou na carga e não foi medido (não entraria no pipeline). Tamanho não garante ganho (SigLIP 1 so400m pior que o base). **Proposta (a confirmar com uma busca real):** `siglip2-base` nos contextos (todos os segundos) e `siglip2-large` só na busca por texto de B-roll (trechos candidatos). Tempos excluem a decodificação do proxy. O `bench-video` passou a gravar o JSON a cada modelo.
 **Falta da 3B:** rodar em `prod` com o checkpoint (autorização do download), conferir contextos de olho no `claude_teste.mp4`, B-roll (tabela `broll_clip`, beleza, busca por texto), tipo de menu e `idle`, HUD oculto, `bench-video` e a seção do relatório (mapa de contextos).
 
+## 49. Benchmarks de modelos (2026-11-17)
+
+Cinco benchmarks automáticos, com relatórios em [`docs/benchmarks/`](benchmarks/00-recomendacoes.md) (tabelas geradas por `cronista bench-report`, análise à mão): embeddings de quadro (`bench-video`), fala e eventos sonoros (`bench-audio-quality`), estado de tela, OCR de HUD e resolução (`bench-vision`). Candidatos pedidos pelo criador: as "opções mais pesadas" por etapa, exceto roteiro.
+
+**Resultados e escolhas propostas (a confirmar numa sessão longa e real):** `siglip2-base` nos contextos e `siglip2-large` só na busca de B-roll por texto; Whisper turbo continua (1,1% de erro contra 3,1% do large-v3, com viés: o gabarito nasceu das sugestões do turbo); risada com AST de 2 s; exclamação com CLAP é candidata, não adotada (revocação 63% contra 0% da heurística, precisão 29–36%); estado de tela por VLM `qwen3vl-4b` em 360p só nos trechos duvidosos (todos os VLMs acertaram 100%: teste saturado, falta gabarito de loading/idle/cinemática); **OCR do HUD com RapidOCR no master em 720p** (100% de acerto, 0,33 s, CPU; em 360p nenhum leitor lê o HUD).
+
+**Substitui:** o VLM da 3C deixa de ser "Ollama + Qwen-VL" e passa a rodar pelo `transformers` (histórico §48, sem Ollama). Pacotes novos no grupo `bench` do `pyproject.toml` (Pillow, torchvision, accelerate, bitsandbytes, RapidOCR) e `sentencepiece` no `ml`.
+
+**Não testados:** Parakeet/Canary (multilíngue exige NeMo), BEATs, PANNs, DINOv2, SigLIP 2 giant (travou), PaddleOCR-VL. Correções feitas no caminho: WER por palavra com tempo (o large-v3 dava 217% por agrupar frases), tempo sem o download do modelo e VRAM pelo medidor do PyTorch.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

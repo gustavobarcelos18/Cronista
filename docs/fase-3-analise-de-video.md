@@ -123,7 +123,7 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 2. **OCR de HUD** (RapidOCR, ONNX), **só em regiões definidas no perfil**, lido em frames do **master** (no proxy 360p o texto fica ilegível).
    Amostragem baixa (ex.: 1 frame a cada poucos segundos) e só nos trechos pedidos. Saída: `event` `hud_texto` com a citação em `quote`.
    ⚠️ Verificar a versão do RapidOCR e se o runtime ONNX com CUDA convive com o PyTorch do ambiente `ml`.
-3. **VLM local** (Ollama + Qwen-VL, ⚠️ confirmar o modelo disponível para 12 GB) **só em trechos candidatos** (estado de tela
+3. **VLM local** (`transformers` + Qwen3-VL 4B, sem Ollama; histórico §49) **só em trechos candidatos** (estado de tela
    incerto, B-roll, momentos). Saída em JSON Schema validada por Pydantic, uma pergunta fechada por vez (histórico §40); nunca descrição livre em massa.
 4. **`cronista bench-video-quality`** (mesmo desenho do `bench-quality` da 2C): lê o gabarito e os eventos e calcula, por classe
    (`menu`, `loading`, `idle`, `cinematica`), precisão, revocação e erro de bordas em quadros, com tolerância configurável.

@@ -37,3 +37,12 @@ Plano de execução (detalhes do produto na seção "Fase 7" do [plano mestre](0
   e acumulados × meta de 30–50 min, distribuição por tipo de momento, dias pelo `Novo dia`, usando os segmentos com as
   decisões do criador; `painel.tsx`). **Falta:** capítulos "magros" (precisa dos capítulos da história no painel) e conferir
   o SSE com o pipeline rodando de verdade em `prod`.
+- **7E parcial (código):** recalibração por manter/tirar (`review/learning.py`): regressão logística pequena sobre os sinais do
+  segmento (marcador, emoção, fala, novidade, pausa), encolhida para os pesos padrão (`n/(n+30)`), mínimo de 20 decisões com 5 de
+  cada lado; devolve uma linha em português por peso. Só vale depois de aceita (`POST /projects/{id}/learning/accept`, tabela
+  `weight_calibration` só de inserção, migração 0009) e então `relevance_session` usa os pesos do projeto. Feedback em texto livre
+  (`POST /media/{id}/feedback`, tabela `feedback`) fica **guardado, sem interpretação**: o LLM local (Ollama, JSON Schema + Pydantic)
+  só entra se passar o benchmark da seção 6.1, que exige a GPU de `prod`; o fallback é o texto cru (Q27: ajustar a edição atual
+  a partir do feedback depende dessa interpretação). Novo sinal `novidade` nas `features` do segmento (segmentos antigos contam 0
+  até rodar `cronista relevance` de novo). **Falta:** benchmark e interpretação do feedback; perfis de jogo YAML gerados do
+  aprendizado; validar com decisões reais.

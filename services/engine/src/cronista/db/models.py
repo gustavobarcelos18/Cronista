@@ -232,3 +232,30 @@ class SegmentDecision(Base):
     end_s: Mapped[float | None] = mapped_column(Float, default=None)
     replaces_id: Mapped[int | None] = mapped_column(ForeignKey("segment_decision.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class WeightCalibration(Base):
+    """Pesos de relevância aceitos pelo criador para um projeto (7E). Só inserção: vale a última linha."""
+
+    __tablename__ = "weight_calibration"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id"))
+    weights: Mapped[str] = mapped_column(Text)  # JSON: w_marker, w_emotion, w_speech, w_novelty, w_pause
+    n_decisions: Mapped[int] = mapped_column(Integer)
+    explanation: Mapped[str] = mapped_column(Text, default="[]", server_default="[]")  # JSON: linhas legíveis
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Feedback(Base):
+    """Feedback em texto livre (Q26/Q27). Só inserção; `interpretation` vazio até o benchmark do LLM local."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id"))
+    media_file_id: Mapped[int | None] = mapped_column(ForeignKey("media_file.id"), default=None)
+    seg_start_s: Mapped[int | None] = mapped_column(Integer, default=None)
+    text: Mapped[str] = mapped_column(Text)
+    interpretation: Mapped[str | None] = mapped_column(Text, default=None)  # JSON validado, quando houver
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

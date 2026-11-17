@@ -166,6 +166,49 @@
       "title": "ExportStatusOut",
       "type": "object"
     },
+    "FeedbackIn": {
+      "properties": {
+        "seg_start_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seg Start S"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "FeedbackIn",
+      "type": "object"
+    },
+    "FeedbackOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "interpreted": {
+          "title": "Interpreted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "interpreted"
+      ],
+      "title": "FeedbackOut",
+      "type": "object"
+    },
     "JobOut": {
       "properties": {
         "attempts": {
@@ -214,6 +257,63 @@
         "error"
       ],
       "title": "JobOut",
+      "type": "object"
+    },
+    "LearningOut": {
+      "description": "Proposta de recalibração dos pesos por manter/tirar (7E); `weights` é nulo enquanto faltam decisões.",
+      "properties": {
+        "applied": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Applied"
+        },
+        "explanation": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Explanation",
+          "type": "array"
+        },
+        "n_decisions": {
+          "default": 0,
+          "title": "N Decisions",
+          "type": "integer"
+        },
+        "needed": {
+          "title": "Needed",
+          "type": "integer"
+        },
+        "weights": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weights"
+        }
+      },
+      "required": [
+        "needed"
+      ],
+      "title": "LearningOut",
       "type": "object"
     },
     "MarkerKind": {
@@ -779,10 +879,15 @@
         "project": {
           "title": "Project",
           "type": "string"
+        },
+        "project_id": {
+          "title": "Project Id",
+          "type": "integer"
         }
       },
       "required": [
         "id",
+        "project_id",
         "project",
         "folder",
         "files"

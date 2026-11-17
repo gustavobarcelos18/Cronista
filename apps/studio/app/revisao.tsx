@@ -9,7 +9,9 @@ import type {
   WaveformOut,
 } from "@cronista/contracts";
 import { useEffect, useRef, useState } from "react";
+import Aprendizado from "./aprendizado";
 import Exportar from "./exportar";
+import Feedback from "./feedback";
 import Painel from "./painel";
 import Progresso from "./progresso";
 import Roteiro from "./roteiro";
@@ -39,6 +41,7 @@ export default function Revisao() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [media, setMedia] = useState<MediaFile | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [events, setEvents] = useState<EventOut[]>([]);
   const [wave, setWave] = useState<WaveformOut | null>(null);
@@ -51,9 +54,10 @@ export default function Revisao() {
       .catch(() => setError("Engine fora do ar. Rode `cronista api`."));
   }, []);
 
-  function pick(file: MediaFile, session: number) {
+  function pick(file: MediaFile, session: number, project: number) {
     setMedia(file);
     setSessionId(session);
+    setProjectId(project);
     setSegments([]);
     setEvents([]);
     setWave(null);
@@ -113,7 +117,7 @@ export default function Revisao() {
             <ul>
               {s.files.map((f) => (
                 <li key={f.id}>
-                  <button onClick={() => pick(f, s.id)} aria-pressed={media?.id === f.id}>
+                  <button onClick={() => pick(f, s.id, s.project_id)} aria-pressed={media?.id === f.id}>
                     {f.name}
                   </button>
                 </li>
@@ -151,11 +155,13 @@ export default function Revisao() {
                   <button onClick={() => void decide(g, { decision: "aceito" })}>Aceitar</button>
                   <button onClick={() => void decide(g, { decision: "rejeitado" })}>Rejeitar</button>
                   <button onClick={() => adjust(g)}>Ajustar</button>
+                  <Feedback mediaId={media.id} segStart={g.start_s} />
                   <SignalChips events={events.filter((e) => e.start_s < g.end_s && e.end_s >= g.start_s)} />
                 </li>
               ))}
             </ol>
             {sessionId !== null && <Roteiro key={sessionId} sessionId={sessionId} />}
+            {projectId !== null && <Aprendizado key={projectId} projectId={projectId} />}
             {sessionId !== null && <Exportar key={sessionId} sessionId={sessionId} />}
           </>
         ) : (

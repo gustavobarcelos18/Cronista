@@ -18,27 +18,40 @@ export type Reused = boolean;
 export type State = "idle" | "running" | "done" | "error";
 export type Version = number | null;
 export type Warnings = string[];
+export type SegStartS = number | null;
+export type Text = string;
+export type Id = number;
+export type Interpreted = boolean;
 export type Attempts = number;
 export type Error = string | null;
-export type Id = number;
+export type Id1 = number;
 export type MediaFileId = number;
 export type Stage1 = string;
 export type Status = string;
 export type Variant1 = string;
+export type Applied = {
+  [k: string]: number;
+} | null;
+export type Explanation = string[];
+export type NDecisions = number;
+export type Needed = number;
+export type Weights = {
+  [k: string]: number;
+} | null;
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "MarkerKind".
  */
 export type MarkerKind =
   "momento" | "morte_falha" | "engracado" | "conquista" | "novo_dia" | "construcao" | "foto_progresso" | "cinematica";
-export type Id1 = number;
+export type Id2 = number;
 export type Kind1 = string;
 export type MarkerId = string;
 export type MediaFileId1 = number | null;
 export type MediaFrame = number;
 export type Source1 = string;
 export type Warning = string | null;
-export type Id2 = number;
+export type Id3 = number;
 export type Name = string;
 export type Ordinal = number;
 export type SizeBytes = number;
@@ -64,7 +77,7 @@ export type Justification = string | null;
 export type Kind2 = "narracao" | "antecipacao";
 export type SegmentId = string;
 export type StartS2 = number | null;
-export type Text = string;
+export type Text1 = string;
 export type Lines = ScriptLine[];
 export type Provider = string;
 export type Version1 = number;
@@ -91,8 +104,9 @@ export type Situacao = "faltando" | "no_alvo" | "acima";
 export type TotalMin = number;
 export type Files = MediaFileOut[];
 export type Folder = string;
-export type Id3 = number;
+export type Id4 = number;
 export type Project = string;
+export type ProjectId = number;
 export type Files1 = string[];
 export type Warnings2 = string[];
 export type DurationS1 = number;
@@ -141,23 +155,52 @@ export interface ExportStatusOut {
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "FeedbackIn".
+ */
+export interface FeedbackIn {
+  seg_start_s?: SegStartS;
+  text: Text;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "FeedbackOut".
+ */
+export interface FeedbackOut {
+  id: Id;
+  interpreted: Interpreted;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "JobOut".
  */
 export interface JobOut {
   attempts: Attempts;
   error: Error;
-  id: Id;
+  id: Id1;
   media_file_id: MediaFileId;
   stage: Stage1;
   status: Status;
   variant: Variant1;
 }
 /**
+ * Proposta de recalibração dos pesos por manter/tirar (7E); `weights` é nulo enquanto faltam decisões.
+ *
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "LearningOut".
+ */
+export interface LearningOut {
+  applied?: Applied;
+  explanation?: Explanation;
+  n_decisions?: NDecisions;
+  needed: Needed;
+  weights?: Weights;
+}
+/**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "MarkerOut".
  */
 export interface MarkerOut {
-  id: Id1;
+  id: Id2;
   kind: Kind1;
   marker_id: MarkerId;
   media_file_id: MediaFileId1;
@@ -170,7 +213,7 @@ export interface MarkerOut {
  * via the `definition` "MediaFileOut".
  */
 export interface MediaFileOut {
-  id: Id2;
+  id: Id3;
   name: Name;
   ordinal: Ordinal;
   size_bytes: SizeBytes;
@@ -229,7 +272,7 @@ export interface ScriptLine {
   kind?: Kind2;
   segment_id: SegmentId;
   start_s?: StartS2;
-  text: Text;
+  text: Text1;
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
@@ -296,8 +339,9 @@ export interface PorClasseMin1 {
 export interface SessionOut {
   files: Files;
   folder: Folder;
-  id: Id3;
+  id: Id4;
   project: Project;
+  project_id: ProjectId;
 }
 /**
  * Saída de uma etapa do pipeline, persistida como `result.json` no cache.

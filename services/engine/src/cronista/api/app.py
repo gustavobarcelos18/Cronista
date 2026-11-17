@@ -14,16 +14,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from cronista.audio.events import load_stored_events
 from cronista.audio.signals import load_signal, signal_metas
 from cronista.config import Settings
-from cronista.db.models import Artifact, Job, Marker, MediaFile, RecordingSession
+from cronista.db.models import Artifact, Feedback, Job, Marker, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, record_decision
+from cronista.review.learning import MIN_DECISIONS, WEIGHT_NAMES, accept, params_for_project, propose
 from cronista.review.panel import SeriesPanelOut, series_panel_full
 from cronista.review.reexport import ProfileLoader, ReexportJobs
 from cronista.story.models import Script
@@ -40,6 +42,7 @@ class MediaFileOut(BaseModel):
 
 class SessionOut(BaseModel):
     id: int
+    project_id: int
     project: str
     folder: str
     files: list[MediaFileOut]
@@ -103,6 +106,26 @@ class ProgressOut(BaseModel):
     failed: int
     active: bool
     current: str | None = None
+
+
+class LearningOut(BaseModel):
+    """Proposta de recalibração dos pesos por manter/tirar (7E); `weights` é nulo enquanto faltam decisões."""
+
+    needed: int
+    weights: dict[str, float] | None = None
+    explanation: list[str] = []
+    n_decisions: int = 0
+    applied: dict[str, float] | None = None
+
+
+class FeedbackIn(BaseModel):
+    text: str
+    seg_start_s: int | None = None
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    interpreted: bool
 
 
 class DecisionIn(BaseModel):
@@ -204,6 +227,59 @@ def create_app(
         return StreamingResponse(
             events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
         )
+
+    def _learning(db: Session, project_id: int) -> LearningOut:
+        applied = params_for_project(db, project_id)
+        current = {n: float(getattr(applied, n)) for n in WEIGHT_NAMES}
+        proposal = propose(db, project_id)
+        if proposal is None:
+            return LearningOut(needed=MIN_DECISIONS, applied=current)
+        return LearningOut(
+            needed=MIN_DECISIONS,
+            weights=proposal.weights,
+            explanation=proposal.explanation,
+            n_decisions=proposal.n_decisions,
+            applied=current,
+        )
+
+    @app.get("/projects/{project_id}/learning", response_model=LearningOut)
+    def get_learning(project_id: int) -> LearningOut:
+        with open_db(settings.db_path) as db:
+            if db.get(Project, project_id) is None:
+                raise HTTPException(404, "projeto não encontrado")
+            return _learning(db, project_id)
+
+    @app.post("/projects/{project_id}/learning/accept", response_model=LearningOut)
+    def accept_learning(project_id: int) -> LearningOut:
+        """Aceita a proposta atual: vira calibração do projeto (só inserção); vale na próxima relevância."""
+        with open_db(settings.db_path) as db:
+            if db.get(Project, project_id) is None:
+                raise HTTPException(404, "projeto não encontrado")
+            proposal = propose(db, project_id)
+            if proposal is None:
+                raise HTTPException(409, f"poucas decisões (mínimo {MIN_DECISIONS}, com 5 de cada lado)")
+            accept(db, project_id, proposal)
+            return _learning(db, project_id)
+
+    @app.post("/media/{media_id}/feedback", response_model=FeedbackOut, status_code=201)
+    def post_feedback(media_id: int, body: FeedbackIn) -> FeedbackOut:
+        """Guarda o feedback em texto livre (Q26). A interpretação por LLM local só entra após o benchmark."""
+        text = body.text.strip()
+        if not text:
+            raise HTTPException(422, "feedback vazio")
+        with open_db(settings.db_path) as db:
+            media = db.get(MediaFile, media_id)
+            if media is None:
+                raise HTTPException(404, "arquivo não encontrado")
+            row = Feedback(
+                project_id=media.session.project_id,
+                media_file_id=media_id,
+                seg_start_s=body.seg_start_s,
+                text=text,
+            )
+            db.add(row)
+            db.commit()
+            return FeedbackOut(id=row.id, interpreted=False)
 
     @app.get("/series", response_model=SeriesPanelOut)
     def series() -> SeriesPanelOut:
@@ -406,6 +482,7 @@ def create_app(
 def _session_out(s: RecordingSession) -> SessionOut:
     return SessionOut(
         id=s.id,
+        project_id=s.project_id,
         project=s.project.name,
         folder=s.folder,
         files=[

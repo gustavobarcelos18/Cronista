@@ -9,6 +9,7 @@ import type {
   WaveformOut,
 } from "@cronista/contracts";
 import { useEffect, useRef, useState } from "react";
+import Exportar from "./exportar";
 import Roteiro from "./roteiro";
 
 const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
@@ -151,6 +152,7 @@ export default function Revisao() {
               ))}
             </ol>
             {sessionId !== null && <Roteiro key={sessionId} sessionId={sessionId} />}
+            {sessionId !== null && <Exportar key={sessionId} sessionId={sessionId} />}
           </>
         ) : (
           <p>Escolha um arquivo à esquerda.</p>

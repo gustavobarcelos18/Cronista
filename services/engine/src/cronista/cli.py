@@ -1135,5 +1135,12 @@ def api_cmd(
     import uvicorn
 
     from cronista.api.app import create_app
+    from cronista.profiles import load_settings_profile
 
-    uvicorn.run(create_app(load_settings()), host="127.0.0.1", port=port)
+    settings = load_settings()
+
+    def profile_loader() -> tuple[list[str], list[str]]:
+        profile = load_settings_profile(settings)
+        return profile.objetivos, profile.regras
+
+    uvicorn.run(create_app(settings, profile_loader=profile_loader), host="127.0.0.1", port=port)

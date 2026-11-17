@@ -11,6 +11,13 @@ export type Source = string;
 export type Stage = string;
 export type StartS1 = number;
 export type Variant = string;
+export type Directory = string | null;
+export type Message = string;
+export type Problems = string[];
+export type Reused = boolean;
+export type State = "idle" | "running" | "done" | "error";
+export type Version = number | null;
+export type Warnings = string[];
 export type Attempts = number;
 export type Error = string | null;
 export type Id = number;
@@ -53,8 +60,8 @@ export type StartS2 = number | null;
 export type Text = string;
 export type Lines = ScriptLine[];
 export type Provider = string;
-export type Version = number;
-export type Warnings = string[];
+export type Version1 = number;
+export type Warnings1 = string[];
 export type AdjEndS = number | null;
 export type AdjStartS = number | null;
 export type Classe = string;
@@ -69,7 +76,7 @@ export type Folder = string;
 export type Id3 = number;
 export type Project = string;
 export type Files1 = string[];
-export type Warnings1 = string[];
+export type Warnings2 = string[];
 export type DurationS1 = number;
 export type Game = number[];
 export type Mic = number[];
@@ -100,6 +107,19 @@ export interface EventOut {
   stage: Stage;
   start_s: StartS1;
   variant: Variant;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ExportStatusOut".
+ */
+export interface ExportStatusOut {
+  directory?: Directory;
+  message?: Message;
+  problems?: Problems;
+  reused?: Reused;
+  state: State;
+  version?: Version;
+  warnings?: Warnings;
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
@@ -162,7 +182,7 @@ export interface MediaProbe {
 export interface Script {
   lines?: Lines;
   provider?: Provider;
-  version?: Version;
+  version?: Version1;
 }
 /**
  * Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5).
@@ -184,7 +204,7 @@ export interface ScriptLine {
  */
 export interface ScriptOut {
   script: Script;
-  warnings?: Warnings;
+  warnings?: Warnings1;
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
@@ -224,7 +244,7 @@ export interface SessionOut {
 export interface StageResult {
   data?: Data;
   files?: Files1;
-  warnings?: Warnings1;
+  warnings?: Warnings2;
 }
 export interface Data {
   [k: string]: unknown;

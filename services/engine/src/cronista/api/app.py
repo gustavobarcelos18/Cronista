@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 
@@ -21,6 +22,7 @@ from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, record_decision
+from cronista.review.reexport import ProfileLoader, ReexportJobs
 from cronista.story.models import Script
 from cronista.story.script import load_script
 from cronista.story.service import ScriptSaveError, save_script
@@ -78,6 +80,16 @@ class ScriptOut(BaseModel):
     warnings: list[str] = []
 
 
+class ExportStatusOut(BaseModel):
+    state: Literal["idle", "running", "done", "error"]
+    message: str = ""
+    version: int | None = None
+    reused: bool = False
+    directory: str | None = None
+    problems: list[str] = []
+    warnings: list[str] = []
+
+
 class DecisionIn(BaseModel):
     decision: Literal["aceito", "rejeitado", "ajustado"]
     start_s: float | None = None
@@ -111,7 +123,9 @@ def _envelope(values: np.ndarray, points: int) -> list[float]:
     return [round(float(b.max()), 1) for b in buckets]
 
 
-def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
+def create_app(
+    settings: Settings, origins: list[str] | None = None, profile_loader: ProfileLoader | None = None
+) -> FastAPI:
     app = FastAPI(title="Cronista Engine", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,
@@ -119,6 +133,23 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "PUT"],
         allow_headers=["*"],
     )
+
+    jobs = ReexportJobs(settings, profile_loader)
+    app.state.reexport = jobs
+
+    @app.get("/sessions/{session_id}/export", response_model=ExportStatusOut)
+    def export_status(session_id: int) -> ExportStatusOut:
+        return ExportStatusOut(**asdict(jobs.status(session_id)))
+
+    @app.post("/sessions/{session_id}/export", response_model=ExportStatusOut, status_code=202)
+    def start_export(session_id: int, target_min: float = Query(40.0, gt=0, le=240)) -> ExportStatusOut:
+        """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou."""
+        with open_db(settings.db_path) as db:
+            if db.get(RecordingSession, session_id) is None:
+                raise HTTPException(404, "sessão não encontrada")
+        if not jobs.start(session_id, target_min * 60):
+            raise HTTPException(409, "já há uma exportação em andamento")
+        return ExportStatusOut(**asdict(jobs.status(session_id)))
 
     @app.get("/health")
     def health() -> dict[str, str]:

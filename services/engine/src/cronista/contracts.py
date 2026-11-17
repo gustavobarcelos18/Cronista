@@ -9,6 +9,7 @@ from pydantic import TypeAdapter
 from cronista.api.app import (
     DecisionIn,
     EventOut,
+    ExportStatusOut,
     JobOut,
     MarkerOut,
     MediaFileOut,
@@ -31,6 +32,7 @@ def build_schema() -> dict[str, object]:
         MarkerOut,
         SegmentOut,
         DecisionIn,
+        ExportStatusOut,
         ScriptOut,
         EventOut,
         WaveformOut,

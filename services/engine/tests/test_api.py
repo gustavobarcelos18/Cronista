@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -173,3 +174,46 @@ def test_api_roteiro_edita_e_guarda_historico(settings: Settings) -> None:
     assert client.get("/sessions/1/script").json()["script"]["lines"][0]["text"].endswith("inteira.")
     assert "perdeu tudo" in (folder / "roteiro.v1.json").read_text(encoding="utf-8")
     assert (folder / "roteiro.srt").is_file()
+
+
+def test_api_reexport_estados(settings: Settings, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    import threading
+    from types import SimpleNamespace
+
+    from cronista.review import reexport
+
+    _seed(db)
+    gate, calls = threading.Event(), []
+
+    def fake_export(_db: object, session_id: int, _s: object, script: object, target_s: float, *_a: object):
+        calls.append((session_id, script, target_s))
+        gate.wait(5)
+        return SimpleNamespace(
+            directory=Path("x"), version=2, reused=True, problems=[], warnings=["aviso"], clips=1
+        )
+
+    monkeypatch.setattr(reexport, "export_montagem", fake_export)
+    monkeypatch.setattr(reexport, "build_gate", lambda _s: None)
+    app = create_app(settings)
+    client = TestClient(app)
+    assert client.get("/sessions/1/export").json()["state"] == "idle"
+    assert client.post("/sessions/99/export").status_code == 404
+    assert client.post("/sessions/1/export?target_min=30").status_code == 202
+    assert client.get("/sessions/1/export").json()["state"] == "running"
+    assert client.post("/sessions/1/export").status_code == 409
+    gate.set()
+    app.state.reexport.last_thread.join(5)
+    done = client.get("/sessions/1/export").json()
+    assert (
+        done["state"] == "done" and done["reused"] and done["version"] == 2 and done["warnings"] == ["aviso"]
+    )
+    assert calls == [(1, None, 1800.0)]
+
+    def boom(*_a: object, **_k: object) -> None:
+        raise ValueError("sem segmentos")
+
+    monkeypatch.setattr(reexport, "export_montagem", boom)
+    assert client.post("/sessions/1/export").status_code == 202
+    app.state.reexport.last_thread.join(5)
+    err = client.get("/sessions/1/export").json()
+    assert err["state"] == "error" and "sem segmentos" in err["message"]

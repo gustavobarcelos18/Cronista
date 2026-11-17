@@ -27,3 +27,8 @@ Plano de execução (detalhes do produto na seção "Fase 7" do [plano mestre](0
 - **7C parcial**: tabela só de inserção `segment_decision` (migração 0008; aceito/rejeitado/ajustado, a última linha vale),
   `POST /media/{id}/segments/{início}/decision` e botões Aceitar/Rejeitar/Ajustar no Studio. **Montagem, roteiro e Shorts já respeitam as decisões** (`review/decisions.py::load_effective_segments`).
   **Edição de roteiro:** `GET/PUT /sessions/{id}/script` (valida como o `roteiro-import`; a versão anterior vira `roteiro.v<N>.json`) e editor no Studio (`roteiro.tsx`). **Falta:** re-exportar só as etapas afetadas pelo cache por hash (botão no Studio).
+- **7C completa (código):** re-exportar pelo Studio: `POST/GET /sessions/{id}/export` roda o mesmo `export_montagem` do CLI numa
+  thread (uma por sessão; 409 se já rodando) e o botão em `exportar.tsx` consulta o estado. O cache por hash (plano + roteiro)
+  decide o que refazer: com decisões ou roteiro iguais, a versão anterior é reaproveitada. O perfil entra injetado pela CLI
+  (`create_app(profile_loader=...)`), porque só `profiles.py` e a CLI conhecem perfis. `open_db` agora serializa as migrações
+  com um lock (o Alembic não é thread-safe e a API roda em threads). **Falta:** conferir com mídia real em `prod`.

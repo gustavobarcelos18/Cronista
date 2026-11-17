@@ -13,7 +13,7 @@ RATE = 16000
 def _tone(freq: float, seconds: float, amp: float) -> np.ndarray:
     t = np.arange(int(seconds * RATE)) / RATE
     # fundamental + harmônicos, como uma voz
-    wave = sum(np.sin(2 * np.pi * freq * k * t) / k for k in (1, 2, 3))
+    wave = np.sum([np.sin(2 * np.pi * freq * k * t) / k for k in (1, 2, 3)], axis=0)
     return (amp * wave / 1.8).astype(np.float32)
 
 

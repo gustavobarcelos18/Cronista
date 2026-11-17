@@ -16,6 +16,7 @@ from cronista.ingest.stages import ingest_stages
 from cronista.pipeline import GpuGate, StageFailedError, run_pipeline
 from cronista.pipeline.runner import PipelineReport
 from cronista.pipeline.stage import Stage, stage_key, stage_variant
+from cronista.video.stages import video_stages
 
 
 class AnalysisError(Exception):
@@ -57,7 +58,7 @@ def analyze_session(
     if models.classifier is None:
         report.skipped.append("eventos sonoros (sem classificador nesta máquina)")
 
-    analysis: list[Stage] = analysis_stages(models)
+    analysis: list[Stage] = [*analysis_stages(models), *video_stages()]
     stages = [*ingest_stages(), *analysis]
     for media in session.media_files:
         name = Path(media.path).name

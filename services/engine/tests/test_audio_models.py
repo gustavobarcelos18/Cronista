@@ -137,10 +137,12 @@ def test_service_stores_events_once_and_keeps_variants_apart(
 
     first = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
     assert first.ok and not first.skipped
-    assert sorted(first.events.values()) == [1, 1, 1]  # fala, risada no jogo e risada no microfone
+    audio_events = {k: v for k, v in first.events.items() if "video_scenes" not in k}
+    assert sorted(audio_events.values()) == [1, 1, 1]  # fala, risada no jogo e risada no microfone
     again = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
     assert not again.files[Path(media.path).name].executed  # tudo em cache
-    assert db.scalar(select(func.count()).select_from(Event)) == 3  # nada duplicado
+    audio_only = select(func.count()).select_from(Event).where(Event.stage != "video_scenes")
+    assert db.scalar(audio_only) == 3  # nada duplicado
 
     speech = load_events(db, media.id, kind="fala")
     assert [e.evidence.quote for e in speech] == ["e aí"]
@@ -174,7 +176,8 @@ def test_without_models_only_cpu_signals_run_and_the_report_says_what_was_skippe
     ingest_folder(db, fixture_folders["normal"], settings, AlwaysFreeGate())
     session_id = db.scalars(select(RecordingSession.id)).one()
     report = analyze_session(db, session_id, settings, AlwaysFreeGate())
-    assert report.ok and len(report.skipped) == 2 and report.events == {}
+    audio_events = {k: v for k, v in report.events.items() if "video_scenes" not in k}
+    assert report.ok and len(report.skipped) == 2 and audio_events == {}
     (file_report,) = report.files.values()
     assert "audio_signals" in file_report.executed
 

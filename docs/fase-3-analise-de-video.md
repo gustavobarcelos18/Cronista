@@ -4,7 +4,7 @@ Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-
 Decisões que alimentam esta fase: [histórico §36, §38 e §45](01-historico-de-decisoes.md). Padrões herdados da Fase 2:
 [fase-2-analise-de-audio.md](fase-2-analise-de-audio.md) (variante de artefato, `Evidence`/`event`, sinais `.npy`, portas, gate de GPU).
 
-Status (2026-11-17): **planejada, nada implementado** · Branch sugerida: `fase/3-video` (3A), depois `fase/3b-*` e `fase/3c-*`.
+Status (2026-11-17): **3A parcial implementada** em `fase/3-video` (leitor de frames, sinais visuais, heurística de menu/loading/idle, câmera e cortes; histórico §47). **Falta da 3A:** seção de vídeo no relatório HTML, miniaturas dos candidatos, `--only` no `analyze` e `status` com as variantes. `pausa` passou para a 3B (precisa de embeddings). 3B e 3C não começaram.
 
 ## Objetivo e aceite
 

@@ -235,7 +235,8 @@ def analysis_stages(models: AudioModels) -> list[Stage]:
         stages.append(SpeechStage(models.detector, models.transcriber))
     if models.classifier is not None:
         stages.append(SoundEventsStage(models.classifier, GAME_TRACK))
-        stages.append(SoundEventsStage(models.classifier, MIC_TRACK))
+        # Microfone: corte baixo porque risada curta dilui na janela de 10 s do AST (medido na 2C: 0,12).
+        stages.append(SoundEventsStage(models.classifier, MIC_TRACK, min_score=0.1))
     return stages
 
 

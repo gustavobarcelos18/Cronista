@@ -363,7 +363,7 @@ def bench_quality(
     tolerance: Annotated[float, typer.Option(help="Tolerância de eventos, em segundos")] = 1.0,
 ) -> None:
     """Compara eventos e transcrição do banco com o gabarito (WER, risada, grito, teclado, farm)."""
-    from cronista.audio.events import load_events
+    from cronista.audio.events import load_stored_events
     from cronista.audio.quality import Utterance, evaluate, render
 
     settings = load_settings()
@@ -384,7 +384,12 @@ def bench_quality(
         if not media:
             typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
             raise typer.Exit(1)
-        events = load_events(db, media[0].id)
+        # Métricas do microfone: eventos da faixa do jogo (música, explosão) não entram na conta.
+        events = [
+            s.event
+            for s in load_stored_events(db, media[0].id)
+            if s.event.kind == "fala" or s.variant.startswith("mic")
+        ]
     if not events:
         typer.echo("erro: sem eventos no banco; rode `cronista analyze` antes", err=True)
         raise typer.Exit(1)

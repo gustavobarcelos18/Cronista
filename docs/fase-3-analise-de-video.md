@@ -118,7 +118,7 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 ### Tarefas
 
 1. **Perfil genérico universal e perfis declarativos** (`profiles/*.yaml`): o núcleo roda com o perfil genérico; um perfil de
-   jogo só **acrescenta** (regiões de HUD, limiares ajustados, rótulos de contexto). Validado por Pydantic/JSON Schema; sem código por jogo.
+   jogo só **acrescenta** (regiões de HUD, limiares ajustados, rótulos de contexto, `camera_tools`: ferramentas de câmera do jogo para sugerir gravação de B-roll, histórico §50). Validado por Pydantic/JSON Schema; sem código por jogo.
    Interface `GameAdapter` apenas esboçada (leitores de mods ficam fora do escopo, seção 7 do plano).
 2. **OCR de HUD** (RapidOCR, ONNX), **só em regiões definidas no perfil**, lido em frames do **master** (no proxy 360p o texto fica ilegível).
    Amostragem baixa (ex.: 1 frame a cada poucos segundos) e só nos trechos pedidos. Saída: `event` `hud_texto` com a citação em `quote`.

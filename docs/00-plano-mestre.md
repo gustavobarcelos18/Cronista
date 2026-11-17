@@ -522,6 +522,7 @@ fixo a partir disso.
   (preditor de estética sobre embeddings CLIP) e cenas por texto ("pôr do sol", "vista da base").
   O resultado vai para uma **biblioteca de B-roll** com tags, usada em aberturas, transições de dia e respiros.
   Sob a narração o B-roll **alterna**: uma sequência de tomadas (uma nova a cada 4–7 s, sem repetir nem pôr contextos parecidos em seguida), a primeira mais próxima do assunto (busca por texto) e as demais do mesmo tema ou, faltando, cenas calmas de boa utilidade (histórico §50). A nota de B-roll é de **utilidade** (cena de jogo, não menu/tela preta), nunca de beleza: cena escura ou medonha serve se o assunto pede.
+  O B-roll **sempre precisa fazer sentido com a narração**: só entra tomada cuja busca por texto passa de um limiar; sem tomada à altura o trecho fica **"falta tomada"** (cena calma genérica só se o criador aceitar). Cada "falta tomada" vira uma **sugestão de gravação** ao criador (tema, duração e movimento de câmera: "narração sobre a base aos 3:20: grave uma panorâmica de ~20 s"). O núcleo sugere só "tomada de câmera livre"; a **ferramenta do jogo** (Replay Mod no Minecraft, modo diretor no GTA, câmera de foto etc.) vem de um campo `camera_tools` do perfil YAML do jogo (3C), sem `if jogo` no núcleo (histórico §50).
 - **Timelapse de construção** (Fase 6), em três níveis de qualidade:
   1. *Automático*: pega frames da gravação normal em que a construção aparece de ângulo parecido
      (similaridade + feature matching/homografia para alinhar) e monta um "progresso". Qualidade variável.

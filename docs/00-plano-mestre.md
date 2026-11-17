@@ -324,9 +324,9 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 |---|---|---|
 | Processamento | **Python 3.12 + uv** | Ecossistema de áudio/vídeo/ML; roda nativo no Windows com CUDA |
 | Vídeo | **FFmpeg** (NVDEC/NVENC) + PySceneDetect + OpenCV | Padrão da indústria; usa a GPU |
-| Transcrição | faster-whisper (large-v3-turbo, int8_float16 — histórico §44) | Roda bem em 12 GB; só nos trechos de fala |
-| Áudio | Silero VAD (o mesmo que o faster-whisper usa no filtro de VAD), DeepFilterNet **só se melhorar o WER no benchmark**, classificador de eventos (**AST/AudioSet** primeiro candidato na 2B; PANNs/BEATs/CLAP seguem candidatos da 2C), librosa | Fala × ruído × eventos sonoros |
-| Visão | SigLIP/CLIP (embeddings a 1–2 fps), OCR (**RapidOCR**, ONNX) **em frames do master**, VLM local pelo `transformers` (Qwen3-VL 4B; histórico §49, sem Ollama) **só em candidatos** | Barato no volume, inteligente onde importa |
+| Transcrição | faster-whisper (**large-v3-turbo**, int8_float16 — histórico §44; confirmado no benchmark: 1,1% de erro e 10 h em ~31 min contra 3,1% e ~57 min do large-v3, com viés a favor do turbo, histórico §49) | Roda bem em 12 GB; só nos trechos de fala |
+| Áudio | Silero VAD (o mesmo que o faster-whisper usa no filtro de VAD), DeepFilterNet **só se melhorar o WER no benchmark**, classificador de eventos (**AST/AudioSet** fixado para risada e eventos do jogo; **CLAP** é candidato para exclamação, revocação 63% mas precisão 29–36%, ainda não adotado; PANNs/BEATs não testados — histórico §49), librosa | Fala × ruído × eventos sonoros |
+| Visão | Embeddings a 1 fps: **SigLIP 2 base** (`google/siglip2-base-patch16-224`) nos contextos e **SigLIP 2 large** (`google/siglip2-large-patch16-384`) só na busca de B-roll por texto; OCR (**RapidOCR 3.10**, ONNX, CPU) **em frames do master a 720p**, só na região do perfil (em 360p nenhum leitor lê o HUD); VLM local pelo `transformers` (**Qwen3-VL 4B**, `Qwen/Qwen3-VL-4B-Instruct`, 360p, sem Ollama) **só em candidatos**; números e limites em [docs/benchmarks](benchmarks/00-recomendacoes.md), histórico §49 | Barato no volume, inteligente onde importa |
 | LLM local | Ollama (Qwen ~14B quantizado) | Classificação e resumos em massa sem custo |
 | LLM de roteiro | **Claude Code (Pro)** via skills do repositório | Melhor qualidade de escrita, custo zero extra |
 | API/Jobs | FastAPI + fila de jobs persistida no banco | Simples para um usuário; troca por Redis depois, se precisar |

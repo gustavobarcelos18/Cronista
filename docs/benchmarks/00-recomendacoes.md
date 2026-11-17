@@ -2,7 +2,7 @@
 
 Resumo dos cinco benchmarks de 2026-11-17 (RTX 3060 12 GB, `claude_teste.mp4` de 37 min e as sessões de teste de voz e de
 gritos). Cada benchmark tem seu relatório, com tabelas geradas por `cronista bench-report` e a análise escrita à mão.
-Modelos e versões foram escritos de memória e funcionaram nesta máquina; a escolha definitiva vai para a seção 5.2 do plano.
+Modelos e versões foram escritos de memória e funcionaram nesta máquina; as escolhas foram fixadas na seção 5.2 do plano (histórico §49).
 
 | Relatório | Responde |
 |---|---|

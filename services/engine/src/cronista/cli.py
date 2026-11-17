@@ -701,7 +701,16 @@ def broll_search(
         typer.echo("erro: sem B-roll nem embeddings; rode `cronista analyze` antes", err=True)
         raise typer.Exit(1)
     info = StageResult.model_validate_json(Path(art.result_path).read_text(encoding="utf-8"))
-    emb = np.load(info.data["embeddings"]["path"], mmap_mode="r")
+    saved = info.data["embeddings"]
+    current = [models.embedder.name, models.embedder.version, models.embedder.options]
+    if saved["dim"] != models.embedder.dim or saved.get("embedder", current) != current:
+        typer.echo(
+            "erro: os embeddings da sessão vieram de outro modelo (`video_embedder` mudou); "
+            "rode `cronista analyze` de novo",
+            err=True,
+        )
+        raise typer.Exit(1)
+    emb = np.load(saved["path"], mmap_mode="r")
     hits = broll_lib.search(
         np.asarray(emb, dtype=np.float32),
         models.embedder,

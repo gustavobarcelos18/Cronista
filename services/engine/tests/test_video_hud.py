@@ -24,7 +24,7 @@ def _session(n: int = 200, hidden: tuple[int, int] = (100, 130)) -> npt.NDArray[
 def test_gabarito_acha_o_hud_e_ignora_o_mundo() -> None:
     template = build_template(_session()[::4], HudParams())
     assert template.usable
-    assert template.mask[80:88, 40:120].mean() > 0.8 and template.mask[30:60, 10:30].sum() == 0
+    assert template.mask[80:88, 40:120].mean() > 0.8 and template.mask[30:60, 10:30].mean() < 0.02
 
 
 def test_trecho_sem_hud_vira_hud_oculto() -> None:

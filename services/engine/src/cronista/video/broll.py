@@ -101,23 +101,37 @@ def beauty(emb: FloatArray, pos: FloatArray, neg: FloatArray, temperature: float
     return (1.0 / (1.0 + np.exp(-temperature * (p - n)))).astype(np.float32)
 
 
+@dataclass(frozen=True)
+class TextBank:
+    """Textos fixos (utilidade, vocabulário, climas) já no espaço do modelo: calculados uma vez por etapa."""
+
+    positive: FloatArray
+    negative: FloatArray
+    vocab: FloatArray
+    climas: dict[str, FloatArray]
+
+
+def text_bank(embedder: FrameEmbedder) -> TextBank:
+    return TextBank(
+        positive=_unit(embedder.embed_text(POSITIVE)),
+        negative=_unit(embedder.embed_text(NEGATIVE)),
+        vocab=_unit(embedder.embed_text([f"a photo of {v}" for v in VOCAB])),
+        climas={name: _unit(embedder.embed_text(list(p))) for name, p in CLIMAS.items()},
+    )
+
+
 def score_candidate(
-    emb: FloatArray, embedder: FrameEmbedder, params: BrollParams, *, hop: int, c: Candidate
+    emb: FloatArray, bank: TextBank, params: BrollParams, *, hop: int, c: Candidate
 ) -> dict[str, Any] | None:
     """Nota, tags e quadro de capa do trecho; `None` se não há embedding dentro dele."""
     first, last = c.start_frame // hop, max(c.end_frame // hop, c.start_frame // hop + 1)
     seg = emb[first:last]
     if len(seg) == 0:
         return None
-    pos, neg = _unit(embedder.embed_text(POSITIVE)), _unit(embedder.embed_text(NEGATIVE))
-    per = beauty(seg, pos, neg, params.temperature)
-    vocab = _unit(embedder.embed_text([f"a photo of {v}" for v in VOCAB]))
-    sims = _unit(seg.mean(axis=0, keepdims=True))[0] @ vocab.T
+    per = beauty(seg, bank.positive, bank.negative, params.temperature)
+    sims = _unit(seg.mean(axis=0, keepdims=True))[0] @ bank.vocab.T
     order = np.argsort(-sims)[: params.top_tags]
-    climas = {
-        name: float((seg.mean(axis=0) @ _unit(embedder.embed_text(list(prompts))).T).max())
-        for name, prompts in CLIMAS.items()
-    }
+    climas = {name: float((seg.mean(axis=0) @ matrix.T).max()) for name, matrix in bank.climas.items()}
     return {
         "clima": max(climas, key=lambda k: climas[k]),
         "movimento": c.movement,

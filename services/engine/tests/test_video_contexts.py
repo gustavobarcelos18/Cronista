@@ -14,7 +14,7 @@ from cronista.devtools.synthetic_video import build, write_video
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
 from cronista.domain.models import StageResult
 from cronista.pipeline import StageContext
-from cronista.video.broll import BrollParams, Candidate, candidates, score_candidate, search
+from cronista.video.broll import BrollParams, Candidate, candidates, score_candidate, search, text_bank
 from cronista.video.context_stages import ContextNoveltyStage, ContextsStage, EmbeddingsStage
 from cronista.video.contexts import NO_CONTEXT, ContextParams, cluster
 from cronista.video.ports import VideoModels
@@ -139,7 +139,7 @@ def test_broll_pontua_etiqueta_e_busca_por_texto() -> None:
     emb = rng.normal(size=(30, fake.dim)).astype(np.float32)
     emb /= np.linalg.norm(emb, axis=1, keepdims=True)
     cand = Candidate(0, 20 * 60, "parada", 0.6)
-    info = score_candidate(emb, fake, BrollParams(), hop=60, c=cand)
+    info = score_candidate(emb, text_bank(fake), BrollParams(), hop=60, c=cand)
     assert info is not None and 0.0 <= float(info["utilidade"]) <= 1.0
     assert len(info["tags"]) == 3 and int(info["cover_frame"]) % 60 == 0
     hits = search(

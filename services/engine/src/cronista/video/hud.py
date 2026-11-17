@@ -28,14 +28,18 @@ Gray = npt.NDArray[np.uint8]
 FloatArray = npt.NDArray[np.float32]
 BoolArray = npt.NDArray[np.bool_]
 BLOCKED = frozenset({"menu", "loading", "pausa", "idle"})
+HAS_HUD_KEY = "has_hud"
+"""Chave em `data` da `video_hud`: a sessão tem HUD estável (sem ele não há HUD oculto nem idle)."""
 
 
 @dataclass(frozen=True)
 class HudParams:
     tol: int = 14
     """Diferença de brilho (0 a 255) abaixo da qual um pixel "bate" com o gabarito."""
-    stable_frac: float = 0.7
-    """Fração das amostras em que o pixel precisa bater com a mediana para entrar na máscara."""
+    stable_frac: float = 0.5
+    """Fração das amostras em que o pixel precisa bater com a mediana para entrar na máscara.
+
+    Limite: com o HUD escondido em mais da metade da sessão a mediana vira o mundo e o gabarito se perde."""
     min_grad: float = 25.0
     """Borda mínima do gabarito (diferença para o vizinho): descarta fundo liso e escuro."""
     min_mask_frac: float = 0.01
@@ -149,10 +153,7 @@ class HudStage:
         if not template.usable:
             warnings.append("sem HUD estável nesta sessão: nenhum trecho de HUD oculto é detectável")
         else:
-            blocks = vframes.iter_gray_blocks(
-                ctx.settings, proxy, sample_fps=1, between_blocks=ctx.wait_for_gpu
-            )
-            for block in blocks:
+            for block in vframes.iter_gray_blocks(ctx.settings, proxy, sample_fps=1):
                 scores.append(match(block, template, self.hud))
         score = np.concatenate(scores) if scores else np.ones(seen, np.float32)
         blocked = np.zeros(len(score), bool)
@@ -201,6 +202,7 @@ class HudStage:
             data={
                 EVENTS_KEY: path,
                 "count": len(events),
+                HAS_HUD_KEY: template.usable,
                 SIGNALS_KEY: {"video.hud_match": meta.model_dump()},
             },
             warnings=warnings,
@@ -211,8 +213,8 @@ class HudStage:
 class IdleParams:
     still_min: float = 0.90
     """Fração de pixels parados (sinal `still` da 3A) para a cena contar como parada."""
-    hud_full: float = 0.9
-    """HUD inteiro à vista: painel, chat ou boas-vindas cobrem parte dele (0,2 a 0,85)."""
+    hud_full: float = 0.85
+    """HUD inteiro à vista: painel, chat ou boas-vindas cobrem parte dele (0,7 a 0,8 com a máscara atual)."""
     dark_luma: float = 0.03
     min_seconds: float = 10.0
 
@@ -258,7 +260,9 @@ class IdleStage:
         return dict(self.idle.__dict__)
 
     def run(self, ctx: StageContext) -> StageResult:
-        if ctx.inputs["video_hud"].warnings:  # sem HUD estável não há como separar jogo de tela de interface
+        if not ctx.inputs["video_hud"].data.get(
+            HAS_HUD_KEY, False
+        ):  # sem HUD não se separa jogo de interface
             path = write_events_file(ctx.out_dir, [])
             return StageResult(
                 files=[path],

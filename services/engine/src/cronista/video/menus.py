@@ -27,6 +27,8 @@ FloatArray = npt.NDArray[np.float32]
 class MenuParams:
     similarity: float = 0.3
     """Cosseno mínimo do menu com o centróide do tipo, depois de subtrair a média de todos os menus."""
+    similarity_raw: float = 0.93
+    """Limiar para poucos menus, quando não dá para centrar (o fundo escuro comum deixa tudo acima de 0,8)."""
     min_menus_to_center: int = 4
 
 
@@ -91,7 +93,9 @@ class MenuTypesStage:
             vectors = (vectors / np.maximum(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-9)).astype(
                 np.float32
             )
-        labels, cents = group(vectors, self.menu)
+        centered = len(vectors) >= self.menu.min_menus_to_center
+        limit = self.menu.similarity if centered else self.menu.similarity_raw
+        labels, cents = group(vectors, MenuParams(similarity=limit))
         digest = params_hash(self.params(ctx.settings))
         events: list[AnalysisEvent] = []
         types: list[dict[str, Any]] = []

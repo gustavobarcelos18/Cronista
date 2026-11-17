@@ -48,14 +48,14 @@ def test_continuidade_entre_blocos_nao_muda_os_sinais() -> None:
         assert np.allclose(whole[name], chunked[name], atol=1e-5), name
 
 
-def test_detecta_loading_menu_idle_e_nao_confunde_jogabilidade() -> None:
+def test_detecta_loading_menu_e_nao_confunde_jogabilidade() -> None:
     frames, truth = build()
-    spans = detect(_signals(frames, 40), ScreenParams(idle_enabled=True))
+    spans = detect(_signals(frames, 40), ScreenParams())
     by_kind: dict[str, list[tuple[float, float]]] = {}
     for sp in spans:
         by_kind.setdefault(sp.kind, []).append((sp.start / 5, sp.end / 5))
     for item in truth:
-        if item.kind in ("loading", "menu", "idle"):
+        if item.kind in ("loading", "menu"):
             assert _covers(by_kind.get(item.kind, []), item), f"{item.kind} não detectado: {by_kind}"
     # nenhum loading/menu/idle dentro da jogabilidade
     for item in truth:
@@ -96,7 +96,7 @@ def test_etapas_leem_o_proxy_e_geram_eventos(tmp_path: Path, settings: Settings)
 
     events = events_from_result(scenes) or []
     kinds = {e.kind for e in events}
-    assert {"loading", "menu", "cena"} <= kinds and "idle" not in kinds  # idle desligado por padrão
+    assert {"loading", "menu", "cena"} <= kinds and "idle" not in kinds  # idle não sai da 3A
     loading = next(e for e in events if e.kind == "loading")
     expected = next(t for t in truth if t.kind == "loading")
     assert abs(loading.evidence.start_frame / 60 - expected.start_s) <= 0.5
@@ -131,7 +131,7 @@ def test_idle_vem_desligado_e_cena_escura_com_hud_nao_e_loading() -> None:
 
 def test_camera_parada_nao_dispara_em_menu_nem_em_quadro_liso() -> None:
     frames, truth = build()
-    spans = detect(_signals(frames, 40), ScreenParams(idle_enabled=True))
+    spans = detect(_signals(frames, 40), ScreenParams())
     parked = [(sp.start / 5, sp.end / 5) for sp in spans if sp.payload.get("tipo") == "parada"]
     for item in truth:
         if item.kind in ("menu", "loading", "idle"):

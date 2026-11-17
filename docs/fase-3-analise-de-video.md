@@ -132,6 +132,28 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 6. **Teste de plugabilidade:** adicionar um perfil de exemplo sem alterar uma linha do núcleo (teste automatizado que falha se o núcleo importar o perfil).
 7. **Números de corte** aprovados por você **antes** do benchmark final; escolha de modelos e versões fixadas no plano (seção 5.2).
 
+### Plano de execução da 3C (2026-11-17)
+
+Branch `fase/3c-perfis` a partir da `main`, depois do merge do PR #13 (3B). Cinco blocos; o 1 e o 2 não dependem um do outro e começam já.
+
+| Bloco | O que entrega | Depende de | Onde roda |
+|---|---|---|---|
+| **3C-1 Gabarito visual e métricas** | `gabarito-ui` com **candidatos visuais** (miniatura do trecho de menu/loading/idle/hud_oculto: aceitar, rejeitar ou ajustar bordas, como as sugestões do Whisper na 2C); classe nova `hud_oculto` no gabarito; `cronista bench-video-quality` (precisão, revocação e erro de bordas por classe, tolerância configurável); relatório com a medida **da heurística atual** (linha de base) | Você anotar | `dev` (código), `prod` (mídia real) |
+| **3C-2 Perfis e plugabilidade** | Schema Pydantic + JSON Schema do perfil (`profiles/*.yaml`): `hud_regions` (nome, retângulo relativo, tipo de leitura), `thresholds` (ajustes sobre o genérico), `context_labels`, `camera_tools`, `objetivos`/`regras`; perfil genérico embutido; carregador; `profiles/exemplo.yaml` (Minecraft: só dados, sem código); **teste que falha se o núcleo importar ou citar um perfil** | nada | `dev` |
+| **3C-3 OCR do HUD** | Porta `HudReader` + adaptador RapidOCR 3.10 (CPU, ONNX); etapa `video_hud_text` lê **só as regiões do perfil**, em frames do **master a 720p**, 1 frame a cada poucos segundos, só nos trechos pedidos; eventos `hud_texto` com `quote`; o bioma do minimapa (ex.: "spider_caves") vira tag de tema do B-roll | 3C-2 | `prod` (master) |
+| **3C-4 VLM local** | Porta `ScreenVLM` + adaptador `transformers` com Qwen3-VL 4B (4 bits se o bitsandbytes funcionar no Windows; senão modelo que caiba em 12 GB); **uma pergunta fechada por vez**, JSON Schema validado por Pydantic; usos: (a) **nomear cada tipo de menu** (7 perguntas no `claude_teste`, não 28), (b) desempate de estado de tela duvidoso, (c) confirmar clima/tema de B-roll candidato ("há inimigo na imagem?"); nunca descrição livre em massa, nunca em stream | 3C-1 (para medir) | `prod` (GPU, com o gate) |
+| **3C-5 Calibração e corte final** | Limiares da 3A/3B (`menu_edge`, `dark_luma`, `hud_full`, `hidden_match`, `similarity` de menu) ajustados **por sessão** a partir da linha de base ou por perfil; propor números de corte; **você aprova**; benchmark final; registrar o que só funciona com perfil | 3C-1 a 3C-4, aprovação | `prod` |
+
+**Ordem sugerida:** 3C-2 e 3C-1 (código) em paralelo, enquanto você anota; depois 3C-3, 3C-4 e por fim 3C-5. Cada bloco é um conjunto pequeno de commits; PR para a `main` ao fim da 3C, com `/code-review`.
+
+**O que preciso de você:**
+1. **Anotar o gabarito visual** em sessões que já existem (`claude_teste.mp4`, 37 min; sessões 2 e 3): com os candidatos da 3C-1 é confirmar ou rejeitar miniaturas, algo em torno de 30–60 min, sem gravar nada.
+2. **Gravar ~30 s com o HUD escondido** (F1 no Minecraft, modo diretor ou Replay Mod) no meio de uma sessão normal: prova o HUD oculto e entra no gabarito.
+3. **Escolher o segundo gênero** (item 4 de "Em aberto") para provar que o genérico funciona fora do primeiro jogo; basta uma sessão curta (~20 min).
+4. **Autorizar o download do Qwen3-VL 4B** (tamanho a registrar antes de baixar) e **aprovar os números de corte** (abaixo) quando eu os propuser.
+
+**Aceite da 3C-1:** `bench-video-quality` roda no `claude_teste.mp4` e imprime precisão/revocação por classe; os números de hoje (heurística da 3A/3B) ficam registrados como linha de base no histórico.
+
 ### Números de corte (proposta inicial, a validar; não decidida)
 
 - `menu`/`loading`: precisão ≥ 90% e revocação ≥ 80% por trecho, bordas dentro de 2 s, **sem perfil de jogo**.

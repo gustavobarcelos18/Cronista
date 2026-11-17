@@ -19,7 +19,7 @@ from cronista.config import Settings
 from cronista.db.models import Marker
 from cronista.domain.frames import FPS
 
-VIDEO_STAGES = ("video_signals", "video_scenes", "video_contexts")
+VIDEO_STAGES = ("video_signals", "video_scenes", "video_contexts", "video_broll")
 STATE_KINDS = ("loading", "menu", "idle")
 THUMBS_PER_KIND = 6
 THUMB_WIDTH = 320
@@ -190,6 +190,45 @@ def context_table(events: list[StoredEvent], settings: Settings | None, proxy: P
     )
 
 
+def broll_table(
+    events: list[StoredEvent], settings: Settings | None, proxy: Path | None, top: int = 12
+) -> str:
+    """Galeria de B-roll candidato: os de maior nota de beleza, com capa, movimento e tags."""
+    clips = sorted(
+        (e.event for e in events if e.event.kind == "broll"),
+        key=lambda e: e.evidence.confidence,
+        reverse=True,
+    )[:top]
+    if not clips:
+        return ""
+    thumbs: list[str | None] = [None] * len(clips)
+    if settings is not None and proxy is not None and proxy.is_file():
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            thumbs = list(
+                pool.map(
+                    lambda e: thumbnail(
+                        settings, proxy, int(e.payload.get("cover_frame", e.evidence.start_frame))
+                    ),
+                    clips,
+                )
+            )
+    rows = []
+    for ev, data in zip(clips, thumbs, strict=True):
+        image = f'<img src="{data}" alt="B-roll" width="160">' if data else ""
+        tags = ", ".join(str(t) for t in ev.payload.get("tags", []))
+        rows.append(
+            f'<tr><td class="num">{ev.evidence.start_frame / FPS:.0f} s</td>'
+            f'<td class="num">{(ev.evidence.end_frame - ev.evidence.start_frame) / FPS:.0f} s</td>'
+            f'<td>{ev.payload.get("movimento", "")}</td><td class="num">{ev.evidence.confidence:.2f}</td>'
+            f"<td>{tags}</td><td>{image}</td></tr>"
+        )
+    return (
+        f"<h3>B-roll candidato: {len(clips)} melhores</h3>"
+        "<table><tr><th>Início</th><th>Duração</th><th>Movimento</th><th>Beleza</th><th>Tags</th>"
+        f"<th>Capa</th></tr>{''.join(rows)}</table>"
+    )
+
+
 def video_section(
     events: list[StoredEvent],
     signals: dict[str, Signal],
@@ -207,5 +246,6 @@ def video_section(
         if name in signals:
             parts.append(line_chart(signals[name], title, markers, total_frames, fixed))
     parts.append(context_table(events, settings, proxy))
+    parts.append(broll_table(events, settings, proxy))
     parts.append(state_table(events, settings, proxy))
     return "".join(parts)

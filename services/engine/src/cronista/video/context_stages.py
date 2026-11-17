@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 
 from cronista.audio import dsp
-from cronista.audio.events import EVENTS_KEY, write_events_file
+from cronista.audio.events import EVENTS_KEY, events_from_result, write_events_file
 from cronista.audio.signals import (
     HOP_FRAMES as AUDIO_HOP,
 )
@@ -25,6 +25,7 @@ from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.pipeline.stage import StageContext, StageError
 from cronista.video import frames as vframes
+from cronista.video.broll import BrollParams, candidates, score_candidate
 from cronista.video.contexts import NO_CONTEXT, ContextParams, cluster, runs
 from cronista.video.ports import FrameEmbedder
 
@@ -212,3 +213,47 @@ class ContextNoveltyStage:
         return StageResult(
             files=[meta.path], data={SIGNALS_KEY: {"game.novelty_ctx": meta.model_dump()}}, warnings=warnings
         )
+
+
+class BrollStage:
+    """Biblioteca de B-roll: eventos `broll` (trecho de câmera parada/panorâmica) com beleza, tags e capa."""
+
+    name = "video_broll"
+    version = "1"
+    needs: tuple[str, ...] = ("video_scenes", "video_embeddings")
+    uses_gpu = False
+
+    def __init__(self, embedder: FrameEmbedder, params: BrollParams | None = None) -> None:
+        self.embedder = embedder
+        self.broll = params or BrollParams()
+
+    def params(self, settings: Settings) -> dict[str, Any]:
+        e = self.embedder
+        return {**self.broll.__dict__, "embedder": [e.name, e.version, e.options]}
+
+    def run(self, ctx: StageContext) -> StageResult:
+        scenes = events_from_result(ctx.inputs["video_scenes"]) or []
+        emb = np.asarray(load_embeddings(ctx.inputs["video_embeddings"]), dtype=np.float32)
+        digest = params_hash(self.params(ctx.settings))
+        events: list[AnalysisEvent] = []
+        for c in candidates(scenes, self.broll):
+            info = score_candidate(emb, self.embedder, self.broll, hop=EMBED_HOP, c=c)
+            if info is None:
+                continue
+            events.append(
+                AnalysisEvent(
+                    kind="broll",
+                    evidence=Evidence(
+                        source=EvidenceSource.CENA,
+                        start_frame=c.start_frame,
+                        end_frame=c.end_frame,
+                        confidence=float(info["beleza"]),
+                        model=self.embedder.name,
+                        model_version=self.embedder.version,
+                        params_hash=digest,
+                    ),
+                    payload=info,
+                )
+            )
+        path = write_events_file(ctx.out_dir, events)
+        return StageResult(files=[str(path)], data={EVENTS_KEY: path, "count": len(events)})

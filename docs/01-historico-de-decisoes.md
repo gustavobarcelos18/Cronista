@@ -1263,6 +1263,12 @@ Cinco benchmarks automáticos, com relatórios em [`docs/benchmarks/`](benchmark
 
 **Não testados:** Parakeet/Canary (multilíngue exige NeMo), BEATs, PANNs, DINOv2, SigLIP 2 giant (travou), PaddleOCR-VL. Correções feitas no caminho: WER por palavra com tempo (o large-v3 dava 217% por agrupar frases), tempo sem o download do modelo e VRAM pelo medidor do PyTorch.
 
+## 50. Fase 3B: biblioteca de B-roll (2026-11-17)
+
+Etapa `video_broll` (CPU, depois de `video_scenes` e `video_embeddings`) e `cronista broll-search`. **Candidato** = `movimento_camera` parada ou panorâmica com pelo menos 4 s e menos de 30% coberto por menu/loading/pausa/idle. **Beleza** zero-shot: probabilidade de o embedding médio (por segundo) parecer mais com prompts positivos ("a beautiful scenic view"...) que negativos ("a menu screen full of text"...); serve para ordenar, não para decidir. **Tags** = 3 rótulos mais próximos de um vocabulário fixo e genérico (caverna, floresta, lago, base...), sem nada por jogo. Saída: eventos `broll` (confiança = beleza; `payload` com movimento, tags e quadro de capa), reaproveitando a tabela `event` **em vez de uma tabela `broll_clip` nova** (mesmo conteúdo, sem migração; reavaliar na Fase 6 se precisar de mais campos). Busca por texto: cosseno do embedding médio do trecho com o texto (consulta em inglês). O relatório ganhou a galeria "B-roll candidato" (12 melhores, com capa).
+
+Em `prod` (SigLIP base, `claude_teste.mp4`): 20 candidatos em ~35 s; buscas "a cave" e "a lake" devolveram trechos com tags coerentes, **ainda sem conferência de olho das capas**. Os candidatos têm 4–7 s (a câmera quase não fica parada mais tempo). Falta da 3B: conferir B-roll de olho, tipo de menu, `idle`, HUD oculto.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

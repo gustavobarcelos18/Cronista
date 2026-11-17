@@ -11,8 +11,10 @@ from cronista.audio.events import events_from_result
 from cronista.audio.signals import SIGNALS_KEY, load_signal, signal_metas, write_signal
 from cronista.config import Settings
 from cronista.devtools.synthetic_video import build, write_video
+from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
 from cronista.domain.models import StageResult
 from cronista.pipeline import StageContext
+from cronista.video.broll import BrollParams, Candidate, candidates, score_candidate, search
 from cronista.video.context_stages import ContextNoveltyStage, ContextsStage, EmbeddingsStage
 from cronista.video.contexts import NO_CONTEXT, ContextParams, cluster
 from cronista.video.ports import VideoModels
@@ -97,9 +99,53 @@ def test_etapas_embeddings_contextos_e_novelty_ctx(tmp_path: Path, settings: Set
 def test_so_com_embedder_entram_as_etapas_de_3b() -> None:
     assert [s.name for s in video_stages()] == ["video_signals", "video_scenes"]
     models = VideoModels(embedder=FakeEmbedder())
-    assert [s.name for s in video_stages(models)][-3:] == [
+    assert [s.name for s in video_stages(models)][-4:] == [
         "video_embeddings",
         "video_contexts",
+        "video_broll",
         "context_novelty",
     ]
     assert "context_novelty" not in [s.name for s in video_stages(models, with_audio=False)]
+
+
+def _ev(kind: str, a: int, b: int, **payload: object) -> AnalysisEvent:
+    ev = Evidence(
+        source=EvidenceSource.CENA,
+        start_frame=a,
+        end_frame=b,
+        confidence=0.6,
+        model="m",
+        model_version="1",
+        params_hash="h",
+    )
+    return AnalysisEvent(kind=kind, evidence=ev, payload=dict(payload))
+
+
+def test_candidatos_de_broll_ignoram_curtos_e_menus() -> None:
+    events = [
+        _ev("movimento_camera", 0, 600, tipo="parada"),  # 10 s: serve
+        _ev("movimento_camera", 600, 720, tipo="panoramica"),  # 2 s: curto
+        _ev("movimento_camera", 1000, 1600, tipo="parada"),  # 10 s dentro de menu
+        _ev("menu", 1000, 1600),
+        _ev("movimento_camera", 2000, 2600, tipo="orbita"),  # tipo fora da lista
+    ]
+    assert [(c.start_frame, c.movement) for c in candidates(events, BrollParams())] == [(0, "parada")]
+
+
+def test_broll_pontua_etiqueta_e_busca_por_texto() -> None:
+    fake = FakeEmbedder()
+    rng = np.random.default_rng(3)
+    emb = rng.normal(size=(30, fake.dim)).astype(np.float32)
+    emb /= np.linalg.norm(emb, axis=1, keepdims=True)
+    cand = Candidate(0, 20 * 60, "parada", 0.6)
+    info = score_candidate(emb, fake, BrollParams(), hop=60, c=cand)
+    assert info is not None and 0.0 <= float(info["beleza"]) <= 1.0
+    assert len(info["tags"]) == 3 and int(info["cover_frame"]) % 60 == 0
+    hits = search(
+        emb,
+        fake,
+        [_ev("broll", 0, 20 * 60), _ev("broll", 20 * 60, 30 * 60), _ev("menu", 0, 60)],
+        "a cave",
+        hop=60,
+    )
+    assert len(hits) == 2 and hits[0][1] >= hits[1][1]  # só `broll`, do melhor para o pior

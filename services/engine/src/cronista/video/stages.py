@@ -14,7 +14,7 @@ from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, pa
 from cronista.domain.models import StageResult
 from cronista.pipeline.stage import Stage, StageContext, StageError
 from cronista.video import frames as vframes
-from cronista.video.context_stages import ContextNoveltyStage, ContextsStage, EmbeddingsStage
+from cronista.video.context_stages import BrollStage, ContextNoveltyStage, ContextsStage, EmbeddingsStage
 from cronista.video.ports import VideoModels
 from cronista.video.screen_state import ScreenParams, detect
 from cronista.video.signals import SIGNAL_NAMES, FloatArray, SignalParams, block_signals
@@ -122,7 +122,7 @@ def video_stages(models: VideoModels | None = None, *, with_audio: bool = True) 
     """
     stages: list[Stage] = [VideoSignalsStage(), VideoScenesStage()]
     if models is not None and models.embedder is not None:
-        stages += [EmbeddingsStage(models.embedder), ContextsStage()]
+        stages += [EmbeddingsStage(models.embedder), ContextsStage(), BrollStage(models.embedder)]
         if with_audio:
             stages.append(ContextNoveltyStage())
     return stages

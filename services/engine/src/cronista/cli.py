@@ -669,3 +669,51 @@ def gabarito_ui(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(page, encoding="utf-8")
     typer.echo(f"{target}\n{len(events)} eventos viraram sugestões; abra o arquivo no navegador.")
+
+
+@app.command("broll-search")
+def broll_search(
+    session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    query: Annotated[str, typer.Argument(help='Texto em inglês, ex.: "a cave" ou "a sunset over the lake"')],
+    top: Annotated[int, typer.Option(help="Quantos resultados mostrar")] = 5,
+    file: Annotated[str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro)")] = None,
+) -> None:
+    """Busca B-roll da sessão por texto (precisa de `analyze` com `video_embedder` na configuração)."""
+    import numpy as np
+
+    from cronista.audio.events import load_stored_events
+    from cronista.video import broll as broll_lib
+
+    settings = load_settings()
+    models = build_video_models(settings)
+    if models.embedder is None:
+        typer.echo("erro: sem `video_embedder` na configuração (ou sem o grupo `ml`)", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        media = _pick_media(db, session, file)
+        art = db.scalar(
+            select(Artifact)
+            .where(Artifact.media_file_id == media.id, Artifact.stage == "video_embeddings")
+            .order_by(Artifact.id.desc())
+        )
+        stored = load_stored_events(db, media.id, kind="broll")
+    if art is None or not stored:
+        typer.echo("erro: sem B-roll nem embeddings; rode `cronista analyze` antes", err=True)
+        raise typer.Exit(1)
+    info = StageResult.model_validate_json(Path(art.result_path).read_text(encoding="utf-8"))
+    emb = np.load(info.data["embeddings"]["path"], mmap_mode="r")
+    hits = broll_lib.search(
+        np.asarray(emb, dtype=np.float32),
+        models.embedder,
+        [s.event for s in stored],
+        query,
+        hop=60,
+        top=top,
+    )
+    for ev, score in hits:
+        a, b = ev.evidence.start_frame, ev.evidence.end_frame
+        tags = ", ".join(str(t) for t in ev.payload.get("tags", []))
+        typer.echo(
+            f"{frame_to_seconds(a):7.1f} s  +{(b - a) // 60:>3} s  sim={score:.3f}  "
+            f"beleza={ev.evidence.confidence:.2f}  {tags}"
+        )

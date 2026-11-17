@@ -93,3 +93,13 @@ do capítulo; stems nivelados; SRT alinhado.
   (a sessão tem pouco material; o orçamento de 40 min não é atingido, e isso é correto: nada é esticado).
 - Pendente na 6A: cortes J/L e remoção de silêncio morto da fala do criador; "marcos do esforço" da montagem inteligente
   (hoje só o desfecho); timelapse pré-renderizado com FFmpeg (entra com a 6C, que precisa dos arquivos).
+
+- **6B codificada** (`mix/envelope.py`, `loudness.py`, `stems.py`, `service.py`, `cronista mixar <sessão> [--roteiro]`,
+  `tests/test_mix.py`): stems de 48 kHz só dos trechos usados (800 amostras por quadro, escritos em blocos), timelapse
+  mudo; ducking de −12 dB (ataque 50 ms, soltura 400 ms) sob a fala ao vivo e sob a narração prevista no roteiro;
+  cadeia de voz com filtros do FFmpeg (`highpass`, `afftdn`, `acompressor`); leito do jogo em −24 LUFS e voz em −16 LUFS,
+  pico limitado a ~−1 dBFS; A6/A7 crus; medição por `ebur128`; saída em `data/<env>/export/stems/<sessão>/` com
+  `mixagem.json`. Testado com tons sintéticos (níveis ±1,5 LU, ducking medido em ≈ −12 dB). **Falta:** ouvir o resultado
+  em mídia real (o `claude_teste` não rodou: o master original `Cronista_Teste.mp4` saiu do lugar, precisa de
+  `cronista ingest` de novo), escolher entre `afftdn` e `arnndn`/DeepFilterNet de ouvido e confirmar com o criador o
+  ducking sob narração (plano, seção 9, item 9).

@@ -1003,3 +1003,44 @@ def montar(
     for warning in plan.warnings:
         typer.echo(f"aviso: {warning}")
     typer.echo(str(path))
+
+
+@app.command("mixar")
+def mixar(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    script: Annotated[
+        Path | None, typer.Option(help="roteiro.json validado (ducking sob a narração)")
+    ] = None,
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[
+        Path | None, typer.Option(help="Pasta dos stems (padrão: data/export/stems/<sessão>)")
+    ] = None,
+) -> None:
+    """Stems A1/A2 nivelados (ducking, cadeia de voz) e crus A6/A7, só dos trechos usados (Fase 6B)."""
+    from cronista.mix.service import mix_session
+    from cronista.montage import SessionPlanError
+    from cronista.pipeline.stage import StageError
+    from cronista.profiles import load_settings_profile
+    from cronista.story.script import load_script
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        profile = load_settings_profile(settings)
+        loaded = load_script(script) if script else None
+        with open_db(settings.db_path) as db:
+            report = mix_session(
+                db, session, settings, loaded, target_min * 60, (profile.objetivos, profile.regras), out
+            )
+    except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for stem in report.stems:
+        lufs = "silêncio" if stem.lufs is None else f"{stem.lufs:.1f} LUFS"
+        peak = "-" if stem.true_peak_db is None else f"{stem.true_peak_db:.1f} dBFS"
+        typer.echo(f"{stem.name}: {lufs}, pico {peak}, ganho {stem.gain_db:+.1f} dB")
+    typer.echo(f"ducking em {report.ducked_s:.0f} s")
+    for warning in report.warnings:
+        typer.echo(f"aviso: {warning}")
+    typer.echo(str(report.directory))

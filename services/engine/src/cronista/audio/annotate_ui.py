@@ -73,6 +73,8 @@ h1{font-size:16px;margin:0 0 6px}
 <div class="bar" id="cls"></div>
 <p class="mut">Passo a passo: toque o vídeo, aperte <span class="kbd">I</span> onde começa e <span class="kbd">O</span> onde termina,
 depois a classe (ou o número dela). <span class="kbd">Espaço</span> pausa, <span class="kbd">←</span>/<span class="kbd">→</span> pulam 5 s.
+<b>Sons curtos</b> (respiração, tecla, risada): ouça em câmera lenta (<span class="kbd">-</span> diminui a velocidade),
+aperte só <span class="kbd">I</span> um pouco antes do som e depois a classe: o fim fica 1 s depois. Ajuste fino: <span class="kbd">,</span> e <span class="kbd">.</span> voltam/avançam 0,1 s; <span class="kbd">Shift</span>+setas, 0,5 s.
 As caixas tracejadas à direita são <b>sugestões da análise</b>: confirme com ✓, corrija o texto ou apague com ✕.</p>
 </div>
 <div class="right">
@@ -113,7 +115,8 @@ $("rows").addEventListener("change",e=>{const t=e.target;if(t.dataset.c!==undefi
 function show(){$("cur").textContent=(mark.s==null?"?":fmt(mark.s))+" → "+(mark.e==null?"?":fmt(mark.e))}
 function setI(){mark.s=v.currentTime;if(mark.e!=null&&mark.e<=mark.s)mark.e=null;show()}
 function setO(){mark.e=v.currentTime;if(mark.s==null)mark.s=Math.max(0,mark.e-3);show()}
-function add(cls){if(mark.s==null||mark.e==null||mark.e<=mark.s){alert("Marque o início (I) e o fim (O) antes.");return}
+function add(cls){if(mark.s!=null&&mark.e==null)mark.e=mark.s+1;
+  if(mark.s==null||mark.e==null||mark.e<=mark.s){alert("Marque o início (I) e o fim (O) antes.");return}
   const near=D.sug.find(x=>x.cls=="fala"&&x.start<mark.e&&x.end>mark.s);
   rows.push({cls,start:mark.s,end:mark.e,note:cls=="fala"&&near?near.note:"",ok:true});mark={s:null,e:null};show();draw();}
 $("bi").onclick=setI;$("bo").onclick=setO;
@@ -122,7 +125,9 @@ document.addEventListener("keydown",e=>{if(["INPUT","SELECT","TEXTAREA"].include
   if(e.key=="i"||e.key=="I")setI();else if(e.key=="o"||e.key=="O")setO();
   else if(e.key>="1"&&e.key<=String(D.classes.length))add(D.classes[+e.key-1]);
   else if(e.key==" "){e.preventDefault();v.paused?v.play():v.pause()}
-  else if(e.key=="ArrowLeft")v.currentTime-=5;else if(e.key=="ArrowRight")v.currentTime+=5;});
+  else if(e.key=="ArrowLeft")v.currentTime-=e.shiftKey?.5:5;else if(e.key=="ArrowRight")v.currentTime+=e.shiftKey?.5:5;
+  else if(e.key==",")v.currentTime-=.1;else if(e.key==".")v.currentTime+=.1;
+  else if(e.key=="-")v.playbackRate=Math.max(.25,v.playbackRate-.25);else if(e.key=="+"||e.key=="=")v.playbackRate=Math.min(2,v.playbackRate+.25);});
 function csv(){const q=s=>'"'+String(s||"").replace(/"/g,'""')+'"';
   return "inicio,fim,classe,nota\n"+rows.filter(r=>!r.sug||r.ok).map(r=>[fmt(r.start),fmt(r.end),r.cls,q(r.note)].join(",")).join("\n")+"\n"}
 $("save").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+csv()],{type:"text/csv"}));a.download="gabarito.csv";a.click()};

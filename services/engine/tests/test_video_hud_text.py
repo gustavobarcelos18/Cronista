@@ -114,6 +114,6 @@ def test_video_stages_include_hud_text_only_with_reader_and_regions() -> None:
     names = [s.name for s in video_stages(VideoModels(hud_reader=FakeReader(), hud_regions=(region,)))]
     assert "video_hud_text" in names
     assert "video_hud_text" not in [s.name for s in video_stages(VideoModels(hud_reader=FakeReader()))]
-    models = VideoModels(FakeEmbedder(), FakeReader(), (region,))
+    models = VideoModels(embedder=FakeEmbedder(), hud_reader=FakeReader(), hud_regions=(region,))
     broll = next(s for s in video_stages(models) if s.name == "video_broll")
     assert "video_hud_text" in broll.needs

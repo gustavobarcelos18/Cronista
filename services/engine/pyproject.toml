@@ -21,6 +21,14 @@ dependencies = [
 cronista = "cronista.cli:app"
 
 [dependency-groups]
+ml = [
+    "torch>=2.11,<3",
+    "torchaudio>=2.11,<3",
+    "faster-whisper>=1.2,<2",
+    "silero-vad>=6.2,<7",
+    "transformers>=5.23,<6",
+    "psutil>=7,<8",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
@@ -71,3 +79,15 @@ ignore_missing_imports = true  # sem tipos publicados
 [tool.ruff.lint.per-file-ignores]
 "src/cronista/devtools/resolve_kit.py" = ["E501"]  # modelos de FCPXML: quebrar a linha estraga a leitura
 "src/cronista/audio/report.py" = ["E501"]  # modelos de HTML/SVG: quebrar a linha estraga a leitura
+
+# Ambiente de ML da Fase 2B (só `prod`): `uv sync --group ml`. Fora do `uv sync` padrão, então a CI e o `dev`
+# não baixam nada disto. PyTorch vem do índice CUDA 12.8 da PyTorch (o driver do PC de casa aceita CUDA 13.x).
+[tool.uv.sources]
+# O índice CUDA só vale no PC de casa (Windows); em outras plataformas o torch vem do PyPI.
+torch = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
+torchaudio = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

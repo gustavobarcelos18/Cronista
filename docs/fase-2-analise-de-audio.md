@@ -3,7 +3,7 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 2; seções 3 e 5.2).
 Decisões que alimentam esta fase: [histórico §36, §40 e §41](01-historico-de-decisoes.md).
 
-Status (2026-11-16): **2A implementada** na branch `fase/2-audio` (histórico §43), faltando CI e `/code-review`; 2B e 2C não começadas · Branch: `fase/2-audio` (a partir da `main` com a 1C integrada, PR #6).
+Status (2026-11-16): **2A implementada** (PR #7, histórico §43) e **2B implementada** na branch `fase/2b-modelos` (histórico §44); 2C bloqueada pelo gabarito · Branch: `fase/2-audio` (2A) e `fase/2b-modelos` (2B, empilhada sobre a 2A).
 
 ## Divisão
 
@@ -82,9 +82,9 @@ Só em `prod`. Os modelos entram como **dependências opcionais** (grupo `ml` do
 
 ### Critérios de aceite (2B)
 
-- [ ] Cada adaptador processa a gravação de teste do início ao fim em `prod`, retomável, com a GPU pausando quando o OBS grava.
-- [ ] Tabela de desempenho (velocidade × tempo real, VRAM, RAM) por modelo registrada no histórico, com a estimativa para 10 h de sessão.
-- [ ] Decisão de ambiente (um só ou processo separado para a transcrição) registrada, com as versões verificadas.
+- [~] Cada adaptador processa a gravação de teste do início ao fim em `prod`, retomável, com a GPU pausando quando o OBS grava. *(feito: `cronista analyze 1` rodou os três modelos nos 37 min em 3m14; retomada e gate cobertos por teste. Falta: pausa com o OBS gravando de verdade.)*
+- [x] Tabela de desempenho (velocidade × tempo real, VRAM, RAM) por modelo registrada no histórico (§44), com a estimativa para 10 h de sessão *(extrapolada de 10 min medidos, não de 10 h reais)*.
+- [x] Decisão de ambiente registrada, com as versões verificadas: **um ambiente só** (grupo `ml`), sem processo separado para a transcrição (histórico §44).
 
 ## 2C — Qualidade contra o gabarito
 

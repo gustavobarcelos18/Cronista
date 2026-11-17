@@ -80,11 +80,12 @@ def ingest_files(
     ingested: list[IngestedFile] = []
     for ordinal, path in enumerate(files):
         media = db.scalar(select(MediaFile).where(MediaFile.path == str(path)))
+        size = path.stat().st_size
         if media is None:
-            media = MediaFile(
-                session_id=session.id, path=str(path), ordinal=ordinal, size_bytes=path.stat().st_size
-            )
+            media = MediaFile(session_id=session.id, path=str(path), ordinal=ordinal, size_bytes=size)
             db.add(media)
+        else:  # reingestão: ordem e tamanho podem ter mudado (arquivo novo na divisão, arquivo que cresceu)
+            media.ordinal, media.size_bytes = ordinal, size
         db.commit()
         log_event("ingestao_iniciada", session_id=session.id, media_file_id=media.id, path=str(path))
         try:

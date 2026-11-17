@@ -52,6 +52,19 @@ def test_reingest_creates_nothing_new(
     ]
 
 
+def test_reingest_refreshes_stale_ordinal_and_size(
+    db: Session, settings: Settings, fixture_folders: dict[str, Path]
+) -> None:
+    _ingest(db, fixture_folders["normal"], settings)
+    media = db.scalars(select(MediaFile)).one()
+    media.ordinal, media.size_bytes = 7, 1  # valores velhos, como depois de uma divisão de arquivo
+    db.commit()
+
+    _ingest(db, fixture_folders["normal"], settings)
+    db.refresh(media)
+    assert media.ordinal == 0 and media.size_bytes == Path(media.path).stat().st_size
+
+
 def test_interrupted_file_is_remuxed_keeping_three_audio_tracks(
     db: Session, settings: Settings, fixture_folders: dict[str, Path]
 ) -> None:

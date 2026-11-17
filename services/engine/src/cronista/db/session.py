@@ -41,6 +41,8 @@ def open_db(db_path: Path) -> Iterator[Session]:
     engine = make_engine(db_path)
     upgrade_db(engine)
     factory = sessionmaker(engine, expire_on_commit=False)
-    with factory() as session:
-        yield session
-    engine.dispose()
+    try:
+        with factory() as session:
+            yield session
+    finally:  # também quando o corpo levanta (ex.: `typer.Exit`): o arquivo do banco não fica preso
+        engine.dispose()

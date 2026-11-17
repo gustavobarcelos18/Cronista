@@ -19,3 +19,7 @@ Plano de execução (detalhes do produto na seção "Fase 7" do [plano mestre](0
 
 - **7A codificada** (`api/app.py`, `cronista api`, `tests/test_api.py`): `/health`, `/sessions`, `/sessions/{id}`,
   `/sessions/{id}/jobs`, `/sessions/{id}/markers`. Só `GET`; escrita entra na 7C.
+- **7B codificada** (parcial): `GET /media/{id}/segments` (nota, classe, razões, marcadores) e `GET /media/{id}/video`
+  (master normalizado, com `Range`); Studio com lista de sessões/arquivos, player e segmentos clicáveis
+  (`apps/studio/app/revisao.tsx`). **Falta:** waveform e sinais (eventos) por segmento, contratos TypeScript gerados
+  (os tipos estão à mão em `revisao.tsx`) e conferir no navegador com mídia real.

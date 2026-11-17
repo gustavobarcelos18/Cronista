@@ -6,12 +6,15 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from cronista.config import Settings
-from cronista.db.models import Job, Marker, MediaFile, RecordingSession
+from cronista.db.models import Artifact, Job, Marker, MediaFile, RecordingSession
 from cronista.db.session import open_db
+from cronista.domain.models import StageResult
+from cronista.relevance.service import load_segments
 
 
 class MediaFileOut(BaseModel):
@@ -46,6 +49,16 @@ class MarkerOut(BaseModel):
     media_frame: int
     source: str
     warning: str | None
+
+
+class SegmentOut(BaseModel):
+    start_s: int
+    end_s: int
+    classe: str
+    score: float
+    razoes: list[str]
+    markers: list[str]
+    features: dict[str, float]
 
 
 def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
@@ -115,6 +128,43 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
                 )
                 for m in rows
             ]
+
+    @app.get("/media/{media_id}/segments", response_model=list[SegmentOut])
+    def media_segments(media_id: int) -> list[SegmentOut]:
+        with open_db(settings.db_path) as db:
+            if db.get(MediaFile, media_id) is None:
+                raise HTTPException(404, "arquivo não encontrado")
+            return [
+                SegmentOut(
+                    start_s=g.start_s,
+                    end_s=g.end_s,
+                    classe=g.classe,
+                    score=g.score,
+                    razoes=g.razoes,
+                    markers=g.markers,
+                    features=g.features,
+                )
+                for g in load_segments(db, media_id)
+            ]
+
+    @app.get("/media/{media_id}/video")
+    def media_video(media_id: int) -> FileResponse:
+        """Master normalizado (H.264 MP4); o FileResponse atende `Range`, então o player pode buscar."""
+        with open_db(settings.db_path) as db:
+            artifact = db.scalar(
+                select(Artifact).where(
+                    Artifact.media_file_id == media_id,
+                    Artifact.stage == "normalize",
+                    Artifact.variant == "",
+                )
+            )
+            if artifact is None or not Path(artifact.result_path).is_file():
+                raise HTTPException(404, "arquivo ainda não ingerido")
+            result = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8"))
+        master = Path(str(result.data["media"]))
+        if not master.is_file():
+            raise HTTPException(404, "master não existe mais; rode `cronista ingest`")
+        return FileResponse(master, media_type="video/mp4")
 
     return app
 

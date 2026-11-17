@@ -28,6 +28,7 @@ ml = [
     "silero-vad>=6.2,<7",
     "transformers>=5.23,<6",
     "psutil>=7,<8",
+    "sentencepiece>=0.2,<1",  # tokenizer do SigLIP (busca por texto, 3B)
 ]
 dev = [
     "pytest>=8.0",

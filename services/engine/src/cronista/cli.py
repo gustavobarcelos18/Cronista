@@ -387,6 +387,75 @@ def bench_audio(
     typer.echo(f"\n{target}")
 
 
+@app.command("bench-video")
+def bench_video(
+    session: Annotated[int, typer.Argument(help="Sessão cujo primeiro arquivo serve de amostra")],
+    models: Annotated[
+        str,
+        typer.Option(help="Candidatos separados por vírgula (veja CANDIDATES em video/models.py)"),
+    ] = "siglip-base,siglip2-base,siglip2-so400m,clip-b32",
+    truth: Annotated[
+        Path | None, typer.Option(help="CSV inicio_s,fim_s,rotulo para medir qualidade (opcional)")
+    ] = None,
+    file: Annotated[
+        str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro que existe)")
+    ] = None,
+    out: Annotated[Path | None, typer.Option(help="JSON de saída (padrão: data/bench/video-N.json)")] = None,
+) -> None:
+    """Benchmark dos modelos de embedding de quadro: velocidade, VRAM e acerto no gabarito pequeno."""
+    from cronista.audio.models import missing_ml_packages
+    from cronista.video.bench import load_truth, render_table, run_bench, write_results
+    from cronista.video.models import CANDIDATES, make_candidate
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    names = [n.strip() for n in models.split(",") if n.strip()]
+    unknown = [n for n in names if n not in CANDIDATES]
+    if unknown or missing_ml_packages():
+        typer.echo(
+            f"erro: candidatos desconhecidos {unknown} ou faltam pacotes {missing_ml_packages()}", err=True
+        )
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        candidates = db.scalars(
+            select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
+        )
+        existing = [
+            m for m in candidates if Path(m.path).is_file() and (file is None or file in Path(m.path).name)
+        ]
+        if not existing:
+            typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
+            raise typer.Exit(1)
+        artifact = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == existing[0].id, Artifact.stage == "proxy", Artifact.variant == ""
+            )
+        )
+        if artifact is None:
+            typer.echo("erro: sem proxy; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        proxy = Path(
+            str(
+                StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8")).data[
+                    "proxy"
+                ]
+            )
+        )
+    factories = {n: (lambda n=n: make_candidate(settings, n)) for n in names}
+    target = out or settings.data_dir / "bench" / f"video-{session}.json"
+    rows = run_bench(
+        settings,
+        proxy,
+        factories,
+        load_truth(truth) if truth else None,
+        save_dir=settings.data_dir / "bench" / f"video-{session}",
+        progress=lambda partial: write_results(partial, target),
+    )
+    typer.echo(render_table(rows))
+    write_results(rows, target)
+    typer.echo(f"\n{target}")
+
+
 @app.command("bench-quality")
 def bench_quality(
     session: Annotated[int, typer.Argument(help="Sessão analisada (`cronista analyze`)")],

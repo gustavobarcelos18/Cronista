@@ -1237,6 +1237,20 @@ Implementado sem baixar modelo nenhum (verificado em CPU, com embedder falso e v
 **Rodado em `prod` (SigLIP `google/siglip-base-patch16-224`, `claude_teste.mp4`, 37 min):** embeddings em cerca de 1 min na RTX 3060; 11 contextos (os quatro maiores cobrem ~1950 s de 2245 s, 43 s sem contexto). **Conferência de olho dos quadros representativos:** caverna escura (972 s), diálogo com NPC/missão (399 s), floresta (332 s) e inventário (247 s) — coerentes. O relatório ganhou a faixa `contexto` e a tabela "Contextos visuais" com miniatura. Ajustes do adaptador no `transformers` 5: normalização própria dos quadros (sem Pillow/torchvision), tokenizer só na busca por texto (precisa de `sentencepiece`, não instalado) e leitura de `pooler_output`. SigLIP x CLIP ainda não comparado; tempo de 10 h e VRAM ainda sem medir (`bench-video`).
 
 **Decisão do criador (2026-11-17):** **não instalar o Ollama.** O VLM local da 3C será testado pelo `transformers` (já no ambiente `ml`), com quantização em 4 bits se o bitsandbytes funcionar no Windows; se não funcionar, o VLM sai do escopo ou usa um modelo que caiba em 12 GB sem quantizar (⚠️ a verificar). Isto substitui "Ollama + Qwen-VL" na seção 5.2 do plano e na 3C. O benchmark ampliado (embeddings pesados, fala, eventos sonoros, VLM, OCR, resolução; sem roteiro) segue em etapas, com tabela e registro aqui.
+
+**Benchmark de embeddings de quadro (`bench-video`, `claude_teste.mp4`, 37 min, 1 quadro/s, RTX 3060; gabarito pequeno de 4 cenas com rótulos vindos do SigLIP base, então o kNN não separa os modelos):**
+
+| Modelo | 10 h em | VRAM | kNN | Zero-shot |
+|---|---|---|---|---|
+| clip-b32 | ~24 s | 0,7 GB | 0,94 | 0,38 |
+| siglip-base | ~1 min | 1,3 GB | 0,93 | 0,58 |
+| siglip2-base | ~1,3 min | 1,9 GB | 0,93 | 0,64 |
+| clip-l14 | ~5 min | 2,4 GB | 0,92 | 0,61 |
+| siglip-so400m | ~22 min | 5,8 GB | 0,93 | 0,55 |
+| siglip2-large | ~11 min | 3,9 GB | 0,92 | 0,77 |
+| siglip2-so400m | ~23,5 min | 6,5 GB | 0,92 | 0,68 |
+
+`siglip2-giant` travou na carga e não foi medido (não entraria no pipeline). Tamanho não garante ganho (SigLIP 1 so400m pior que o base). **Proposta (a confirmar com uma busca real):** `siglip2-base` nos contextos (todos os segundos) e `siglip2-large` só na busca por texto de B-roll (trechos candidatos). Tempos excluem a decodificação do proxy. O `bench-video` passou a gravar o JSON a cada modelo.
 **Falta da 3B:** rodar em `prod` com o checkpoint (autorização do download), conferir contextos de olho no `claude_teste.mp4`, B-roll (tabela `broll_clip`, beleza, busca por texto), tipo de menu e `idle`, HUD oculto, `bench-video` e a seção do relatório (mapa de contextos).
 
 ## Decisões em aberto

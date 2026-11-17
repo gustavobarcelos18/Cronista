@@ -101,14 +101,17 @@ def status() -> None:
 @app.command()
 def analyze(
     session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
+    only: Annotated[str | None, typer.Option(help="`audio` ou `video` (padrão: os dois)")] = None,
 ) -> None:
-    """Análise de áudio da sessão: sinais de CPU e, onde houver modelos, fala e eventos sonoros."""
+    """Análise da sessão: áudio (sinais, fala, eventos) e vídeo (cenas, menu, loading, idle, câmera)."""
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
         recover_orphans(db)
         try:
-            report = analyze_session(db, session, settings, build_gate(settings), build_models(settings))
+            report = analyze_session(
+                db, session, settings, build_gate(settings), build_models(settings), only
+            )
         except AnalysisError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc

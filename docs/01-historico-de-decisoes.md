@@ -1174,6 +1174,15 @@ extração de atributos do AST em CPU (janelas sobrepostas ~4×) **não foi trat
 `@pytest.mark.gpu` rodada (os testes existem em `tests/test_adapters_gpu.py`, ver resultado no PR).
 
 ---
+## 45. Plano de execução da Fase 3 (2026-11-17)
+
+A Fase 3 ganhou plano próprio em [fase-3-analise-de-video.md](fase-3-analise-de-video.md), dividido como a Fase 2: **3A** (frames do proxy,
+cenas, sinais visuais e heurística universal de menu/loading/idle, CPU), **3B** (embeddings SigLIP/CLIP, contexto visual, linha de base do
+áudio por contexto, B-roll) e **3C** (perfis YAML, OCR de HUD no master, VLM só em candidatos, métricas contra o gabarito). Números de
+corte propostos (menu/loading ≥ 90% de precisão sem perfil de jogo etc.) **ainda não decididos**: precisam da aprovação do criador antes
+do benchmark final. Pendências do criador: classes visuais no gabarito, segundo gênero de jogo, download dos modelos novos e a marcação
+de `novo_dia` com teclado de 60%. Nada implementado.
+
 ## 46. Exclamação no lugar de grito (2026-11-17)
 
 **Decisão do criador:** deixar de separar grito de fala empolgada. A classe `exclamacao` ("exclamação ou grito de emoção alta")
@@ -1192,6 +1201,27 @@ Para a edição interessa achar os momentos de emoção alta, não rotular o tip
 ela acerta o primeiro teste (4 de 4) e erra o segundo (0 de 8, ali a linha de base da sessão fica inflada porque o trecho todo é alto).
 **Experimental, sem número de corte aprovado.** Falta um gabarito de `exclamacao` marcado como tal (fala empolgada também conta) e uma sessão longa realista.
 
+## 47. Fase 3A parcial: sinais visuais e estados de tela (2026-11-17)
+
+Decisão do criador (2026-11-17): **concluir a codificação do projeto primeiro e fazer os ajustes de qualidade depois**; por isso a Fase 3
+começou antes de fechar a 2C. A fusão em camadas (fala + risada + exclamação + respiração + intensidade) fica para a Fase 4.
+
+Implementado em `cronista/video/`: leitor de quadros do proxy por pipe do FFmpeg (cinza 160x90 a 5 fps, hop de 12 quadros a 60 fps, em blocos);
+sinais `motion`, `still`, `luma_mean`, `luma_std`, `edge_density`, `shift` e `shift_conf` (deslocamento global por correlação de fase, sem OpenCV)
+e `hist_diff` (corte de cena por histograma, sem PySceneDetect); heurística universal `loading` (tela escura parada), `menu` (tela parada com muitas
+bordas), `idle` (tela parada e lisa), `movimento_camera` (`parada`/`panoramica`) e `cena`. Etapas `video_signals` e `video_scenes`, ambas em CPU
+e incluídas no `cronista analyze`. `pausa` ficou para a 3B (precisa de embeddings); `orbita` ainda não.
+
+Verificado em vídeo sintético com verdade de campo (`devtools/synthetic_video.py`): loading, menu e idle detectados, sem falso positivo na jogabilidade.
+**No `claude_teste.mp4` (37 min) a análise leva cerca de 24 s** (≈ 90× o tempo real) e gera 214 eventos (28 menus, 10 loadings, 9 idles); **os números não foram
+conferidos contra gabarito nem de olho**, só a plausibilidade. Limiares são pontos de partida, sem corte aprovado (a 3C calibra).
+
+**Relatório de vídeo:** `cronista report` ganhou a seção "Vídeo" (estados de tela sobre o tempo, gráficos de movimento, parada, bordas e brilho, e tabela com miniatura do quadro do meio dos trechos mais longos de loading, menu e idle). `analyze --only audio|video` limita a análise.
+
+**Conferência de olho do criador no `claude_teste.mp4` (2026-11-17):**
+- **loading:** os 6 trechos mostrados eram cena escura de jogo com HUD (brilho 0,04–0,09), nenhum era loading. Corte apertado (brilho < 0,03 e quase nenhum movimento); no mesmo vídeo caíram de 10 para 0 trechos. Não há medida de revocação de loading real (talvez o vídeo não tenha nenhum).
+- **menu:** os 6 trechos mostrados eram menus de verdade. Observação do criador: **menu de configuração e inventário não têm a mesma relevância**. A heurística só diz "tela de interface parada"; o **tipo** do menu (configuração, inventário, diálogo, mapa) e o peso de cada um na relevância ficam para a 3B/3C (embeddings agrupando menus parecidos, VLM só para nomear) e para a Fase 4.
+- **idle:** os trechos mostrados eram páginas de texto escuras e um inventário sobre o jogo, não "personagem parado". Com bordas e parada não se separa uma coisa da outra. `idle` ficou **desligado por padrão** (`ScreenParams.idle_enabled`) até a 3B. Limite de fundo: em 160x90 o texto pequeno some; se faltar resolução, subir para 320x180 (custo a medir).
 
 ## Decisões em aberto
 

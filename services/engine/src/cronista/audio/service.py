@@ -16,6 +16,7 @@ from cronista.ingest.stages import ingest_stages
 from cronista.pipeline import GpuGate, StageFailedError, run_pipeline
 from cronista.pipeline.runner import PipelineReport
 from cronista.pipeline.stage import Stage, stage_key, stage_variant
+from cronista.video.stages import video_stages
 
 
 class AnalysisError(Exception):
@@ -41,8 +42,11 @@ def analyze_session(
     settings: Settings,
     gate: GpuGate,
     models: AudioModels | None = None,
+    only: str | None = None,
 ) -> AnalysisReport:
-    """Roda as etapas de análise de áudio em cada arquivo e grava os eventos no banco.
+    """Roda as etapas de análise (áudio e vídeo) em cada arquivo e grava os eventos no banco.
+
+    `only` = `audio` ou `video` limita a análise a um dos dois; sem ele roda os dois.
 
     As etapas de ingestão entram na lista só para fornecerem os WAVs (vêm do cache). Cada etapa com eventos
     substitui no banco os eventos da sua própria execução, então repetir o comando não duplica nada.
@@ -52,12 +56,17 @@ def analyze_session(
         raise AnalysisError(f"Sessão {session_id} não existe (veja `cronista status`)")
     models = models or AudioModels()
     report = AnalysisReport(session_id=session_id)
-    if models.detector is None or models.transcriber is None:
+    if only not in (None, "audio", "video"):
+        raise AnalysisError(f"--only deve ser 'audio' ou 'video' (veio '{only}')")
+    if only != "video" and (models.detector is None or models.transcriber is None):
         report.skipped.append("fala (sem detector de voz e transcritor nesta máquina)")
-    if models.classifier is None:
+    if only != "video" and models.classifier is None:
         report.skipped.append("eventos sonoros (sem classificador nesta máquina)")
 
-    analysis: list[Stage] = analysis_stages(models)
+    analysis: list[Stage] = [
+        *([] if only == "video" else analysis_stages(models)),
+        *([] if only == "audio" else video_stages()),
+    ]
     stages = [*ingest_stages(), *analysis]
     for media in session.media_files:
         name = Path(media.path).name

@@ -126,6 +126,7 @@ do capítulo; stems nivelados; SRT alinhado.
 
 ## Estado da fase
 
-6A a 6E codificadas em `fase/6-montagem` (o `montagem` da 6C encadeia plano, timelapse, mixagem e exportação, com
-retomada só do que já existe em disco: timelapses). Falta para o aceite: spike do Resolve (bloco D), mídia real e
-ouvir a mixagem.
+6A a 6D codificadas em `fase/6-montagem`; da 6E existem os comandos `montar`, `mixar`, `montagem` e `shorts`. O
+`montagem` encadeia plano, timelapse, mixagem e exportação, mas **não** tem retomada por cache de hash (só reaproveita
+timelapses já renderizados) e **não** pausa com o OBS gravando ou jogo em tela cheia: ficam pendentes. Falta para o
+aceite: spike do Resolve (bloco D), mídia real e ouvir a mixagem.

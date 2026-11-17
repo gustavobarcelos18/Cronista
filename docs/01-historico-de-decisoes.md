@@ -1183,6 +1183,24 @@ corte propostos (menu/loading ≥ 90% de precisão sem perfil de jogo etc.) **ai
 do benchmark final. Pendências do criador: classes visuais no gabarito, segundo gênero de jogo, download dos modelos novos e a marcação
 de `novo_dia` com teclado de 60%. Nada implementado.
 
+## 46. Exclamação no lugar de grito (2026-11-17)
+
+**Decisão do criador:** deixar de separar grito de fala empolgada. A classe `exclamacao` ("exclamação ou grito de emoção alta")
+substitui `grito` no gabarito e nos eventos do microfone; `grito` continua aceito como apelido legado (vale como `exclamacao`).
+Para a edição interessa achar os momentos de emoção alta, não rotular o tipo.
+
+**Evidências (2C, dois testes de voz do criador, `data/gabarito/teste-voz.csv` e `gritos_risadas.csv`):**
+- AST (janela de 10,24 s) não pontuou nenhum grito (0 de 4); com janela de 2 s continuou em 0,01 a 0,11 contra no máximo 0,02 fora dos gritos.
+- O limitador do OBS achata o pico em cerca de -6 dBFS; o nível médio (RMS) ainda separava o grito da fala normal no primeiro teste (+10 dB), mas **não** no segundo (falas de anúncio tão altas quanto os gritos).
+- Altura da voz (f0): grito 330–410 Hz no primeiro teste; a "fala alta em tom agudo" do segundo teste tem 333 Hz, igual a um grito. Separar por regra simples não generaliza (detector de grito por energia e f0: 4 de 4 no primeiro teste, 0 de 8 no segundo).
+- Risada: AST com janela de **2 s** (hop 0,5 s) sobe de 0,12 para 0,2–0,52 nos trechos anotados, contra no máximo 0,10 fora. O microfone passa a usar um segundo classificador com essa janela (`AudioModels.mic_classifier`).
+- Teclado e respiração: 0 eventos falsos nos dois testes; o AST vê os dois (0,82 e 0,87), mas o código os descarta no microfone por desenho.
+- WER: 13,3% (556 palavras) no primeiro teste e 0% (59 palavras) no segundo. **Otimista:** o criador corrigiu as sugestões do Whisper em vez de transcrever do zero.
+
+**Estado:** a etapa `sound_events` do microfone ganhou uma variante CPU (`ScreamHeuristic`, energia relativa à sessão mais f0) que emite `exclamacao`;
+ela acerta o primeiro teste (4 de 4) e erra o segundo (0 de 8, ali a linha de base da sessão fica inflada porque o trecho todo é alto).
+**Experimental, sem número de corte aprovado.** Falta um gabarito de `exclamacao` marcado como tal (fala empolgada também conta) e uma sessão longa realista.
+
 ## 47. Fase 3A parcial: sinais visuais e estados de tela (2026-11-17)
 
 Decisão do criador (2026-11-17): **concluir a codificação do projeto primeiro e fazer os ajustes de qualidade depois**; por isso a Fase 3

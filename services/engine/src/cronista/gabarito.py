@@ -20,7 +20,8 @@ from cronista.domain.frames import seconds_to_frame
 CLASSES: dict[str, str] = {
     "fala": "o criador falando (alvo do WER)",
     "risada": "risada do criador",
-    "grito": "grito/exclamação do criador",
+    "exclamacao": "exclamação ou grito de emoção alta (não se separa grito de fala empolgada; histórico §46)",
+    "grito": "legado: vale como `exclamacao` (histórico §46)",
     "teclado": "som de teclado/mouse (não deve gerar evento)",
     "respiracao": "respiração/ruído de boca (não deve gerar evento)",
     "farm": "trecho repetitivo/rotina (candidato a timelapse)",

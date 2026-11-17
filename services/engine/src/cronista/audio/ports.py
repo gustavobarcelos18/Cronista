@@ -21,7 +21,7 @@ Pause = Callable[[], None]
 
 GAME_TRACK = "game"
 MIC_TRACK = "mic"
-MIC_EVENT_LABELS = frozenset({"risada", "grito"})
+MIC_EVENT_LABELS = frozenset({"risada", "exclamacao"})
 """No microfone só estes rótulos viram evento: teclado e respiração são descartados (plano, seção 3)."""
 
 
@@ -92,3 +92,5 @@ class AudioModels:
     detector: SpeechDetector | None = None
     transcriber: Transcriber | None = None
     classifier: SoundEventClassifier | None = None
+    mic_classifier: SoundEventClassifier | None = None
+    """Classificador do microfone, com janela curta (2 s): risada curta some na janela de 10 s do AST (2C)."""

@@ -1223,6 +1223,18 @@ conferidos contra gabarito nem de olho**, só a plausibilidade. Limiares são po
 - **menu:** os 6 trechos mostrados eram menus de verdade. Observação do criador: **menu de configuração e inventário não têm a mesma relevância**. A heurística só diz "tela de interface parada"; o **tipo** do menu (configuração, inventário, diálogo, mapa) e o peso de cada um na relevância ficam para a 3B/3C (embeddings agrupando menus parecidos, VLM só para nomear) e para a Fase 4.
 - **idle:** os trechos mostrados eram páginas de texto escuras e um inventário sobre o jogo, não "personagem parado". Com bordas e parada não se separa uma coisa da outra. `idle` ficou **desligado por padrão** (`ScreenParams.idle_enabled`) até a 3B. Limite de fundo: em 160x90 o texto pequeno some; se faltar resolução, subir para 320x180 (custo a medir).
 
+## 48. Fase 3B parcial: embeddings, contextos e linha de base por contexto (2026-11-17)
+
+Implementado sem baixar modelo nenhum (verificado em CPU, com embedder falso e vídeo sintético):
+
+- **Porta `FrameEmbedder`** (`video/ports.py`): embeddings normalizados, `embed_images` com `pause` entre lotes (gate de GPU) e `embed_text` no mesmo espaço. `VideoModels` leva o embedder; sem ele, só a 3A roda.
+- **Etapa `video_embeddings`** (GPU): 1 quadro por segundo do proxy, RGB esticado para o quadrado do modelo (224), gravado em `.npy` `float16` (N x D). Só a referência vai no `result.json`.
+- **Contextos** (`video/contexts.py`, etapa `video_contexts`, CPU): **decisão: agrupamento incremental "líder" por cosseno com limiar (0,85) e centróide móvel**, filtro de moda nos rótulos (5 amostras) e poda de contexto com menos de 20 s (vira "sem contexto"). Determinístico e linear; HDBSCAN fica como alternativa se a conferência de olho mostrar contextos instáveis. Saída: eventos `contexto` (id, confiança, quadro representativo) e o sinal `video.context` a 1 Hz.
+- **`game.novelty_ctx`** (etapa `context_novelty`): `novelty` recalculada com a mediana móvel **dentro de cada contexto**, como variante ao lado de `game.novelty` (não a substitui). Contexto com menos de 120 s de áudio mantém a linha de base da sessão, com aviso. Só roda quando áudio e vídeo são analisados juntos (sem `--only`). Aparece no relatório.
+- **Adaptador `SiglipEmbedder`** (`video/adapters/siglip.py`): **escrito, não verificado** (sem GPU nem checkpoint nesta máquina). Fica desligado: só carrega se `video_embedder` (ex.: `google/siglip-base-patch16-224`) estiver na configuração, o que também autoriza o download. Escolha SigLIP x CLIP, versões e desempenho dependem do benchmark em `prod`.
+
+**Falta da 3B:** rodar em `prod` com o checkpoint (autorização do download), conferir contextos de olho no `claude_teste.mp4`, B-roll (tabela `broll_clip`, beleza, busca por texto), tipo de menu e `idle`, HUD oculto, `bench-video` e a seção do relatório (mapa de contextos).
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

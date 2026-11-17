@@ -106,7 +106,7 @@ de `menu`/`loading`/`idle`. O gabarito da Fase 2 (2–3 h) deve incluir essas cl
 
 ### Critérios de aceite (3B)
 
-- [ ] Embeddings da sessão de teste em `prod`, retomáveis, com a GPU pausando quando o OBS grava.
+- [ ] (código e testes em CPU prontos, histórico §48) Embeddings da sessão de teste em `prod`, retomáveis, com a GPU pausando quando o OBS grava.
 - [ ] Contextos coerentes de olho na sessão de teste; `novelty_ctx` coexiste com `novelty` sem sobrescrevê-la (variante).
 - [ ] Busca por texto devolve tomadas plausíveis na sessão de teste.
 - [ ] Tabela de desempenho e a escolha SigLIP × CLIP registradas, com versões verificadas.

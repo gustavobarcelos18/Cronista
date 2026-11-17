@@ -34,6 +34,7 @@ from cronista.preview import PreviewError, build_preview
 from cronista.recorder.feedback import ConsoleFeedback
 from cronista.recorder.hotkeys import HotkeyConfigError
 from cronista.recorder.run import run_forever
+from cronista.video.models import build_video_models
 from cronista.watch import Processed
 from cronista.watch import serve as watch_serve
 
@@ -138,6 +139,7 @@ def analyze(
                 build_gate(settings),
                 build_models(settings),
                 only.value if only else None,
+                build_video_models(settings),
             )
         except AnalysisError as exc:
             typer.echo(f"erro: {exc}", err=True)

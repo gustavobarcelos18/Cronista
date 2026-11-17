@@ -57,6 +57,7 @@ class Settings(BaseModel):
     whisper_model: str = "large-v3-turbo"
     whisper_compute_type: str = "int8_float16"
     sound_model: str = "MIT/ast-finetuned-audioset-10-10-0.4593"
+    video_embedder: str = ""  # checkpoint de embeddings de quadro (3B); vazio = desligado, sem baixar nada
     log_level: str = "INFO"
 
     @field_validator("marker_hotkeys")

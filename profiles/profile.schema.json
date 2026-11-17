@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "CameraTool": {
+      "additionalProperties": false,
+      "description": "Ferramenta de câmera do jogo, usada para sugerir ao criador gravar uma tomada de B-roll.",
+      "properties": {
+        "hint": {
+          "default": "",
+          "title": "Hint",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "CameraTool",
+      "type": "object"
+    },
+    "HudRegion": {
+      "additionalProperties": false,
+      "description": "Retângulo do HUD em coordenadas relativas (0 a 1), lido só quando o perfil pede.",
+      "properties": {
+        "h": {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "H",
+          "type": "number"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "read": {
+          "default": "text",
+          "enum": [
+            "text",
+            "number",
+            "icon"
+          ],
+          "title": "Read",
+          "type": "string"
+        },
+        "tag_theme": {
+          "default": false,
+          "title": "Tag Theme",
+          "type": "boolean"
+        },
+        "w": {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "HudRegion",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "camera_tools": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/CameraTool"
+      },
+      "title": "Camera Tools",
+      "type": "array"
+    },
+    "context_labels": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Context Labels",
+      "type": "array"
+    },
+    "hud_regions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/HudRegion"
+      },
+      "title": "Hud Regions",
+      "type": "array"
+    },
+    "name": {
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Name",
+      "type": "string"
+    },
+    "objetivos": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Objetivos",
+      "type": "array"
+    },
+    "regras": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Regras",
+      "type": "array"
+    },
+    "thresholds": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "number"
+        },
+        "type": "object"
+      },
+      "default": {},
+      "title": "Thresholds",
+      "type": "object"
+    },
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "GameProfile",
+  "type": "object"
+}

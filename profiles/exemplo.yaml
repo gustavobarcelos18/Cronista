@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=./profile.schema.json
+# Perfil de exemplo (Minecraft). Só dados: o núcleo não conhece este arquivo.
+# Retângulos em coordenadas relativas ao quadro (0 a 1). VALORES ILUSTRATIVOS: medir no master real na 3C-3.
+name: exemplo
+title: Minecraft (exemplo)
+
+hud_regions:
+  - name: bioma_minimapa
+    x: 0.80
+    y: 0.02
+    w: 0.18
+    h: 0.04
+    read: text
+    tag_theme: true
+  - name: coordenadas
+    x: 0.01
+    y: 0.02
+    w: 0.20
+    h: 0.04
+    read: text
+
+thresholds:
+  screen:
+    menu_edge: 0.12
+  idle:
+    min_seconds: 10.0
+
+context_labels:
+  - caverna
+  - lago
+  - base
+  - floresta
+
+camera_tools:
+  - name: Replay Mod
+    hint: câmera livre com caminho de keyframes, para panorâmicas suaves
+  - name: modo espectador
+    hint: voar sem colisão ao redor da construção
+
+objetivos:
+  - derrotar o chefe final
+regras:
+  - modo hardcore, uma vida

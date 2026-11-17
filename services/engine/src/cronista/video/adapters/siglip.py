@@ -61,7 +61,7 @@ class SiglipEmbedder:
         parts: list[Embeddings] = []
         for i in range(0, len(frames), step):
             pause()
-            # Quadros já chegam em 224x224 RGB; só normaliza como o SigLIP (média e desvio 0,5), sem Pillow/torchvision.
+            # Quadros já chegam em 224x224 RGB; só normaliza como o SigLIP (média e desvio 0,5).
             batch = torch.from_numpy(np.ascontiguousarray(frames[i : i + step])).to(device)
             pixels = (batch.permute(0, 3, 1, 2).float() / 255.0 - 0.5) / 0.5
             if device == "cuda":

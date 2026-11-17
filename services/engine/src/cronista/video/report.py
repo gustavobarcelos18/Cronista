@@ -19,7 +19,7 @@ from cronista.config import Settings
 from cronista.db.models import Marker
 from cronista.domain.frames import FPS
 
-VIDEO_STAGES = ("video_signals", "video_scenes")
+VIDEO_STAGES = ("video_signals", "video_scenes", "video_contexts")
 STATE_KINDS = ("loading", "menu", "idle")
 THUMBS_PER_KIND = 6
 THUMB_WIDTH = 320
@@ -30,6 +30,8 @@ CHARTS: tuple[tuple[str, str, tuple[float, float] | None], ...] = (
     ("video.edge_density", "Vídeo: densidade de bordas (menus têm muita)", (0.0, 1.0)),
     ("video.luma_mean", "Vídeo: brilho médio", (0.0, 1.0)),
 )
+
+CONTEXT_COLORS = ("#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#be185d", "#65a30d")
 
 LANE_COLORS = {
     "loading": "#dc2626",
@@ -60,7 +62,11 @@ def thumbnail(settings: Settings, proxy: Path, frame: int) -> str | None:
 
 
 def state_lanes(events: list[StoredEvent], markers: list[Marker], total_frames: int) -> str:
-    kinds = [k for k in (*STATE_KINDS, "movimento_camera", "cena") if any(e.event.kind == k for e in events)]
+    kinds = [
+        k
+        for k in (*STATE_KINDS, "movimento_camera", "cena", "contexto")
+        if any(e.event.kind == k for e in events)
+    ]
     if not kinds:
         return '<h3>Estados de tela</h3><p class="muted">Nenhum estado de tela detectado.</p>'
     lane_h = 16
@@ -84,9 +90,14 @@ def state_lanes(events: list[StoredEvent], markers: list[Marker], total_frames: 
             tip = html.escape(
                 f"{kind} {detail} {fmt_time(ev.start_frame)} a {fmt_time(ev.end_frame)}".replace("  ", " ")
             )
+            color = LANE_COLORS.get(kind, "#7c3aed")
+            if kind == "contexto":
+                cid = int(stored.event.payload.get("context_id", 0))
+                color = CONTEXT_COLORS[cid % len(CONTEXT_COLORS)]
+                tip = html.escape(f"contexto {cid} {fmt_time(ev.start_frame)} a {fmt_time(ev.end_frame)}")
             rows.append(
                 f'<rect x="{x0:.1f}" y="{y + 2}" width="{max(x1 - x0, 2):.1f}" height="{lane_h - 4}" '
-                f'fill="{LANE_COLORS.get(kind, "#7c3aed")}"><title>{tip}</title></rect>'
+                f'fill="{color}"><title>{tip}</title></rect>'
             )
     marks = "".join(
         f'<line x1="{_x(m.media_frame, total_frames):.1f}" x2="{_x(m.media_frame, total_frames):.1f}" '
@@ -146,6 +157,39 @@ def state_table(events: list[StoredEvent], settings: Settings | None, proxy: Pat
     return "".join(parts)
 
 
+def context_table(events: list[StoredEvent], settings: Settings | None, proxy: Path | None) -> str:
+    """Mapa de contextos visuais: tempo total e quadro representativo de cada um (maiores primeiro)."""
+    totals: dict[int, int] = {}
+    reps: dict[int, int] = {}
+    for stored in events:
+        if stored.event.kind != "contexto":
+            continue
+        cid = int(stored.event.payload.get("context_id", 0))
+        ev = stored.event.evidence
+        totals[cid] = totals.get(cid, 0) + ev.end_frame - ev.start_frame
+        reps.setdefault(cid, int(stored.event.payload.get("representative_frame", ev.start_frame)))
+    if not totals:
+        return ""
+    order = sorted(totals, key=lambda c: totals[c], reverse=True)
+    thumbs: list[str | None] = [None] * len(order)
+    if settings is not None and proxy is not None and proxy.is_file():
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            thumbs = list(pool.map(lambda c: thumbnail(settings, proxy, reps[c]), order))
+    rows = []
+    for cid, data in zip(order, thumbs, strict=True):
+        image = f'<img src="{data}" alt="contexto {cid}" width="160">' if data else ""
+        color = CONTEXT_COLORS[cid % len(CONTEXT_COLORS)]
+        rows.append(
+            f'<tr><td><span style="color:{color}">&#9632;</span> {cid}</td>'
+            f'<td class="num">{totals[cid] / FPS / 60:.1f} min</td><td>{image}</td></tr>'
+        )
+    return (
+        f"<h3>Contextos visuais: {len(order)}</h3>"
+        "<table><tr><th>Contexto</th><th>Tempo total</th><th>Quadro representativo</th></tr>"
+        f"{''.join(rows)}</table>"
+    )
+
+
 def video_section(
     events: list[StoredEvent],
     signals: dict[str, Signal],
@@ -162,5 +206,6 @@ def video_section(
     for name, title, fixed in CHARTS:
         if name in signals:
             parts.append(line_chart(signals[name], title, markers, total_frames, fixed))
+    parts.append(context_table(events, settings, proxy))
     parts.append(state_table(events, settings, proxy))
     return "".join(parts)

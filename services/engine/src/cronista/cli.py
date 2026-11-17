@@ -14,11 +14,12 @@ from cronista.audio.models import build_models
 from cronista.audio.report import write_session_report
 from cronista.audio.service import AnalysisError, analyze_session
 from cronista.config import load_settings
-from cronista.db.models import Job, MediaFile, Project, RecordingSession
+from cronista.db.models import Artifact, Job, MediaFile, Project, RecordingSession
 from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
 from cronista.devtools.resolve_kit import make_resolve_kit
 from cronista.domain.frames import frame_to_seconds
+from cronista.domain.models import StageResult
 from cronista.export.service import export_session
 from cronista.gabarito import validate_gabarito
 from cronista.gates import build_gate
@@ -298,3 +299,57 @@ def fixtures(
     target = out or settings.data_dir / "fixtures"
     for name, path in make_fixtures(settings, target).items():
         typer.echo(f"{name}: {path}")
+
+
+@app.command("bench-audio")
+def bench_audio(
+    session: Annotated[int, typer.Argument(help="Sessão cujo primeiro arquivo serve de amostra")],
+    minutes: Annotated[float, typer.Option(help="Minutos de cada faixa a medir (do início)")] = 10.0,
+    file: Annotated[
+        str | None, typer.Option(help="Parte do nome do arquivo (padrão: o primeiro que existe)")
+    ] = None,
+    out: Annotated[Path | None, typer.Option(help="JSON de saída (padrão: data/bench/audio-N.json)")] = None,
+) -> None:
+    """Benchmark de desempenho dos modelos de áudio (velocidade, VRAM, RAM). Qualidade é da Fase 2C."""
+    from cronista.audio.bench import render_table, run_bench, write_results
+    from cronista.audio.models import missing_ml_packages
+    from cronista.audio.ports import GAME_TRACK, MIC_TRACK
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    models = build_models(settings)
+    if models.detector is None:
+        missing = missing_ml_packages()
+        why = (
+            f"faltam pacotes: {', '.join(missing)} (`uv sync --group ml`)"
+            if missing
+            else "audio_models está desligado"
+        )
+        typer.echo(f"erro: sem modelos nesta máquina ({why})", err=True)
+        raise typer.Exit(1)
+    with open_db(settings.db_path) as db:
+        candidates = db.scalars(
+            select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
+        )
+        existing = [
+            m for m in candidates if Path(m.path).is_file() and (file is None or file in Path(m.path).name)
+        ]
+        media = existing[0] if existing else None
+        if media is None:
+            typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
+            raise typer.Exit(1)
+        artifact = db.scalar(
+            select(Artifact).where(
+                Artifact.media_file_id == media.id, Artifact.stage == "audio", Artifact.variant == ""
+            )
+        )
+        if artifact is None:
+            typer.echo("erro: sem WAVs extraídos; rode `cronista ingest` antes", err=True)
+            raise typer.Exit(1)
+        wavs = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8")).data
+    work = settings.data_dir / "bench" / f"audio-{session}"
+    rows = run_bench(models, Path(wavs[MIC_TRACK]), Path(wavs[GAME_TRACK]), work, minutes)
+    typer.echo(render_table(rows))
+    target = out or settings.data_dir / "bench" / f"audio-{session}.json"
+    write_results(rows, target)
+    typer.echo(f"\n{target}")

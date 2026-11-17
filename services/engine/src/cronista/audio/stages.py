@@ -103,8 +103,8 @@ class SpeechStage:
 
     def params(self, settings: Settings) -> dict[str, Any]:
         return {
-            "detector": [self.detector.name, self.detector.version],
-            "transcriber": [self.transcriber.name, self.transcriber.version],
+            "detector": [self.detector.name, self.detector.version, self.detector.options],
+            "transcriber": [self.transcriber.name, self.transcriber.version, self.transcriber.options],
         }
 
     def run(self, ctx: StageContext) -> StageResult:
@@ -184,7 +184,7 @@ class SoundEventsStage:
 
     def params(self, settings: Settings) -> dict[str, Any]:
         return {
-            "classifier": [self.classifier.name, self.classifier.version],
+            "classifier": [self.classifier.name, self.classifier.version, self.classifier.options],
             "track": self.track,
             "min_score": self.min_score,
         }

@@ -73,3 +73,15 @@ def test_estado_do_hud_na_tomada() -> None:
     assert hud_state(dentro, [ev], True) == "oculto"
     assert hud_state(fora, [ev], True) == "visivel"
     assert hud_state(dentro, [ev], False) == "desconhecido"
+
+
+def test_tipos_de_menu_agrupam_parecidos_e_separam_diferentes() -> None:
+    from cronista.video.menus import MenuParams, group
+
+    rng = np.random.default_rng(2)
+    base = np.eye(6, dtype=np.float32)[[0, 1, 2]]
+    rows = [base[k] + rng.normal(0, 0.05, 6).astype(np.float32) for k in (0, 1, 0, 2, 1, 0)]
+    vec = np.stack(rows)
+    vec /= np.linalg.norm(vec, axis=1, keepdims=True)
+    labels, cents = group(vec, MenuParams(similarity=0.8))
+    assert len(cents) == 3 and labels[0] == labels[2] == labels[5] and labels[1] == labels[4]

@@ -19,7 +19,14 @@ from cronista.config import Settings
 from cronista.db.models import Marker
 from cronista.domain.frames import FPS
 
-VIDEO_STAGES = ("video_signals", "video_scenes", "video_contexts", "video_broll", "video_hud")
+VIDEO_STAGES = (
+    "video_signals",
+    "video_scenes",
+    "video_contexts",
+    "video_broll",
+    "video_hud",
+    "video_menu_types",
+)
 STATE_KINDS = ("loading", "menu", "idle")
 THUMBS_PER_KIND = 6
 THUMB_WIDTH = 320
@@ -190,6 +197,40 @@ def context_table(events: list[StoredEvent], settings: Settings | None, proxy: P
     )
 
 
+def menu_type_table(events: list[StoredEvent], settings: Settings | None, proxy: Path | None) -> str:
+    """Tipos de menu: quantos menus, tempo total e um quadro representativo (para você dar o nome)."""
+    counts: dict[int, int] = {}
+    totals: dict[int, int] = {}
+    reps: dict[int, int] = {}
+    for stored in events:
+        if stored.event.kind != "menu_tipo":
+            continue
+        tid = int(stored.event.payload.get("tipo_id", 0))
+        ev = stored.event.evidence
+        counts[tid] = counts.get(tid, 0) + 1
+        totals[tid] = totals.get(tid, 0) + ev.end_frame - ev.start_frame
+        reps.setdefault(tid, int(stored.event.payload.get("representative_frame", ev.start_frame)))
+    if not counts:
+        return ""
+    order = sorted(counts, key=lambda t: totals[t], reverse=True)
+    thumbs: list[str | None] = [None] * len(order)
+    if settings is not None and proxy is not None and proxy.is_file():
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            thumbs = list(pool.map(lambda t: thumbnail(settings, proxy, reps[t]), order))
+    rows = []
+    for tid, data in zip(order, thumbs, strict=True):
+        image = f'<img src="{data}" alt="tipo {tid}" width="160">' if data else ""
+        rows.append(
+            f'<tr><td>{tid}</td><td class="num">{counts[tid]}</td>'
+            f'<td class="num">{totals[tid] / FPS:.0f} s</td><td>{image}</td></tr>'
+        )
+    return (
+        f"<h3>Tipos de menu: {len(order)}</h3>"
+        "<table><tr><th>Tipo</th><th>Menus</th><th>Tempo total</th><th>Menu representativo</th></tr>"
+        f"{''.join(rows)}</table>"
+    )
+
+
 def broll_table(
     events: list[StoredEvent], settings: Settings | None, proxy: Path | None, top: int = 12
 ) -> str:
@@ -246,6 +287,7 @@ def video_section(
         if name in signals:
             parts.append(line_chart(signals[name], title, markers, total_frames, fixed))
     parts.append(context_table(events, settings, proxy))
+    parts.append(menu_type_table(events, settings, proxy))
     parts.append(broll_table(events, settings, proxy))
     parts.append(state_table(events, settings, proxy))
     return "".join(parts)

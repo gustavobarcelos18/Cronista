@@ -217,3 +217,51 @@ def test_api_reexport_estados(settings: Settings, db: Session, monkeypatch: pyte
     app.state.reexport.last_thread.join(5)
     err = client.get("/sessions/1/export").json()
     assert err["state"] == "error" and "sem segmentos" in err["message"]
+
+
+def test_api_progresso_sse(settings: Settings, db: Session) -> None:
+    from cronista.db.models import Job
+
+    _seed(db)
+    db.add_all(
+        [
+            Job(media_file_id=1, stage="normalize", status="done"),
+            Job(media_file_id=1, stage="audio", status="running"),
+        ]
+    )
+    db.commit()
+    client = TestClient(create_app(settings))
+    snap = client.get("/sessions/1/progress").json()
+    assert (snap["total"], snap["running"], snap["done"], snap["active"], snap["current"]) == (
+        2,
+        1,
+        1,
+        True,
+        "audio",
+    )
+
+    db.query(Job).update({"status": "done"})
+    db.commit()
+    with client.stream("GET", "/sessions/1/progress/stream?interval_s=0.05") as resp:
+        assert resp.headers["content-type"].startswith("text/event-stream")
+        body = "".join(resp.iter_text())
+    assert "event: progress" in body and '"active":false' in body and body.rstrip().endswith("data: {}")
+
+
+def test_api_painel_da_serie(settings: Settings, db: Session) -> None:
+    from cronista.audio.events import replace_events
+    from cronista.relevance.engine import RelevanceParams, Segment
+    from cronista.relevance.service import segments_to_events
+    from cronista.review.decisions import record_decision
+
+    _seed(db)  # tem um marcador `novo_dia`
+    segs = [Segment(0, 30, "conquista", 0.9), Segment(60, 90, "morte_falha", 0.8)]
+    replace_events(db, 1, "relevance", "", segments_to_events(segs, RelevanceParams()))
+    client = TestClient(create_app(settings))
+    panel = client.get("/series").json()
+    assert panel["total_min"] == 1.0 and panel["situacao"] == "faltando"
+    assert panel["sessoes"][0]["dias"] == 1
+    assert set(panel["por_classe_min"]) == {"conquista", "morte_falha"}
+
+    record_decision(db, 1, 60, "rejeitado")  # rejeitar baixa a estimativa
+    assert client.get("/series").json()["total_min"] == 0.5

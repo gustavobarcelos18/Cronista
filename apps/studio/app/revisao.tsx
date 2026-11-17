@@ -10,6 +10,8 @@ import type {
 } from "@cronista/contracts";
 import { useEffect, useRef, useState } from "react";
 import Exportar from "./exportar";
+import Painel from "./painel";
+import Progresso from "./progresso";
 import Roteiro from "./roteiro";
 
 const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
@@ -101,11 +103,13 @@ export default function Revisao() {
       <aside>
         <h1>Cronista Studio</h1>
         {error && <p role="alert">{error}</p>}
+        <Painel />
         {sessions.map((s) => (
           <section key={s.id}>
             <h3>
               {s.project} · sessão {s.id}
             </h3>
+            <Progresso sessionId={s.id} />
             <ul>
               {s.files.map((f) => (
                 <li key={f.id}>

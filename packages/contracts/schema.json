@@ -416,6 +416,57 @@
       "title": "MediaProbe",
       "type": "object"
     },
+    "ProgressOut": {
+      "description": "Jobs da sessão por estado; `active` vale enquanto houver job pendente ou rodando.",
+      "properties": {
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "current": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current"
+        },
+        "done": {
+          "title": "Done",
+          "type": "integer"
+        },
+        "failed": {
+          "title": "Failed",
+          "type": "integer"
+        },
+        "pending": {
+          "title": "Pending",
+          "type": "integer"
+        },
+        "running": {
+          "title": "Running",
+          "type": "integer"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "pending",
+        "running",
+        "done",
+        "failed",
+        "active"
+      ],
+      "title": "ProgressOut",
+      "type": "object"
+    },
     "Script": {
       "properties": {
         "lines": {
@@ -611,6 +662,101 @@
         "features"
       ],
       "title": "SegmentOut",
+      "type": "object"
+    },
+    "SeriesPanelOut": {
+      "properties": {
+        "maximo_min": {
+          "default": 50.0,
+          "title": "Maximo Min",
+          "type": "number"
+        },
+        "meta_min": {
+          "default": 40.0,
+          "title": "Meta Min",
+          "type": "number"
+        },
+        "minimo_min": {
+          "default": 30.0,
+          "title": "Minimo Min",
+          "type": "number"
+        },
+        "por_classe_min": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Por Classe Min",
+          "type": "object"
+        },
+        "sessoes": {
+          "items": {
+            "$ref": "#/$defs/SeriesRowOut"
+          },
+          "title": "Sessoes",
+          "type": "array"
+        },
+        "situacao": {
+          "enum": [
+            "faltando",
+            "no_alvo",
+            "acima"
+          ],
+          "title": "Situacao",
+          "type": "string"
+        },
+        "total_min": {
+          "title": "Total Min",
+          "type": "number"
+        }
+      },
+      "required": [
+        "total_min",
+        "situacao",
+        "por_classe_min",
+        "sessoes"
+      ],
+      "title": "SeriesPanelOut",
+      "type": "object"
+    },
+    "SeriesRowOut": {
+      "properties": {
+        "acumulado_min": {
+          "title": "Acumulado Min",
+          "type": "number"
+        },
+        "dias": {
+          "title": "Dias",
+          "type": "integer"
+        },
+        "gravado_h": {
+          "title": "Gravado H",
+          "type": "number"
+        },
+        "por_classe_min": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Por Classe Min",
+          "type": "object"
+        },
+        "produto_min": {
+          "title": "Produto Min",
+          "type": "number"
+        },
+        "sessao": {
+          "title": "Sessao",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sessao",
+        "gravado_h",
+        "produto_min",
+        "acumulado_min",
+        "dias",
+        "por_classe_min"
+      ],
+      "title": "SeriesRowOut",
       "type": "object"
     },
     "SessionOut": {

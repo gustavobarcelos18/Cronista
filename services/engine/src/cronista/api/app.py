@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Iterator
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
@@ -9,7 +11,7 @@ from typing import Literal
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -22,6 +24,7 @@ from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, record_decision
+from cronista.review.panel import SeriesPanelOut, series_panel_full
 from cronista.review.reexport import ProfileLoader, ReexportJobs
 from cronista.story.models import Script
 from cronista.story.script import load_script
@@ -90,6 +93,18 @@ class ExportStatusOut(BaseModel):
     warnings: list[str] = []
 
 
+class ProgressOut(BaseModel):
+    """Jobs da sessão por estado; `active` vale enquanto houver job pendente ou rodando."""
+
+    total: int
+    pending: int
+    running: int
+    done: int
+    failed: int
+    active: bool
+    current: str | None = None
+
+
 class DecisionIn(BaseModel):
     decision: Literal["aceito", "rejeitado", "ajustado"]
     start_s: float | None = None
@@ -150,6 +165,50 @@ def create_app(
         if not jobs.start(session_id, target_min * 60):
             raise HTTPException(409, "já há uma exportação em andamento")
         return ExportStatusOut(**asdict(jobs.status(session_id)))
+
+    def _progress(session_id: int) -> ProgressOut:
+        with open_db(settings.db_path) as db:
+            rows = db.execute(
+                select(Job.status, Job.stage)
+                .join(MediaFile, Job.media_file_id == MediaFile.id)
+                .where(MediaFile.session_id == session_id)
+                .order_by(Job.id)
+            ).all()
+        count = {k: sum(1 for st, _ in rows if st == k) for k in ("pending", "running", "done", "failed")}
+        current = next((stage for st, stage in rows if st == "running"), None)
+        return ProgressOut(
+            total=len(rows), **count, active=bool(count["pending"] or count["running"]), current=current
+        )
+
+    @app.get("/sessions/{session_id}/progress", response_model=ProgressOut)
+    def progress(session_id: int) -> ProgressOut:
+        return _progress(session_id)
+
+    @app.get("/sessions/{session_id}/progress/stream")
+    def progress_stream(session_id: int, interval_s: float = Query(1.0, ge=0.05, le=10)) -> StreamingResponse:
+        """SSE: um evento `progress` a cada mudança; encerra quando não há mais job pendente ou rodando."""
+
+        def events() -> Iterator[str]:
+            last: str | None = None
+            while True:
+                snap = _progress(session_id)
+                data = snap.model_dump_json()
+                if data != last:
+                    last = data
+                    yield f"event: progress\ndata: {data}\n\n"
+                if not snap.active:
+                    yield "event: end\ndata: {}\n\n"
+                    return
+                time.sleep(interval_s)
+
+        return StreamingResponse(
+            events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
+        )
+
+    @app.get("/series", response_model=SeriesPanelOut)
+    def series() -> SeriesPanelOut:
+        with open_db(settings.db_path) as db:
+            return series_panel_full(db)
 
     @app.get("/health")
     def health() -> dict[str, str]:

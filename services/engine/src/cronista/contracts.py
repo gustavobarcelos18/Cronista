@@ -13,12 +13,14 @@ from cronista.api.app import (
     JobOut,
     MarkerOut,
     MediaFileOut,
+    ProgressOut,
     ScriptOut,
     SegmentOut,
     SessionOut,
     WaveformOut,
 )
 from cronista.domain.models import MarkerKind, MediaProbe, StageResult
+from cronista.review.panel import SeriesPanelOut, SeriesRowOut
 
 
 def build_schema() -> dict[str, object]:
@@ -32,6 +34,9 @@ def build_schema() -> dict[str, object]:
         MarkerOut,
         SegmentOut,
         DecisionIn,
+        ProgressOut,
+        SeriesRowOut,
+        SeriesPanelOut,
         ExportStatusOut,
         ScriptOut,
         EventOut,

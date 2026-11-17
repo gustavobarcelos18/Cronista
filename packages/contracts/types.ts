@@ -52,6 +52,13 @@ export type Path = string;
 export type PixFmt = string | null;
 export type VideoCodec = string | null;
 export type Width = number | null;
+export type Active = boolean;
+export type Current = string | null;
+export type Done = number;
+export type Failed = number;
+export type Pending = number;
+export type Running = number;
+export type Total = number;
 export type EstS = number | null;
 export type Justification = string | null;
 export type Kind2 = "narracao" | "antecipacao";
@@ -71,6 +78,17 @@ export type Markers = string[];
 export type Razoes = string[];
 export type Score = number;
 export type StartS3 = number;
+export type MaximoMin = number;
+export type MetaMin = number;
+export type MinimoMin = number;
+export type AcumuladoMin = number;
+export type Dias = number;
+export type GravadoH = number;
+export type ProdutoMin = number;
+export type Sessao = number;
+export type Sessoes = SeriesRowOut[];
+export type Situacao = "faltando" | "no_alvo" | "acima";
+export type TotalMin = number;
 export type Files = MediaFileOut[];
 export type Folder = string;
 export type Id3 = number;
@@ -176,6 +194,21 @@ export interface MediaProbe {
   width?: Width;
 }
 /**
+ * Jobs da sessão por estado; `active` vale enquanto houver job pendente ou rodando.
+ *
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ProgressOut".
+ */
+export interface ProgressOut {
+  active: Active;
+  current?: Current;
+  done: Done;
+  failed: Failed;
+  pending: Pending;
+  running: Running;
+  total: Total;
+}
+/**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "Script".
  */
@@ -223,6 +256,37 @@ export interface SegmentOut {
   start_s: StartS3;
 }
 export interface Features {
+  [k: string]: number;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "SeriesPanelOut".
+ */
+export interface SeriesPanelOut {
+  maximo_min?: MaximoMin;
+  meta_min?: MetaMin;
+  minimo_min?: MinimoMin;
+  por_classe_min: PorClasseMin;
+  sessoes: Sessoes;
+  situacao: Situacao;
+  total_min: TotalMin;
+}
+export interface PorClasseMin {
+  [k: string]: number;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "SeriesRowOut".
+ */
+export interface SeriesRowOut {
+  acumulado_min: AcumuladoMin;
+  dias: Dias;
+  gravado_h: GravadoH;
+  por_classe_min: PorClasseMin1;
+  produto_min: ProdutoMin;
+  sessao: Sessao;
+}
+export interface PorClasseMin1 {
   [k: string]: number;
 }
 /**

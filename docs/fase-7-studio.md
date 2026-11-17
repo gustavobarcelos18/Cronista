@@ -32,3 +32,8 @@ Plano de execução (detalhes do produto na seção "Fase 7" do [plano mestre](0
   decide o que refazer: com decisões ou roteiro iguais, a versão anterior é reaproveitada. O perfil entra injetado pela CLI
   (`create_app(profile_loader=...)`), porque só `profiles.py` e a CLI conhecem perfis. `open_db` agora serializa as migrações
   com um lock (o Alembic não é thread-safe e a API roda em threads). **Falta:** conferir com mídia real em `prod`.
+- **7D codificada:** `GET /sessions/{id}/progress` e `/progress/stream` (SSE: um evento por mudança, encerra quando não há job
+  pendente ou rodando; `progresso.tsx` na lista de sessões) e `GET /series` (painel do plano 4.1: minutos de produto por sessão
+  e acumulados × meta de 30–50 min, distribuição por tipo de momento, dias pelo `Novo dia`, usando os segmentos com as
+  decisões do criador; `painel.tsx`). **Falta:** capítulos "magros" (precisa dos capítulos da história no painel) e conferir
+  o SSE com o pipeline rodando de verdade em `prod`.

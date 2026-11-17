@@ -86,13 +86,14 @@ class AstSoundClassifier:
         )
         model = transformers.ASTForAudioClassification.from_pretrained(model_id, cache_dir=str(self._root))
         model = model.eval().to(device)
-        self._model = model.half() if device == "cuda" else model
         names = {v: int(k) for k, v in model.config.id2label.items()}
         missing = [c for classes in LABEL_MAP.values() for c in classes if c not in names]
         if missing:
             raise RuntimeError(f"classes do AudioSet ausentes no modelo: {missing}")
+        # Só atribui depois de validar: uma falha não deixa o classificador meio inicializado.
         self._columns = {label: [names[c] for c in classes] for label, classes in LABEL_MAP.items()}
         self._torch = torch
+        self._model = model.half() if device == "cuda" else model
 
     def _scores(self, windows: list[Any]) -> Any:
         """Pontuação por rótulo do Cronista para cada janela: matriz (janelas, rótulos)."""

@@ -126,13 +126,18 @@ class FullscreenGate:
         )
 
 
-def _nvidia_smi_utilization(executable: str = "nvidia-smi") -> int | None:
-    cmd = [executable, "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"]
+def query_nvidia_smi(field: str, executable: str = "nvidia-smi") -> list[int]:
+    """Um campo numérico do `nvidia-smi --query-gpu` (um valor por GPU). Vazio se não der para ler."""
+    cmd = [executable, f"--query-gpu={field}", "--format=csv,noheader,nounits"]
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=5).stdout
     except (OSError, subprocess.SubprocessError):
-        return None
-    values = [int(line) for line in out.split() if line.strip().isdigit()]
+        return []
+    return [int(line) for line in out.split() if line.strip().isdigit()]
+
+
+def _nvidia_smi_utilization(executable: str = "nvidia-smi") -> int | None:
+    values = query_nvidia_smi("utilization.gpu", executable)
     return max(values) if values else None
 
 

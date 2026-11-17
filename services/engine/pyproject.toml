@@ -22,12 +22,12 @@ cronista = "cronista.cli:app"
 
 [dependency-groups]
 ml = [
-    "torch",
-    "torchaudio",
-    "faster-whisper",
-    "silero-vad",
-    "transformers",
-    "psutil",
+    "torch>=2.11,<3",
+    "torchaudio>=2.11,<3",
+    "faster-whisper>=1.2,<2",
+    "silero-vad>=6.2,<7",
+    "transformers>=5.23,<6",
+    "psutil>=7,<8",
 ]
 dev = [
     "pytest>=8.0",
@@ -83,8 +83,9 @@ ignore_missing_imports = true  # sem tipos publicados
 # Ambiente de ML da Fase 2B (só `prod`): `uv sync --group ml`. Fora do `uv sync` padrão, então a CI e o `dev`
 # não baixam nada disto. PyTorch vem do índice CUDA 12.8 da PyTorch (o driver do PC de casa aceita CUDA 13.x).
 [tool.uv.sources]
-torch = { index = "pytorch-cu128" }
-torchaudio = { index = "pytorch-cu128" }
+# O índice CUDA só vale no PC de casa (Windows); em outras plataformas o torch vem do PyPI.
+torch = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
+torchaudio = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
 
 [[tool.uv.index]]
 name = "pytorch-cu128"

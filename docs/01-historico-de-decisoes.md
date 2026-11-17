@@ -1165,6 +1165,11 @@ aparecia com 210 MiB). A linha de base agora é de antes da carga.
 **DeepFilterNet:** instala (0.5.6), mas rebaixa o NumPy 2.5 do projeto para 1.26 e o `packaging`. Não entra no ambiente principal;
 vira teste da 2C num ambiente descartável.
 
+**Achados do `/code-review` da 2B:** o índice `cu128` vale só no Windows (`marker` em `[tool.uv.sources]`; em outras plataformas o
+`torch` vem do PyPI) e o grupo `ml` ganhou limites de versão (`torch>=2.11`, `transformers>=5.23,<6` etc.). O Silero devolve tempos
+em amostras (÷16000), porque em segundos ele arredonda a 0,1 s; a fusão de trechos vale só na fronteira entre blocos. O custo de
+extração de atributos do AST em CPU (janelas sobrepostas ~4×) **não foi tratado**: as estimativas de 10 h podem estar otimistas.
+
 **Não feito na 2B:** pausa com o OBS gravando de verdade (precisa do criador gravando); 10 h reais de áudio; cobertura
 `@pytest.mark.gpu` rodada (os testes existem em `tests/test_adapters_gpu.py`, ver resultado no PR).
 

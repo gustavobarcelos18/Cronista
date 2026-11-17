@@ -13,7 +13,7 @@ import pytest
 import soundfile as sf
 
 from cronista.audio.models import build_models, missing_ml_packages
-from cronista.audio.ports import AudioModels
+from cronista.audio.ports import AudioModels, SpeechSpan
 from cronista.config import Settings, load_settings
 
 pytestmark = pytest.mark.gpu
@@ -40,7 +40,12 @@ def test_silence_gives_no_speech_no_words_and_no_events(models: AudioModels, tmp
     silence = _wav(tmp_path / "silencio.wav", np.zeros(RATE * 12, dtype=np.float32))
     assert models.detector and models.transcriber and models.classifier
     assert models.detector.detect(silence, pause=lambda: None) == []
-    assert models.transcriber.transcribe(silence, [], pause=lambda: None) == []
+    # Com um trecho de verdade (e não `[]`, que nem carrega o modelo) o Whisper roda de fato: o resultado
+    # tem o formato certo e, no silêncio, nenhuma fala fora do arquivo.
+    spans = [SpeechSpan(start_s=1.0, end_s=6.0)]
+    utterances = models.transcriber.transcribe(silence, spans, pause=lambda: None)
+    for utterance in utterances:
+        assert 0 <= utterance.start_s <= utterance.end_s <= 12.5 and 0 <= utterance.confidence <= 1
     events = models.classifier.classify(silence, pause=lambda: None)
     assert all(e.label not in ("risada", "grito") or e.score < 0.3 for e in events)
 
@@ -71,7 +76,10 @@ def test_every_mapped_audioset_class_exists_in_the_model(models: AudioModels) ->
 
     assert isinstance(models.classifier, AstSoundClassifier)
     models.classifier._load()
-    assert set(models.classifier._columns) >= {"risada", "grito", "teclado", "respiracao"}
+    from cronista.audio.adapters.ast_classifier import LABEL_MAP
+
+    assert set(models.classifier._columns) == set(LABEL_MAP)
+    assert all(len(cols) == len(LABEL_MAP[label]) for label, cols in models.classifier._columns.items())
 
 
 def test_settings_for_prod_enable_the_models(settings: Settings) -> None:

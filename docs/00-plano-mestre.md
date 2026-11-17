@@ -323,8 +323,8 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 |---|---|---|
 | Processamento | **Python 3.12 + uv** | Ecossistema de áudio/vídeo/ML; roda nativo no Windows com CUDA |
 | Vídeo | **FFmpeg** (NVDEC/NVENC) + PySceneDetect + OpenCV | Padrão da indústria; usa a GPU |
-| Transcrição | faster-whisper (large-v3-turbo, int8) | Roda bem em 12 GB; só nos trechos de fala |
-| Áudio | Silero VAD (o mesmo que o faster-whisper usa no filtro de VAD), DeepFilterNet **só se melhorar o WER no benchmark**, PANNs/BEATs/CLAP, librosa | Fala × ruído × eventos sonoros |
+| Transcrição | faster-whisper (large-v3-turbo, int8_float16 — histórico §44) | Roda bem em 12 GB; só nos trechos de fala |
+| Áudio | Silero VAD (o mesmo que o faster-whisper usa no filtro de VAD), DeepFilterNet **só se melhorar o WER no benchmark**, classificador de eventos (**AST/AudioSet** primeiro candidato na 2B; PANNs/BEATs/CLAP seguem candidatos da 2C), librosa | Fala × ruído × eventos sonoros |
 | Visão | SigLIP/CLIP (embeddings a 1–2 fps), OCR (**RapidOCR**, ONNX) **em frames do master**, VLM local via Ollama (Qwen-VL) **só em candidatos** | Barato no volume, inteligente onde importa |
 | LLM local | Ollama (Qwen ~14B quantizado) | Classificação e resumos em massa sem custo |
 | LLM de roteiro | **Claude Code (Pro)** via skills do repositório | Melhor qualidade de escrita, custo zero extra |
@@ -347,6 +347,10 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 > de transcrição para 12 GB, e trocá-lo custaria mais do que isolar a dependência. ⚠️ De memória: confirmar na Fase 1
 > as versões de cuBLAS/cuDNN que o CTranslate2 exige e se elas convivem com as do PyTorch no mesmo ambiente; se
 > conflitarem, a transcrição roda num processo/ambiente separado.
+>
+> **Resolvido na Fase 2B (histórico §44):** Silero, faster-whisper (CTranslate2) e o classificador (PyTorch) rodaram em
+> sequência no mesmo processo na RTX 3060, sem conflito de DLL. **Ambiente único**: grupo opcional `ml` do engine
+> (`uv sync --group ml`, só `prod`), com PyTorch do índice CUDA 12.8 da PyTorch no Windows; a CI e o `dev` não o instalam.
 
 **Por que não NestJS/C# agora:** para um usuário, um backend único em Python evita uma ponte entre linguagens.
 A arquitetura em portas/adaptadores permite colocar um gateway Nest depois, se o projeto virar produto.
@@ -1068,7 +1072,10 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Processamento automático ao fim da gravação, com pausa enquanto o OBS grava ou um jogo em tela cheia está aberto (seção 4.1).
 - ML em PyTorch + ONNX Runtime; OCR com RapidOCR em frames do master; DeepFilterNet só se melhorar o WER (seção 5.2).
 - Exceção aceita: o CTranslate2 (base do faster-whisper) traz CUDA próprio; se conflitar com o PyTorch, a
-  transcrição roda em processo/ambiente separado (seção 5.2).
+  transcrição roda em processo/ambiente separado (seção 5.2). **Resolvido na 2B (histórico §44):** não conflitou;
+  ambiente único com o grupo opcional `ml` (`uv sync --group ml`, só `prod`), PyTorch pelo índice `cu128`.
+- Classificador de eventos sonoros: **AST/AudioSet** é o primeiro candidato (resolução de 2,5 s); PANNs, BEATs e CLAP
+  continuam candidatos da 2C. Transcrição com `large-v3-turbo` em `int8_float16` (histórico §44).
 - Trilhas da timeline: V1 gameplay, V2 efeitos renderizados, V3 B-roll, V4 overlays, V5 cartelas; A1 jogo, A2 voz
   ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados (seção 6.3).
 - CI em Ubuntu e Windows; configuração versionada sem caminhos pessoais + `*.local.yaml` fora do git (seção 5.6).

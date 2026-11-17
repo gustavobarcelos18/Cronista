@@ -49,13 +49,15 @@ class SileroVad:
                 threshold=opts["threshold"],
                 min_speech_duration_ms=opts["min_speech_ms"],
                 min_silence_duration_ms=opts["min_silence_ms"],
-                return_seconds=True,
+                return_seconds=False,  # em segundos o Silero arredonda a 0,1 s; em amostras o tempo é exato
             )
-            for item in found:
-                start, end = offset + float(item["start"]), offset + float(item["end"])
+            for index, item in enumerate(found):
+                start = offset + float(item["start"]) / MODEL_RATE
+                end = offset + float(item["end"]) / MODEL_RATE
                 last = spans[-1] if spans else None
-                # Fala cortada na fronteira entre dois blocos volta a ser um trecho só.
-                if last is not None and start - last.end_s <= opts["min_silence_ms"] / 1000:
+                # Só a fala cortada na fronteira entre dois blocos (primeiro trecho do bloco) volta a ser um
+                # trecho só; dentro do bloco, os cortes do Silero ficam como estão.
+                if index == 0 and last is not None and start - last.end_s <= opts["min_silence_ms"] / 1000:
                     spans[-1] = SpeechSpan(start_s=last.start_s, end_s=max(end, last.end_s))
                 else:
                     spans.append(SpeechSpan(start_s=start, end_s=end))

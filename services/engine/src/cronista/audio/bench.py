@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import subprocess
 import threading
 import time
 from collections.abc import Callable
@@ -21,6 +20,9 @@ from typing import Any
 import soundfile as sf
 
 from cronista.audio.ports import AudioModels
+from cronista.gates import query_nvidia_smi
+
+CLIP_BLOCK_S = 60.0  # o recorte é copiado em blocos deste tamanho, sem carregar tudo na memória
 
 
 @dataclass
@@ -43,17 +45,8 @@ class BenchRow:
 
 
 def gpu_used_mib() -> int | None:
-    try:
-        out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=True,
-        ).stdout
-        return int(out.strip().splitlines()[0])
-    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
-        return None
+    values = query_nvidia_smi("memory.used")
+    return values[0] if values else None
 
 
 def _rss_mib() -> int | None:
@@ -101,11 +94,19 @@ class _Peak:
 def clip_wav(src: Path, dst: Path, start_s: float, seconds: float) -> float:
     """Recorta `[start_s, start_s + seconds)` do WAV sem carregá-lo todo. Devolve a duração gravada."""
     with sf.SoundFile(str(src)) as handle:
-        handle.seek(min(round(start_s * handle.samplerate), handle.frames))
-        data = handle.read(round(seconds * handle.samplerate), dtype="float32", always_2d=True)
-        rate = handle.samplerate
-    sf.write(str(dst), data, rate)
-    return float(len(data) / rate)
+        rate, channels = handle.samplerate, handle.channels
+        handle.seek(min(round(start_s * rate), handle.frames))
+        remaining, written = round(seconds * rate), 0
+        with sf.SoundFile(str(dst), "w", samplerate=rate, channels=channels, subtype="FLOAT") as out:
+            while remaining > 0:
+                block = min(remaining, round(CLIP_BLOCK_S * rate))
+                data = handle.read(block, dtype="float32", always_2d=True)
+                if len(data) == 0:
+                    break
+                out.write(data)
+                remaining -= len(data)
+                written += len(data)
+    return float(written / rate)
 
 
 def _measure(
@@ -159,6 +160,7 @@ def run_bench(
     if models.transcriber is not None and spans:
         asr = models.transcriber
         speech_s = sum(s.end_s - s.start_s for s in spans)
+        share = 100 * speech_s / mic_s if mic_s else 0.0
         rows.append(
             _measure(
                 asr.name,
@@ -166,13 +168,12 @@ def run_bench(
                 mic_s,
                 lambda: asr.transcribe(short, spans[:1], pause=no_pause),
                 lambda: len(asr.transcribe(mic, spans, pause=no_pause)),
-                note=f"só nos {speech_s:.0f} s de fala ({100 * speech_s / mic_s:.0f}% do trecho)",
+                note=f"só nos {speech_s:.0f} s de fala ({share:.0f}% do trecho)",
             )
         )
     elif models.transcriber is not None:
-        rows.append(
-            BenchRow("(transcrição)", "mic", mic_s, 0, 0, 0, None, None, 0, "sem fala detectada no trecho")
-        )
+        why = "sem fala detectada no trecho" if models.detector is not None else "sem detector de fala (VAD)"
+        rows.append(BenchRow("(transcrição)", "mic", mic_s, 0, 0, 0, None, None, 0, why))
     if models.classifier is not None:
         clf = models.classifier
         for track, clip, seconds in (("mic", mic, mic_s), ("game", game, game_s)):

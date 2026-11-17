@@ -95,3 +95,25 @@ def test_api_eventos_e_waveform(settings: Settings, db: Session, tmp_path: Path)
     wave = client.get("/media/1/waveform?points=10").json()
     assert len(wave["game"]) == 10 and wave["mic"] == [] and wave["duration_s"] == 10.0
     assert wave["game"][-1] == 0.0
+
+
+def test_api_decisoes_so_insercao(settings: Settings, db: Session) -> None:
+    from cronista.audio.events import replace_events
+    from cronista.db.models import SegmentDecision
+    from cronista.relevance.engine import RelevanceParams, Segment
+    from cronista.relevance.service import segments_to_events
+
+    _seed(db)
+    seg = Segment(10, 20, "momento", 0.8)
+    replace_events(db, 1, "relevance", "", segments_to_events([seg], RelevanceParams()))
+    client = TestClient(create_app(settings))
+    assert client.get("/media/1/segments").json()[0]["decision"] is None
+    assert client.post("/media/1/segments/99/decision", json={"decision": "aceito"}).status_code == 404
+    url = "/media/1/segments/10/decision"
+    assert client.post(url, json={"decision": "rejeitado"}).json()["decision"] == "rejeitado"
+    assert client.post(url, json={"decision": "ajustado", "start_s": 5, "end_s": 4}).status_code == 422
+    out = client.post(url, json={"decision": "ajustado", "start_s": 11, "end_s": 18}).json()
+    assert (out["adj_start_s"], out["adj_end_s"]) == (11, 18)
+    assert client.get("/media/1/segments").json()[0]["decision"] == "ajustado"
+    rows = db.query(SegmentDecision).order_by(SegmentDecision.id).all()
+    assert [r.decision for r in rows] == ["rejeitado", "ajustado"] and rows[1].replaces_id == rows[0].id

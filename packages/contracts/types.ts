@@ -1,12 +1,15 @@
 /* GERADO por pnpm gen a partir de schema.json. Não edite. */
 
+export type Decision = "aceito" | "rejeitado" | "ajustado";
+export type EndS = number | null;
+export type StartS = number | null;
 export type Confidence = number;
-export type EndS = number;
+export type EndS1 = number;
 export type Kind = string;
 export type Quote = string | null;
 export type Source = string;
 export type Stage = string;
-export type StartS = number;
+export type StartS1 = number;
 export type Variant = string;
 export type Attempts = number;
 export type Error = string | null;
@@ -42,12 +45,15 @@ export type Path = string;
 export type PixFmt = string | null;
 export type VideoCodec = string | null;
 export type Width = number | null;
+export type AdjEndS = number | null;
+export type AdjStartS = number | null;
 export type Classe = string;
-export type EndS1 = number;
+export type Decision1 = string | null;
+export type EndS2 = number;
 export type Markers = string[];
 export type Razoes = string[];
 export type Score = number;
-export type StartS1 = number;
+export type StartS2 = number;
 export type Files = MediaFileOut[];
 export type Folder = string;
 export type Id3 = number;
@@ -64,16 +70,25 @@ export interface CronistaContracts {
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "DecisionIn".
+ */
+export interface DecisionIn {
+  decision: Decision;
+  end_s?: EndS;
+  start_s?: StartS;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "EventOut".
  */
 export interface EventOut {
   confidence: Confidence;
-  end_s: EndS;
+  end_s: EndS1;
   kind: Kind;
   quote: Quote;
   source: Source;
   stage: Stage;
-  start_s: StartS;
+  start_s: StartS1;
   variant: Variant;
 }
 /**
@@ -135,13 +150,16 @@ export interface MediaProbe {
  * via the `definition` "SegmentOut".
  */
 export interface SegmentOut {
+  adj_end_s?: AdjEndS;
+  adj_start_s?: AdjStartS;
   classe: Classe;
-  end_s: EndS1;
+  decision?: Decision1;
+  end_s: EndS2;
   features: Features;
   markers: Markers;
   razoes: Razoes;
   score: Score;
-  start_s: StartS1;
+  start_s: StartS2;
 }
 export interface Features {
   [k: string]: number;

@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  DecisionIn,
   EventOut,
   MediaFileOut,
   SegmentOut,
@@ -61,6 +62,29 @@ export default function Revisao() {
       .catch((e: Error) => setError(e.message));
   }
 
+  async function decide(g: Segment, body: DecisionIn) {
+    if (!media) return;
+    const res = await fetch(`${API}/media/${media.id}/segments/${g.start_s}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      setError(`decisão: ${res.status}`);
+      return;
+    }
+    const updated = (await res.json()) as Segment;
+    setSegments((all) => all.map((x) => (x.start_s === g.start_s ? updated : x)));
+  }
+
+  function adjust(g: Segment) {
+    const start = Number(prompt("Novo início (s do arquivo)", String(g.adj_start_s ?? g.start_s)));
+    const end = Number(prompt("Novo fim (s do arquivo)", String(g.adj_end_s ?? g.end_s)));
+    if (Number.isFinite(start) && Number.isFinite(end)) {
+      void decide(g, { decision: "ajustado", start_s: start, end_s: end });
+    }
+  }
+
   function seek(seconds: number) {
     if (video.current) {
       video.current.currentTime = seconds;
@@ -109,6 +133,16 @@ export default function Revisao() {
                   </button>{" "}
                   <strong>{g.classe}</strong> nota {g.score.toFixed(2)}
                   {g.razoes.length > 0 && <small> · {g.razoes.join("; ")}</small>}
+                  {g.decision && (
+                    <em>
+                      {" "}
+                      [{g.decision}
+                      {g.decision === "ajustado" && ` ${fmt(g.adj_start_s ?? 0)}–${fmt(g.adj_end_s ?? 0)}`}]
+                    </em>
+                  )}{" "}
+                  <button onClick={() => void decide(g, { decision: "aceito" })}>Aceitar</button>
+                  <button onClick={() => void decide(g, { decision: "rejeitado" })}>Rejeitar</button>
+                  <button onClick={() => adjust(g)}>Ajustar</button>
                   <SignalChips events={events.filter((e) => e.start_s < g.end_s && e.end_s >= g.start_s)} />
                 </li>
               ))}

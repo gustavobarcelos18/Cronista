@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query
@@ -19,6 +20,7 @@ from cronista.db.session import open_db
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.relevance.service import load_segments
+from cronista.review.decisions import current_decisions, record_decision
 
 
 class MediaFileOut(BaseModel):
@@ -63,6 +65,15 @@ class SegmentOut(BaseModel):
     razoes: list[str]
     markers: list[str]
     features: dict[str, float]
+    decision: str | None = None
+    adj_start_s: float | None = None
+    adj_end_s: float | None = None
+
+
+class DecisionIn(BaseModel):
+    decision: Literal["aceito", "rejeitado", "ajustado"]
+    start_s: float | None = None
+    end_s: float | None = None
 
 
 class EventOut(BaseModel):
@@ -97,7 +108,7 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins or ["http://localhost:3000", "http://127.0.0.1:3000"],
-        allow_methods=["GET"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
@@ -165,6 +176,7 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
         with open_db(settings.db_path) as db:
             if db.get(MediaFile, media_id) is None:
                 raise HTTPException(404, "arquivo não encontrado")
+            decisions = current_decisions(db, media_id)
             return [
                 SegmentOut(
                     start_s=g.start_s,
@@ -174,9 +186,38 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
                     razoes=g.razoes,
                     markers=g.markers,
                     features=g.features,
+                    decision=d.decision if (d := decisions.get(g.start_s)) else None,
+                    adj_start_s=d.start_s if d else None,
+                    adj_end_s=d.end_s if d else None,
                 )
                 for g in load_segments(db, media_id)
             ]
+
+    @app.post("/media/{media_id}/segments/{seg_start_s}/decision", response_model=SegmentOut)
+    def decide_segment(media_id: int, seg_start_s: int, body: DecisionIn) -> SegmentOut:
+        """Aceita, rejeita ou ajusta os limites de um segmento. Só insere (histórico preservado)."""
+        with open_db(settings.db_path) as db:
+            if db.get(MediaFile, media_id) is None:
+                raise HTTPException(404, "arquivo não encontrado")
+            seg = next((g for g in load_segments(db, media_id) if g.start_s == seg_start_s), None)
+            if seg is None:
+                raise HTTPException(404, "segmento não encontrado")
+            try:
+                d = record_decision(db, media_id, seg_start_s, body.decision, body.start_s, body.end_s)
+            except ValueError as e:
+                raise HTTPException(422, str(e)) from e
+            return SegmentOut(
+                start_s=seg.start_s,
+                end_s=seg.end_s,
+                classe=seg.classe,
+                score=seg.score,
+                razoes=seg.razoes,
+                markers=seg.markers,
+                features=seg.features,
+                decision=d.decision,
+                adj_start_s=d.start_s,
+                adj_end_s=d.end_s,
+            )
 
     @app.get("/media/{media_id}/events", response_model=list[EventOut])
     def media_events(media_id: int) -> list[EventOut]:

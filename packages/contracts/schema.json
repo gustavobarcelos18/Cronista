@@ -1,5 +1,47 @@
 {
   "$defs": {
+    "DecisionIn": {
+      "properties": {
+        "decision": {
+          "enum": [
+            "aceito",
+            "rejeitado",
+            "ajustado"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "end_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End S"
+        },
+        "start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start S"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "title": "DecisionIn",
+      "type": "object"
+    },
     "EventOut": {
       "properties": {
         "confidence": {
@@ -307,9 +349,45 @@
     },
     "SegmentOut": {
       "properties": {
+        "adj_end_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adj End S"
+        },
+        "adj_start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adj Start S"
+        },
         "classe": {
           "title": "Classe",
           "type": "string"
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision"
         },
         "end_s": {
           "title": "End S",

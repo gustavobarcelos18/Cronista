@@ -4,15 +4,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+import numpy as np
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from cronista.audio.events import load_stored_events
+from cronista.audio.signals import load_signal, signal_metas
 from cronista.config import Settings
 from cronista.db.models import Artifact, Job, Marker, MediaFile, RecordingSession
 from cronista.db.session import open_db
+from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.relevance.service import load_segments
 
@@ -59,6 +63,33 @@ class SegmentOut(BaseModel):
     razoes: list[str]
     markers: list[str]
     features: dict[str, float]
+
+
+class EventOut(BaseModel):
+    stage: str
+    variant: str
+    kind: str
+    start_s: float
+    end_s: float
+    source: str
+    confidence: float
+    quote: str | None
+
+
+class WaveformOut(BaseModel):
+    """Envelope de energia (dBFS) por faixa, em até `points` buckets uniformes (máximo de cada bucket)."""
+
+    duration_s: float
+    points: int
+    game: list[float]
+    mic: list[float]
+
+
+def _envelope(values: np.ndarray, points: int) -> list[float]:
+    if len(values) == 0:
+        return []
+    buckets = np.array_split(np.asarray(values, dtype=np.float32), min(points, len(values)))
+    return [round(float(b.max()), 1) for b in buckets]
 
 
 def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
@@ -146,6 +177,54 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
                 )
                 for g in load_segments(db, media_id)
             ]
+
+    @app.get("/media/{media_id}/events", response_model=list[EventOut])
+    def media_events(media_id: int) -> list[EventOut]:
+        """Eventos de áudio (fala, sons, grito) em ordem de tempo; a relevância fica de fora."""
+        with open_db(settings.db_path) as db:
+            if db.get(MediaFile, media_id) is None:
+                raise HTTPException(404, "arquivo não encontrado")
+            return [
+                EventOut(
+                    stage=s.stage,
+                    variant=s.variant,
+                    kind=s.event.kind,
+                    start_s=s.event.evidence.start_frame / FPS,
+                    end_s=s.event.evidence.end_frame / FPS,
+                    source=s.event.evidence.source.value,
+                    confidence=s.event.evidence.confidence,
+                    quote=s.event.evidence.quote,
+                )
+                for s in load_stored_events(db, media_id)
+                if s.stage != "relevance"
+            ]
+
+    @app.get("/media/{media_id}/waveform", response_model=WaveformOut)
+    def media_waveform(media_id: int, points: int = Query(800, ge=10, le=4000)) -> WaveformOut:
+        with open_db(settings.db_path) as db:
+            if db.get(MediaFile, media_id) is None:
+                raise HTTPException(404, "arquivo não encontrado")
+            artifact = db.scalar(
+                select(Artifact).where(
+                    Artifact.media_file_id == media_id,
+                    Artifact.stage == "audio_signals",
+                    Artifact.variant == "",
+                )
+            )
+            if artifact is None or not Path(artifact.result_path).is_file():
+                raise HTTPException(404, "sinais de áudio ainda não calculados")
+            result = StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8"))
+        metas = signal_metas(result)
+        out: dict[str, list[float]] = {"game": [], "mic": []}
+        duration = 0.0
+        for key, name in (("game", "game.energy_db"), ("mic", "mic.energy_db")):
+            meta = metas.get(name)
+            if meta is None:
+                continue
+            sig = load_signal(meta)
+            out[key] = _envelope(np.asarray(sig.values), points)
+            duration = max(duration, sig.end_frame / FPS)
+        return WaveformOut(duration_s=duration, points=points, game=out["game"], mic=out["mic"])
 
     @app.get("/media/{media_id}/video")
     def media_video(media_id: int) -> FileResponse:

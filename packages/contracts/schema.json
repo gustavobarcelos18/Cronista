@@ -1,5 +1,110 @@
 {
   "$defs": {
+    "EventOut": {
+      "properties": {
+        "confidence": {
+          "title": "Confidence",
+          "type": "number"
+        },
+        "end_s": {
+          "title": "End S",
+          "type": "number"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quote"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "start_s": {
+          "title": "Start S",
+          "type": "number"
+        },
+        "variant": {
+          "title": "Variant",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "variant",
+        "kind",
+        "start_s",
+        "end_s",
+        "source",
+        "confidence",
+        "quote"
+      ],
+      "title": "EventOut",
+      "type": "object"
+    },
+    "JobOut": {
+      "properties": {
+        "attempts": {
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Error"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "media_file_id": {
+          "title": "Media File Id",
+          "type": "integer"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "variant": {
+          "title": "Variant",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "media_file_id",
+        "stage",
+        "variant",
+        "status",
+        "attempts",
+        "error"
+      ],
+      "title": "JobOut",
+      "type": "object"
+    },
     "MarkerKind": {
       "enum": [
         "momento",
@@ -13,6 +118,91 @@
       ],
       "title": "MarkerKind",
       "type": "string"
+    },
+    "MarkerOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "marker_id": {
+          "title": "Marker Id",
+          "type": "string"
+        },
+        "media_file_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Media File Id"
+        },
+        "media_frame": {
+          "title": "Media Frame",
+          "type": "integer"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "warning": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Warning"
+        }
+      },
+      "required": [
+        "id",
+        "marker_id",
+        "kind",
+        "media_file_id",
+        "media_frame",
+        "source",
+        "warning"
+      ],
+      "title": "MarkerOut",
+      "type": "object"
+    },
+    "MediaFileOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "ordinal": {
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "size_bytes": {
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "ordinal",
+        "size_bytes"
+      ],
+      "title": "MediaFileOut",
+      "type": "object"
     },
     "MediaProbe": {
       "description": "Resultado do `ffprobe` de um arquivo de gravação.",
@@ -115,6 +305,89 @@
       "title": "MediaProbe",
       "type": "object"
     },
+    "SegmentOut": {
+      "properties": {
+        "classe": {
+          "title": "Classe",
+          "type": "string"
+        },
+        "end_s": {
+          "title": "End S",
+          "type": "integer"
+        },
+        "features": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Features",
+          "type": "object"
+        },
+        "markers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Markers",
+          "type": "array"
+        },
+        "razoes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Razoes",
+          "type": "array"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "start_s": {
+          "title": "Start S",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_s",
+        "end_s",
+        "classe",
+        "score",
+        "razoes",
+        "markers",
+        "features"
+      ],
+      "title": "SegmentOut",
+      "type": "object"
+    },
+    "SessionOut": {
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/MediaFileOut"
+          },
+          "title": "Files",
+          "type": "array"
+        },
+        "folder": {
+          "title": "Folder",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "project": {
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project",
+        "folder",
+        "files"
+      ],
+      "title": "SessionOut",
+      "type": "object"
+    },
     "StageResult": {
       "description": "Saída de uma etapa do pipeline, persistida como `result.json` no cache.",
       "properties": {
@@ -139,6 +412,41 @@
         }
       },
       "title": "StageResult",
+      "type": "object"
+    },
+    "WaveformOut": {
+      "description": "Envelope de energia (dBFS) por faixa, em até `points` buckets uniformes (máximo de cada bucket).",
+      "properties": {
+        "duration_s": {
+          "title": "Duration S",
+          "type": "number"
+        },
+        "game": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Game",
+          "type": "array"
+        },
+        "mic": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Mic",
+          "type": "array"
+        },
+        "points": {
+          "title": "Points",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "duration_s",
+        "points",
+        "game",
+        "mic"
+      ],
+      "title": "WaveformOut",
       "type": "object"
     }
   },

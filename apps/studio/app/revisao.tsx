@@ -1,20 +1,19 @@
 "use client";
 
+import type {
+  EventOut,
+  MediaFileOut,
+  SegmentOut,
+  SessionOut,
+  WaveformOut,
+} from "@cronista/contracts";
 import { useEffect, useRef, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
 
-type MediaFile = { id: number; name: string; ordinal: number; size_bytes: number };
-type Session = { id: number; project: string; folder: string; files: MediaFile[] };
-type Segment = {
-  start_s: number;
-  end_s: number;
-  classe: string;
-  score: number;
-  razoes: string[];
-  markers: string[];
-  features: Record<string, number>;
-};
+type MediaFile = MediaFileOut;
+type Session = SessionOut;
+type Segment = SegmentOut;
 
 function fmt(total: number): string {
   const h = Math.floor(total / 3600);
@@ -35,6 +34,8 @@ export default function Revisao() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [media, setMedia] = useState<MediaFile | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [events, setEvents] = useState<EventOut[]>([]);
+  const [wave, setWave] = useState<WaveformOut | null>(null);
   const [error, setError] = useState<string | null>(null);
   const video = useRef<HTMLVideoElement>(null);
 
@@ -47,6 +48,14 @@ export default function Revisao() {
   function pick(file: MediaFile) {
     setMedia(file);
     setSegments([]);
+    setEvents([]);
+    setWave(null);
+    getJson<EventOut[]>(`/media/${file.id}/events`)
+      .then(setEvents)
+      .catch(() => setEvents([]));
+    getJson<WaveformOut>(`/media/${file.id}/waveform`)
+      .then(setWave)
+      .catch(() => setWave(null));
     getJson<Segment[]>(`/media/${file.id}/segments`)
       .then(setSegments)
       .catch((e: Error) => setError(e.message));
@@ -90,6 +99,7 @@ export default function Revisao() {
               controls
               style={{ width: "100%", maxHeight: "50vh", background: "#000" }}
             />
+            {wave && <Waveform wave={wave} segments={segments} onSeek={seek} />}
             <h2>Segmentos ({segments.length})</h2>
             <ol>
               {segments.map((g) => (
@@ -99,6 +109,7 @@ export default function Revisao() {
                   </button>{" "}
                   <strong>{g.classe}</strong> nota {g.score.toFixed(2)}
                   {g.razoes.length > 0 && <small> · {g.razoes.join("; ")}</small>}
+                  <SignalChips events={events.filter((e) => e.start_s < g.end_s && e.end_s >= g.start_s)} />
                 </li>
               ))}
             </ol>
@@ -108,5 +119,65 @@ export default function Revisao() {
         )}
       </section>
     </main>
+  );
+}
+
+function SignalChips({ events }: { events: EventOut[] }) {
+  if (events.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const e of events) counts.set(e.kind, (counts.get(e.kind) ?? 0) + 1);
+  return (
+    <small>
+      {" · sinais: "}
+      {[...counts].map(([kind, n]) => `${kind}${n > 1 ? ` ×${n}` : ""}`).join(", ")}
+    </small>
+  );
+}
+
+const WAVE_H = 80;
+const FLOOR_DB = -60;
+
+function Waveform({
+  wave,
+  segments,
+  onSeek,
+}: {
+  wave: WaveformOut;
+  segments: Segment[];
+  onSeek: (seconds: number) => void;
+}) {
+  const n = Math.max(wave.game.length, wave.mic.length, 1);
+  const bar = (db: number) => Math.max(1, ((Math.min(0, Math.max(FLOOR_DB, db)) - FLOOR_DB) / -FLOOR_DB) * (WAVE_H / 2));
+  const x = (seconds: number) => (seconds / Math.max(wave.duration_s, 1)) * n;
+  return (
+    <svg
+      viewBox={`0 0 ${n} ${WAVE_H}`}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label="Energia do áudio (jogo em cima, microfone embaixo)"
+      style={{ width: "100%", height: WAVE_H, background: "#111", cursor: "pointer", display: "block" }}
+      onClick={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        onSeek(((e.clientX - r.left) / r.width) * wave.duration_s);
+      }}
+    >
+      {segments.map((g) => (
+        <rect
+          key={g.start_s}
+          x={x(g.start_s)}
+          width={Math.max(x(g.end_s) - x(g.start_s), 0.5)}
+          y={0}
+          height={WAVE_H}
+          fill={g.score >= 0.35 ? "#2a6" : "#555"}
+          opacity={0.25}
+        />
+      ))}
+      {wave.game.map((db, i) => (
+        <rect key={`g${i}`} x={i} width={1} y={WAVE_H / 2 - bar(db)} height={bar(db)} fill="#6cf" />
+      ))}
+      {wave.mic.map((db, i) => (
+        <rect key={`m${i}`} x={i} width={1} y={WAVE_H / 2} height={bar(db)} fill="#fc6" />
+      ))}
+    </svg>
   );
 }

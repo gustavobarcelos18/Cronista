@@ -15,6 +15,7 @@ from cronista.domain.models import StageResult
 from cronista.pipeline.stage import Stage, StageContext, StageError
 from cronista.video import frames as vframes
 from cronista.video.context_stages import BrollStage, ContextNoveltyStage, ContextsStage, EmbeddingsStage
+from cronista.video.hud import HudStage
 from cronista.video.ports import VideoModels
 from cronista.video.screen_state import ScreenParams, detect
 from cronista.video.signals import SIGNAL_NAMES, FloatArray, SignalParams, block_signals
@@ -120,7 +121,7 @@ def video_stages(models: VideoModels | None = None, *, with_audio: bool = True) 
     A 3A roda em qualquer máquina. Com `models.embedder` (só `prod`) entram embeddings e contextos;
     com `with_audio` também a `novelty_ctx`, que precisa dos sinais de áudio.
     """
-    stages: list[Stage] = [VideoSignalsStage(), VideoScenesStage()]
+    stages: list[Stage] = [VideoSignalsStage(), VideoScenesStage(), HudStage()]
     if models is not None and models.embedder is not None:
         stages += [EmbeddingsStage(models.embedder), ContextsStage(), BrollStage(models.embedder)]
         if with_audio:

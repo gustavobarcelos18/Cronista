@@ -19,7 +19,7 @@ from cronista.config import Settings
 from cronista.db.models import Marker
 from cronista.domain.frames import FPS
 
-VIDEO_STAGES = ("video_signals", "video_scenes", "video_contexts", "video_broll")
+VIDEO_STAGES = ("video_signals", "video_scenes", "video_contexts", "video_broll", "video_hud")
 STATE_KINDS = ("loading", "menu", "idle")
 THUMBS_PER_KIND = 6
 THUMB_WIDTH = 320
@@ -224,7 +224,7 @@ def broll_table(
         )
     return (
         f"<h3>B-roll candidato: {len(clips)} melhores</h3>"
-        "<table><tr><th>Início</th><th>Duração</th><th>Movimento</th><th>Clima</th><th>Utilidade</th><th>Tags</th>"
+        "<table><tr><th>Início</th><th>Duração</th><th>Movimento</th><th>Clima</th><th>HUD</th><th>Utilidade</th><th>Tags</th>"
         f"<th>Capa</th></tr>{''.join(rows)}</table>"
     )
 

@@ -25,7 +25,7 @@ from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.pipeline.stage import StageContext, StageError
 from cronista.video import frames as vframes
-from cronista.video.broll import BrollParams, candidates, score_candidate
+from cronista.video.broll import BrollParams, candidates, hud_state, score_candidate
 from cronista.video.contexts import NO_CONTEXT, ContextParams, cluster, runs
 from cronista.video.ports import FrameEmbedder
 
@@ -219,8 +219,8 @@ class BrollStage:
     """Biblioteca de B-roll: eventos `broll` (câmera parada/panorâmica) com utilidade, tags e capa."""
 
     name = "video_broll"
-    version = "3"
-    needs: tuple[str, ...] = ("video_scenes", "video_embeddings")
+    version = "4"
+    needs: tuple[str, ...] = ("video_scenes", "video_embeddings", "video_hud")
     uses_gpu = False
 
     def __init__(self, embedder: FrameEmbedder, params: BrollParams | None = None) -> None:
@@ -234,12 +234,15 @@ class BrollStage:
     def run(self, ctx: StageContext) -> StageResult:
         scenes = events_from_result(ctx.inputs["video_scenes"]) or []
         emb = np.asarray(load_embeddings(ctx.inputs["video_embeddings"]), dtype=np.float32)
+        huds = events_from_result(ctx.inputs["video_hud"]) or []
+        has_hud = not ctx.inputs["video_hud"].warnings
         digest = params_hash(self.params(ctx.settings))
         events: list[AnalysisEvent] = []
         for c in candidates(scenes, self.broll):
             info = score_candidate(emb, self.embedder, self.broll, hop=EMBED_HOP, c=c)
             if info is None:
                 continue
+            info["hud"] = hud_state(c, huds, has_hud)
             events.append(
                 AnalysisEvent(
                     kind="broll",

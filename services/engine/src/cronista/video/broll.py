@@ -150,3 +150,16 @@ def search(
         if len(seg):
             scored.append((e, float(_unit(seg.mean(axis=0, keepdims=True))[0] @ q)))
     return sorted(scored, key=lambda t: -t[1])[:top]
+
+
+def hud_state(c: Candidate, events: Sequence[AnalysisEvent], session_has_hud: bool) -> str:
+    """`oculto` (limpo, melhor B-roll), `visivel` ou `desconhecido` (a sessão não tem HUD estável)."""
+    if not session_has_hud:
+        return "desconhecido"
+    span = max(c.end_frame - c.start_frame, 1)
+    hidden = sum(
+        max(0, min(c.end_frame, e.evidence.end_frame) - max(c.start_frame, e.evidence.start_frame))
+        for e in events
+        if e.kind == "hud_oculto"
+    )
+    return "oculto" if hidden >= 0.7 * span else "visivel"

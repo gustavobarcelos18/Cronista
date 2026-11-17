@@ -97,7 +97,7 @@ def test_etapas_embeddings_contextos_e_novelty_ctx(tmp_path: Path, settings: Set
 
 
 def test_so_com_embedder_entram_as_etapas_de_3b() -> None:
-    assert [s.name for s in video_stages()] == ["video_signals", "video_scenes"]
+    assert [s.name for s in video_stages()] == ["video_signals", "video_scenes", "video_hud"]
     models = VideoModels(embedder=FakeEmbedder())
     assert [s.name for s in video_stages(models)][-4:] == [
         "video_embeddings",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import pytest
 from sqlalchemy.orm import Session
@@ -16,6 +17,7 @@ from cronista.relevance.engine import Segment
 from cronista.story.arc import allocate_time, build_chapters
 from cronista.story.models import Beat, ObjKind, ObjState, Script, ScriptLine
 from cronista.story.objectives import (
+    Candidate,
     EvidenceError,
     RuleExtractor,
     add_objective,
@@ -114,9 +116,7 @@ def test_conclusion_needs_corroboration(db: Session, session_ids: tuple[int, int
 
 def test_invalid_citation_is_rejected(db: Session, session_ids: tuple[int, int]) -> None:
     class Liar:
-        def extract(self, speech: Sequence[AnalysisEvent]) -> list:
-            from cronista.story.objectives import Candidate
-
+        def extract(self, speech: Sequence[AnalysisEvent]) -> list[Candidate]:
             return [Candidate("x", ObjKind.SECUNDARIO, ObjState.PROPOSTO, "frase inventada", 0, 100, 0.5)]
 
     pid, sid = session_ids
@@ -170,7 +170,7 @@ def test_free_gaps_exclude_live_speech() -> None:
     assert gaps[-1][1] == 60
 
 
-def make_pack() -> dict:
+def make_pack() -> dict[str, Any]:
     segs = [seg(0, 60, "dia", 0.3, ["d1"]), seg(60, 120, "momento", 0.8, ["m"])]
     chapters = build_chapters([(1, segs)], {"d1": "novo_dia", "m": "momento"})
     allocate_time(chapters, 300)
@@ -199,7 +199,7 @@ def test_story_pack_truncates_when_too_big() -> None:
 # ------------------------------------------------------------------ roteiro
 
 
-def index() -> dict:
+def index() -> dict[str, tuple[float, float, list[tuple[float, float]]]]:
     return {"1:60": (60.0, 120.0, [(0.0, 9.0), (21.0, 40.0)])}
 
 

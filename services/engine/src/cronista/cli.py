@@ -33,6 +33,7 @@ from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
 from cronista.pipeline import recover_orphans
 from cronista.preview import PreviewError, build_preview
+from cronista.profiles import build_models_with_profile
 from cronista.recorder.feedback import ConsoleFeedback
 from cronista.recorder.hotkeys import HotkeyConfigError
 from cronista.recorder.run import run_forever
@@ -141,7 +142,7 @@ def analyze(
                 build_gate(settings),
                 build_models(settings),
                 only.value if only else None,
-                build_video_models(settings),
+                build_models_with_profile(settings),
             )
         except AnalysisError as exc:
             typer.echo(f"erro: {exc}", err=True)

@@ -38,8 +38,37 @@ class FrameEmbedder(Protocol):
         ...
 
 
+class HudReader(Protocol):
+    """Lê o texto de recortes pequenos do HUD (OCR). Só roda nas regiões que o perfil declara (3C-3)."""
+
+    name: str
+    options: dict[str, Any]
+
+    @property
+    def version(self) -> str: ...
+
+    def read(self, crops: Sequence[RgbFrames]) -> list[str]:
+        """Um texto por recorte `(altura, largura, 3)` RGB (tamanhos podem diferir); vazio se nada legível."""
+        ...
+
+
+@dataclass(frozen=True)
+class HudRegionSpec:
+    """Região de HUD em coordenadas relativas ao quadro (0 a 1); vem do perfil, mas o núcleo só vê isto."""
+
+    name: str
+    x: float
+    y: float
+    w: float
+    h: float
+    read: str = "text"
+    tag_theme: bool = False
+
+
 @dataclass(frozen=True)
 class VideoModels:
     """Modelos de vídeo disponíveis nesta máquina. Sem nenhum (`dev`), só rodam os sinais de CPU da 3A."""
 
     embedder: FrameEmbedder | None = None
+    hud_reader: HudReader | None = None
+    hud_regions: tuple[HudRegionSpec, ...] = ()

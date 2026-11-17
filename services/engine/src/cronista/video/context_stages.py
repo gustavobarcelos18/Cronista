@@ -25,7 +25,7 @@ from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.pipeline.stage import StageContext, StageError
 from cronista.video import frames as vframes
-from cronista.video.broll import BrollParams, candidates, hud_state, score_candidate, text_bank
+from cronista.video.broll import BrollParams, candidates, hud_state, score_candidate, text_bank, theme_tags
 from cronista.video.contexts import NO_CONTEXT, ContextParams, cluster, runs
 from cronista.video.hud import HAS_HUD_KEY
 from cronista.video.ports import FrameEmbedder
@@ -221,21 +221,31 @@ class BrollStage:
 
     name = "video_broll"
     version = "5"
-    needs: tuple[str, ...] = ("video_scenes", "video_embeddings", "video_hud")
     uses_gpu = True  # o encoder de texto roda no modelo carregado na GPU: passa pelo gate
 
-    def __init__(self, embedder: FrameEmbedder, params: BrollParams | None = None) -> None:
+    def __init__(
+        self, embedder: FrameEmbedder, params: BrollParams | None = None, *, with_hud_text: bool = False
+    ) -> None:
         self.embedder = embedder
         self.broll = params or BrollParams()
+        self.with_hud_text = with_hud_text
+        self.needs: tuple[str, ...] = ("video_scenes", "video_embeddings", "video_hud") + (
+            ("video_hud_text",) if with_hud_text else ()
+        )
 
     def params(self, settings: Settings) -> dict[str, Any]:
         e = self.embedder
-        return {**self.broll.__dict__, "embedder": [e.name, e.version, e.options]}
+        return {
+            **self.broll.__dict__,
+            "embedder": [e.name, e.version, e.options],
+            "hud_text": self.with_hud_text,
+        }
 
     def run(self, ctx: StageContext) -> StageResult:
         scenes = events_from_result(ctx.inputs["video_scenes"]) or []
         emb = np.asarray(load_embeddings(ctx.inputs["video_embeddings"]), dtype=np.float32)
         huds = events_from_result(ctx.inputs["video_hud"]) or []
+        texts = events_from_result(ctx.inputs["video_hud_text"]) or [] if self.with_hud_text else []
         has_hud = bool(ctx.inputs["video_hud"].data.get(HAS_HUD_KEY, False))
         digest = params_hash(self.params(ctx.settings))
         events: list[AnalysisEvent] = []
@@ -245,6 +255,7 @@ class BrollStage:
             if info is None:
                 continue
             info["hud"] = hud_state(c, huds, has_hud)
+            info["tags"] = [*info["tags"], *theme_tags(c, texts)]
             events.append(
                 AnalysisEvent(
                     kind="broll",

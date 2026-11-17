@@ -9,6 +9,7 @@ para sugerir B-roll e objetivos/regras. Nenhum módulo do núcleo importa um per
 from __future__ import annotations
 
 import dataclasses
+import importlib.util
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -16,7 +17,10 @@ from typing import TYPE_CHECKING, Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from cronista.config import Settings, find_repo_root
 from cronista.video.hud import HudParams, IdleParams
+from cronista.video.models import build_video_models
+from cronista.video.ports import HudRegionSpec, VideoModels
 from cronista.video.screen_state import ScreenParams
 
 if TYPE_CHECKING:
@@ -123,14 +127,32 @@ def resolve_profile(name: str, profiles_dir: Path) -> GameProfile:
     return load_profile(path)
 
 
+def hud_region_specs(profile: GameProfile) -> tuple[HudRegionSpec, ...]:
+    return tuple(HudRegionSpec(r.name, r.x, r.y, r.w, r.h, r.read, r.tag_theme) for r in profile.hud_regions)
+
+
+def load_settings_profile(settings: Settings) -> GameProfile:
+    directory = settings.profiles_dir or find_repo_root() / "profiles"
+    return resolve_profile(settings.profile, directory)
+
+
+def build_models_with_profile(settings: Settings) -> VideoModels:
+    """Modelos de vídeo da máquina mais o OCR do HUD, se o perfil configurado tiver regiões de HUD."""
+    models = build_video_models(settings)
+    regions = hud_region_specs(load_settings_profile(settings))
+    if not regions or importlib.util.find_spec("rapidocr") is None:
+        return models
+    from cronista.video.adapters.rapidocr import RapidOcrReader
+
+    return dataclasses.replace(models, hud_reader=RapidOcrReader(), hud_regions=regions)
+
+
 def render_profile_schema() -> str:
     return json.dumps(GameProfile.model_json_schema(), indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
 
 def main() -> None:
     """Escreve `profiles/profile.schema.json` (editores de YAML usam para validar e completar)."""
-    from cronista.config import find_repo_root
-
     target = find_repo_root() / "profiles" / "profile.schema.json"
     target.parent.mkdir(exist_ok=True)
     target.write_text(render_profile_schema(), encoding="utf-8")

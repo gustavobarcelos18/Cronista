@@ -177,3 +177,16 @@ def hud_state(c: Candidate, events: Sequence[AnalysisEvent], session_has_hud: bo
         if e.kind == "hud_oculto"
     )
     return "oculto" if hidden >= 0.7 * span else "visivel"
+
+
+def theme_tags(c: Candidate, texts: Sequence[AnalysisEvent]) -> list[str]:
+    """Textos de região de HUD marcada `tag_tema` (ex.: bioma do minimapa) lidos durante o candidato."""
+    found: list[str] = []
+    for e in texts:
+        if e.kind != "hud_texto" or not e.payload.get("tag_tema"):
+            continue
+        if e.evidence.start_frame < c.end_frame and e.evidence.end_frame > c.start_frame:
+            tag = str(e.payload.get("texto", "")).strip().lower().replace(" ", "_")
+            if tag and tag not in found:
+                found.append(tag)
+    return found

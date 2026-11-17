@@ -1031,7 +1031,13 @@ def mixar(
         loaded = load_script(script) if script else None
         with open_db(settings.db_path) as db:
             report = mix_session(
-                db, session, settings, loaded, target_min * 60, (profile.objetivos, profile.regras), out
+                db,
+                session,
+                settings,
+                loaded,
+                target_min * 60,
+                (profile.objetivos, profile.regras),
+                out,
             )
     except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
         typer.echo(f"erro: {exc}", err=True)
@@ -1070,11 +1076,20 @@ def montagem(
         loaded = load_script(script) if script else None
         with open_db(settings.db_path) as db:
             report = export_montagem(
-                db, session, settings, loaded, target_min * 60, (profile.objetivos, profile.regras), out
+                db,
+                session,
+                settings,
+                loaded,
+                target_min * 60,
+                (profile.objetivos, profile.regras),
+                out,
+                build_gate(settings),
             )
     except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
         typer.echo(f"erro: {exc}", err=True)
         raise typer.Exit(1) from exc
+    if report.reused:
+        typer.echo("nada mudou desde a última versão completa: reaproveitada, nada foi regerado")
     typer.echo(
         f"versão {report.version}: {report.duration_s / 60:.1f} min, {report.clips} cortes,"
         f" {report.markers} marcadores"

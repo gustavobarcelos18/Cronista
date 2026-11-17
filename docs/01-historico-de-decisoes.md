@@ -1299,6 +1299,13 @@ Branch `fase/5-roteiro`, a partir da Fase 4. Código sem modelo nem Claude: a 5A
 
 Branch `fase/6-montagem`, a partir da `main` (Fases 1–5 e code-review já mergeados). Escrito [fase-6-montagem-e-exportacao.md](fase-6-montagem-e-exportacao.md) com 6A (plano de montagem em quadros inteiros a 60 fps), 6B (mixagem), 6C (exportação), 6D (candidatos a Shorts) e 6E (CLI). Decisões: (1) cada recurso do FCPXML é validado isoladamente, porque um recusado derruba o arquivo; (2) marcadores coloridos saem como Lua de uma linha para o Console (única via que o spike confirmou); (3) **stems A1/A2 cobrem só os trechos usados**, não a sessão inteira (resolve a pergunta aberta da seção 9, item "stems processados"); (4) SRT remapeado para tempo de timeline, com fala vazia em 0 s. Itens do spike ainda sem resposta (relink, FCPXML do app com trilhas, cartela editável, render) bloqueiam só o aceite da 6C em `prod`.
 
+## 54. Fase 6E: retomada por hash e pausa de GPU no `montagem` (2026-11-17)
+
+Fecha as duas pendências da 6E. Retomada: `entrada_hash` (SHA-256 do plano em JSON + roteiro + versão do plano) no
+manifesto; versão completa idêntica é reaproveitada, interrompida é continuada, mudança de entrada cria versão nova
+(nunca apaga a anterior). Timelapses passam para `<base>/timelapses`. Pausa: `build_gate` do ambiente consultado antes
+de cada timelapse e da mixagem. Não interrompe um FFmpeg já em curso. 425 testes verdes.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

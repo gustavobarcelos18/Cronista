@@ -9,10 +9,15 @@ from cronista.assembly.plan import EditPlan, Mode, Track
 from cronista.config import Settings
 from cronista.domain.frames import FPS
 from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.pipeline.gpu import GpuGate, wait_until_free
 
 
 def render_timelapses(
-    plan: EditPlan, masters: Mapping[int, Path], out_dir: Path, settings: Settings
+    plan: EditPlan,
+    masters: Mapping[int, Path],
+    out_dir: Path,
+    settings: Settings,
+    gate: GpuGate | None = None,
 ) -> dict[int, Path]:
     """Um MP4 por item de timelapse (índice do item no plano → arquivo). Reaproveita o que já existe."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -22,6 +27,8 @@ def render_timelapses(
             continue
         target = out_dir / f"tl-{item.file_id}-{item.in_frame}-{item.out_frame}-x{item.speed}.mp4"
         if not target.is_file() or target.stat().st_size == 0:
+            if gate is not None:  # a GPU é a mesma do OBS e do jogo: espera antes de cada render
+                wait_until_free(gate, settings.gpu_poll_seconds, etapa="timelapse", arquivo=target.name)
             run_ffmpeg(
                 settings,
                 [

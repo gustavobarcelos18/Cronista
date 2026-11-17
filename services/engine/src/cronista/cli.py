@@ -773,32 +773,24 @@ def roteiro_import(
     script: Annotated[Path, typer.Argument(help="roteiro.json escrito pelo /roteirizar")],
 ) -> None:
     """Valida o roteiro (segmento, espaço livre, antecipação justificada, sinais de IA) e gera o SRT."""
-    from cronista.story.script import load_script, to_srt, validate_script
-    from cronista.story.service import segment_index
+    from cronista.story.script import load_script
+    from cronista.story.service import ScriptSaveError, save_script
 
     settings = load_settings()
     folder = settings.data_dir / "story" / str(session)
-    pack_path = folder / "story-pack.json"
-    if not pack_path.is_file():
-        typer.echo("erro: rode `cronista story` antes", err=True)
-        raise typer.Exit(1)
     try:
         loaded = load_script(script)
+        report = save_script(folder, loaded)
     except ValueError as exc:
         typer.echo(f"erro: {exc}", err=True)
         raise typer.Exit(1) from exc
-    index = segment_index(json.loads(pack_path.read_text(encoding="utf-8")))
-    report = validate_script(loaded, index)
-    for err in report.errors:
-        typer.echo(f"erro: {err}", err=True)
+    except ScriptSaveError as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        for err in exc.errors:
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1) from exc
     for warn in report.warnings:
         typer.echo(f"aviso: {warn}")
-    if not report.ok:
-        raise typer.Exit(1)
-    starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
-    loaded = loaded.model_copy(update={"lines": report.lines})
-    (folder / "roteiro.json").write_text(loaded.model_dump_json(indent=1), encoding="utf-8")
-    (folder / "roteiro.srt").write_text(to_srt(report.lines, starts), encoding="utf-8")
     total = sum(line.est_s or 0 for line in report.lines)
     typer.echo(f"{len(report.lines)} falas, ~{total:.0f} s de narração; {folder / 'roteiro.srt'}")
 

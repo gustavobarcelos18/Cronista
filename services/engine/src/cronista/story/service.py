@@ -16,6 +16,7 @@ from cronista.domain.evidence import AnalysisEvent
 from cronista.relevance.engine import Segment
 from cronista.review.decisions import load_effective_segments
 from cronista.story.arc import Chapter, allocate_time, build_chapters
+from cronista.story.models import Script
 from cronista.story.objectives import (
     DiscoveryReport,
     RuleExtractor,
@@ -25,7 +26,7 @@ from cronista.story.objectives import (
     sync_profile_objectives,
 )
 from cronista.story.pack import build_story_pack
-from cronista.story.script import voice_profile
+from cronista.story.script import ValidationReport, to_srt, validate_script, voice_profile
 
 DEFAULT_TARGET_S = 40 * 60.0
 
@@ -122,3 +123,37 @@ def write_pack(directory: Path, result: StoryResult) -> tuple[Path, Path]:
     voice_path = directory / "voice-profile.json"
     voice_path.write_text(json.dumps(result.voice, ensure_ascii=False, indent=1), encoding="utf-8")
     return pack_path, voice_path
+
+
+class ScriptSaveError(Exception):
+    """Roteiro não pôde ser salvo: sem story-pack ou com erros de validação."""
+
+    def __init__(self, message: str, errors: list[str] | None = None) -> None:
+        super().__init__(message)
+        self.errors = errors or []
+
+
+def save_script(folder: Path, script: Script) -> ValidationReport:
+    """Valida o roteiro contra o story-pack da pasta e grava `roteiro.json` + `roteiro.srt`.
+
+    A versão anterior nunca se perde: vira `roteiro.v<N>.json` (histórico só de inserção). Com erros de
+    validação nada é gravado.
+    """
+    pack_path = folder / "story-pack.json"
+    if not pack_path.is_file():
+        raise ScriptSaveError("rode `cronista story` antes")
+    index = segment_index(json.loads(pack_path.read_text(encoding="utf-8")))
+    report = validate_script(script, index)
+    if not report.ok:
+        raise ScriptSaveError("roteiro inválido", report.errors)
+    current = folder / "roteiro.json"
+    if current.is_file():
+        n = 1
+        while (folder / f"roteiro.v{n}.json").exists():
+            n += 1
+        current.replace(folder / f"roteiro.v{n}.json")
+    saved = script.model_copy(update={"lines": report.lines})
+    starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
+    current.write_text(saved.model_dump_json(indent=1), encoding="utf-8")
+    (folder / "roteiro.srt").write_text(to_srt(report.lines, starts), encoding="utf-8")
+    return report

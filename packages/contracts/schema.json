@@ -347,6 +347,115 @@
       "title": "MediaProbe",
       "type": "object"
     },
+    "Script": {
+      "properties": {
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/ScriptLine"
+          },
+          "title": "Lines",
+          "type": "array"
+        },
+        "provider": {
+          "default": "desconhecido",
+          "title": "Provider",
+          "type": "string"
+        },
+        "version": {
+          "default": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "title": "Script",
+      "type": "object"
+    },
+    "ScriptLine": {
+      "description": "Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5).",
+      "properties": {
+        "est_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est S"
+        },
+        "justification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Justification"
+        },
+        "kind": {
+          "default": "narracao",
+          "enum": [
+            "narracao",
+            "antecipacao"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "segment_id": {
+          "minLength": 3,
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start S"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "text"
+      ],
+      "title": "ScriptLine",
+      "type": "object"
+    },
+    "ScriptOut": {
+      "properties": {
+        "script": {
+          "$ref": "#/$defs/Script"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "script"
+      ],
+      "title": "ScriptOut",
+      "type": "object"
+    },
     "SegmentOut": {
       "properties": {
         "adj_end_s": {

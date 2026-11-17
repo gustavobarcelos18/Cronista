@@ -9,6 +9,7 @@ import type {
   WaveformOut,
 } from "@cronista/contracts";
 import { useEffect, useRef, useState } from "react";
+import Roteiro from "./roteiro";
 
 const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
 
@@ -34,6 +35,7 @@ async function getJson<T>(path: string): Promise<T> {
 export default function Revisao() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [media, setMedia] = useState<MediaFile | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [events, setEvents] = useState<EventOut[]>([]);
   const [wave, setWave] = useState<WaveformOut | null>(null);
@@ -46,8 +48,9 @@ export default function Revisao() {
       .catch(() => setError("Engine fora do ar. Rode `cronista api`."));
   }, []);
 
-  function pick(file: MediaFile) {
+  function pick(file: MediaFile, session: number) {
     setMedia(file);
+    setSessionId(session);
     setSegments([]);
     setEvents([]);
     setWave(null);
@@ -105,7 +108,7 @@ export default function Revisao() {
             <ul>
               {s.files.map((f) => (
                 <li key={f.id}>
-                  <button onClick={() => pick(f)} aria-pressed={media?.id === f.id}>
+                  <button onClick={() => pick(f, s.id)} aria-pressed={media?.id === f.id}>
                     {f.name}
                   </button>
                 </li>
@@ -147,6 +150,7 @@ export default function Revisao() {
                 </li>
               ))}
             </ol>
+            {sessionId !== null && <Roteiro key={sessionId} sessionId={sessionId} />}
           </>
         ) : (
           <p>Escolha um arquivo à esquerda.</p>

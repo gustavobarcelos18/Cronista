@@ -135,3 +135,41 @@ def test_segmentos_efetivos_aplicam_decisoes(db: Session) -> None:
     assert [(s.start_s, s.end_s) for s in out] == [(32, 39), (50, 60)]
     record_decision(db, 1, 10, "aceito")  # a última decisão vale
     assert [s.start_s for s in load_effective_segments(db, 1)] == [10, 32, 50]
+
+
+def test_api_roteiro_edita_e_guarda_historico(settings: Settings) -> None:
+    import json
+
+    folder = settings.data_dir / "story" / "1"
+    folder.mkdir(parents=True)
+    pack = {
+        "capitulos": [
+            {
+                "beats": [
+                    {
+                        "segmento_id": "s-1",
+                        "inicio_s": 10,
+                        "fim_s": 30,
+                        "lacunas": [{"inicio_s": 10, "fim_s": 20}],
+                    }
+                ]
+            }
+        ]
+    }
+    client = TestClient(create_app(settings))
+    assert client.get("/sessions/1/script").status_code == 404
+    body = {"lines": [{"segment_id": "s-1", "text": "Aqui ele perdeu tudo."}]}
+    assert client.put("/sessions/1/script", json=body).status_code == 422  # sem story-pack
+
+    (folder / "story-pack.json").write_text(json.dumps(pack), encoding="utf-8")
+    bad = client.put("/sessions/1/script", json={"lines": [{"segment_id": "zzz", "text": "x"}]})
+    assert bad.status_code == 422 and "inexistente" in bad.json()["detail"]["errors"][0]
+    assert not (folder / "roteiro.json").exists()  # erro não grava nada
+
+    ok = client.put("/sessions/1/script", json=body).json()
+    assert ok["script"]["lines"][0]["est_s"] > 0
+    body["lines"][0]["text"] = "Aqui ele perdeu a casa inteira."
+    client.put("/sessions/1/script", json=body)
+    assert client.get("/sessions/1/script").json()["script"]["lines"][0]["text"].endswith("inteira.")
+    assert "perdeu tudo" in (folder / "roteiro.v1.json").read_text(encoding="utf-8")
+    assert (folder / "roteiro.srt").is_file()

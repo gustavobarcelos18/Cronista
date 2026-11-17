@@ -21,6 +21,9 @@ from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, record_decision
+from cronista.story.models import Script
+from cronista.story.script import load_script
+from cronista.story.service import ScriptSaveError, save_script
 
 
 class MediaFileOut(BaseModel):
@@ -70,6 +73,11 @@ class SegmentOut(BaseModel):
     adj_end_s: float | None = None
 
 
+class ScriptOut(BaseModel):
+    script: Script
+    warnings: list[str] = []
+
+
 class DecisionIn(BaseModel):
     decision: Literal["aceito", "rejeitado", "ajustado"]
     start_s: float | None = None
@@ -108,7 +116,7 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins or ["http://localhost:3000", "http://127.0.0.1:3000"],
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PUT"],
         allow_headers=["*"],
     )
 
@@ -170,6 +178,22 @@ def create_app(settings: Settings, origins: list[str] | None = None) -> FastAPI:
                 )
                 for m in rows
             ]
+
+    @app.get("/sessions/{session_id}/script", response_model=ScriptOut)
+    def get_script(session_id: int) -> ScriptOut:
+        path = settings.data_dir / "story" / str(session_id) / "roteiro.json"
+        if not path.is_file():
+            raise HTTPException(404, "roteiro ainda não importado (`cronista roteiro-import`)")
+        return ScriptOut(script=load_script(path))
+
+    @app.put("/sessions/{session_id}/script", response_model=ScriptOut)
+    def put_script(session_id: int, script: Script) -> ScriptOut:
+        """Valida e grava o roteiro editado; a versão anterior vira `roteiro.v<N>.json`."""
+        try:
+            report = save_script(settings.data_dir / "story" / str(session_id), script)
+        except ScriptSaveError as e:
+            raise HTTPException(422, {"message": str(e), "errors": e.errors}) from e
+        return ScriptOut(script=script.model_copy(update={"lines": report.lines}), warnings=report.warnings)
 
     @app.get("/media/{media_id}/segments", response_model=list[SegmentOut])
     def media_segments(media_id: int) -> list[SegmentOut]:

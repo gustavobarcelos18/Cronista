@@ -12,6 +12,7 @@ from cronista.api.app import (
     JobOut,
     MarkerOut,
     MediaFileOut,
+    ScriptOut,
     SegmentOut,
     SessionOut,
     WaveformOut,
@@ -30,6 +31,7 @@ def build_schema() -> dict[str, object]:
         MarkerOut,
         SegmentOut,
         DecisionIn,
+        ScriptOut,
         EventOut,
         WaveformOut,
     ):

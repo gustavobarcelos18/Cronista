@@ -45,6 +45,16 @@ export type Path = string;
 export type PixFmt = string | null;
 export type VideoCodec = string | null;
 export type Width = number | null;
+export type EstS = number | null;
+export type Justification = string | null;
+export type Kind2 = "narracao" | "antecipacao";
+export type SegmentId = string;
+export type StartS2 = number | null;
+export type Text = string;
+export type Lines = ScriptLine[];
+export type Provider = string;
+export type Version = number;
+export type Warnings = string[];
 export type AdjEndS = number | null;
 export type AdjStartS = number | null;
 export type Classe = string;
@@ -53,13 +63,13 @@ export type EndS2 = number;
 export type Markers = string[];
 export type Razoes = string[];
 export type Score = number;
-export type StartS2 = number;
+export type StartS3 = number;
 export type Files = MediaFileOut[];
 export type Folder = string;
 export type Id3 = number;
 export type Project = string;
 export type Files1 = string[];
-export type Warnings = string[];
+export type Warnings1 = string[];
 export type DurationS1 = number;
 export type Game = number[];
 export type Mic = number[];
@@ -147,6 +157,37 @@ export interface MediaProbe {
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "Script".
+ */
+export interface Script {
+  lines?: Lines;
+  provider?: Provider;
+  version?: Version;
+}
+/**
+ * Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5).
+ *
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ScriptLine".
+ */
+export interface ScriptLine {
+  est_s?: EstS;
+  justification?: Justification;
+  kind?: Kind2;
+  segment_id: SegmentId;
+  start_s?: StartS2;
+  text: Text;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ScriptOut".
+ */
+export interface ScriptOut {
+  script: Script;
+  warnings?: Warnings;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "SegmentOut".
  */
 export interface SegmentOut {
@@ -159,7 +200,7 @@ export interface SegmentOut {
   markers: Markers;
   razoes: Razoes;
   score: Score;
-  start_s: StartS2;
+  start_s: StartS3;
 }
 export interface Features {
   [k: string]: number;
@@ -183,7 +224,7 @@ export interface SessionOut {
 export interface StageResult {
   data?: Data;
   files?: Files1;
-  warnings?: Warnings;
+  warnings?: Warnings1;
 }
 export interface Data {
   [k: string]: unknown;

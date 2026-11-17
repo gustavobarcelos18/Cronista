@@ -38,4 +38,7 @@ def build_models(settings: Settings) -> AudioModels:
             language=settings.audio_language,
         ),
         classifier=AstSoundClassifier(root / "ast", model_id=settings.sound_model),
+        mic_classifier=AstSoundClassifier(
+            root / "ast", model_id=settings.sound_model, hop_s=0.5, window_s=2.0, min_report=0.1
+        ),
     )

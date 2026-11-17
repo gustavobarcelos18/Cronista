@@ -101,7 +101,7 @@ def find_screams(level: FloatArray, f0: FloatArray, params: ScreamParams) -> lis
 
 
 class ScreamHeuristic:
-    """Classificador (porta `SoundEventClassifier`) que só emite `grito`. CPU, sem modelo baixado."""
+    """Classificador (porta `SoundEventClassifier`) que só emite `exclamacao`. CPU, sem modelo baixado."""
 
     name = "grito-energia-f0"
     version = "1"
@@ -131,4 +131,4 @@ class ScreamHeuristic:
         if not levels:
             return []
         spans = find_screams(np.concatenate(levels), np.concatenate(pitches), p)
-        return [SoundEventSpan(label="grito", start_s=s, end_s=e, score=c) for s, e, c in spans]
+        return [SoundEventSpan(label="exclamacao", start_s=s, end_s=e, score=c) for s, e, c in spans]

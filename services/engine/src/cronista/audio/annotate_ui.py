@@ -14,7 +14,7 @@ from pathlib import Path
 from cronista.domain.frames import FPS, frame_to_seconds
 from cronista.gabarito import CLASSES
 
-CLASSES_UI = ["fala", "risada", "grito", "teclado", "respiracao", "farm"]
+CLASSES_UI = ["fala", "risada", "exclamacao", "teclado", "respiracao", "farm"]
 
 
 def build_suggestions(events: list[tuple[str, int, int, float, str | None]]) -> list[dict[str, object]]:

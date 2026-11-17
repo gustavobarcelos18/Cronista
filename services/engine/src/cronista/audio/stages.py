@@ -17,6 +17,7 @@ from cronista.audio.ports import (
     SpeechDetector,
     Transcriber,
 )
+from cronista.audio.scream import ScreamHeuristic
 from cronista.audio.signals import HOP_FRAMES, SIGNALS_KEY, SignalMeta, write_signal
 from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
@@ -169,7 +170,7 @@ class SpeechStage:
 
 
 class SoundEventsStage:
-    """Eventos sonoros de uma faixa. No microfone só risada e grito (teclado e respiração são descartados)."""
+    """Eventos sonoros de uma faixa. No microfone só risada e exclamação (teclado e respiração caem)."""
 
     name = "sound_events"
     version = "1"
@@ -235,8 +236,11 @@ def analysis_stages(models: AudioModels) -> list[Stage]:
         stages.append(SpeechStage(models.detector, models.transcriber))
     if models.classifier is not None:
         stages.append(SoundEventsStage(models.classifier, GAME_TRACK))
-        # Microfone: corte baixo porque risada curta dilui na janela de 10 s do AST (medido na 2C: 0,12).
-        stages.append(SoundEventsStage(models.classifier, MIC_TRACK, min_score=0.1))
+        # Microfone: janela curta (2 s) e corte baixo, porque risada curta some na janela de 10 s do AST (2C).
+        mic = models.mic_classifier or models.classifier
+        stages.append(SoundEventsStage(mic, MIC_TRACK, min_score=0.1))
+    # Exclamação (grito ou fala de emoção alta) por energia e altura da voz: CPU, sem modelo (histórico §46).
+    stages.append(SoundEventsStage(ScreamHeuristic(), MIC_TRACK, min_score=0.0))
     return stages
 
 

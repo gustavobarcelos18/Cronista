@@ -159,12 +159,17 @@ def evaluate(
             errors += round(rate * ref_words)
             words += ref_words
 
+    ALIASES = {"exclamacao": ("exclamacao", "grito")}  # `grito` é o nome legado (histórico §46)
+
     def spans(cls: str) -> list[Interval]:
-        return [(a.start_frame, a.end_frame) for a in annotations if a.cls == cls]
+        names = ALIASES.get(cls, (cls,))
+        return [(a.start_frame, a.end_frame) for a in annotations if a.cls in names]
 
     detection = {
-        cls: match_events(spans(cls), [iv for kind, iv in events if kind == cls], tolerance)
-        for cls in ("risada", "grito")
+        cls: match_events(
+            spans(cls), [iv for kind, iv in events if kind in ALIASES.get(cls, (cls,))], tolerance
+        )
+        for cls in ("risada", "exclamacao")
     }
     spoken = spans("fala")
     # Texto do Whisper onde não há fala anotada também é falso positivo (ruído de boca virando palavra).

@@ -65,7 +65,7 @@ def downsample(values: FloatArray, limit: int = MAX_POINTS) -> tuple[FloatArray,
 
 
 def _event_class(kind: str) -> str:
-    return kind if kind in ("fala", "risada", "grito") else "other"
+    return "grito" if kind == "exclamacao" else kind if kind in ("fala", "risada", "grito") else "other"
 
 
 def _ticks(total_frames: int) -> list[int]:

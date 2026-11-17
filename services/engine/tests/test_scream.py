@@ -30,7 +30,7 @@ def test_grito_agudo_e_alto_e_detectado_fala_normal_nao(tmp_path: Path) -> None:
     path = _wav(tmp_path, [silence, speech, shout, speech, silence])
     spans = ScreamHeuristic().classify(path, pause=lambda: None)
     assert len(spans) == 1
-    assert spans[0].label == "grito"
+    assert spans[0].label == "exclamacao"
     assert 20.5 < spans[0].start_s < 21.5
 
 

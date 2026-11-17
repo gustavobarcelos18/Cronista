@@ -31,8 +31,8 @@ class BenchRow:
     wall_s: float
     warmup_s: float  # primeira chamada: inclui download e carga do modelo
     speed_x: float  # segundos de áudio por segundo de relógio (acima de 1 = mais rápido que o tempo real)
-    vram_peak_mib: int | None  # acima da linha de base antes do modelo
-    ram_peak_mib: int | None
+    vram_peak_mib: int | None  # pico (pesos + trabalho) acima do que a GPU usava antes de carregar o modelo
+    ram_peak_mib: int | None  # RSS do processo (acumula os modelos já carregados antes)
     result_count: int
     note: str = ""
 
@@ -111,10 +111,11 @@ def clip_wav(src: Path, dst: Path, start_s: float, seconds: float) -> float:
 def _measure(
     model: str, track: str, audio_s: float, warmup: Callable[[], Any], run: Callable[[], int], note: str = ""
 ) -> BenchRow:
-    t0 = time.monotonic()
-    warmup()
-    warmup_s = time.monotonic() - t0
+    # VRAM: a linha de base é de antes da carga, então o pico inclui os pesos (o aquecimento os carrega).
     with _Peak() as peak:
+        t0 = time.monotonic()
+        warmup()
+        warmup_s = time.monotonic() - t0
         t1 = time.monotonic()
         count = run()
         wall = time.monotonic() - t1
@@ -182,6 +183,7 @@ def run_bench(
                     seconds,
                     lambda: clf.classify(short, pause=no_pause),
                     lambda clip=clip: len(clf.classify(clip, pause=no_pause)),  # type: ignore[misc]
+                    note="modelo já carregado na faixa anterior" if track == "game" else "",
                 )
             )
     return rows

@@ -1118,6 +1118,58 @@ interrupção específica da análise; `Evidence`/`AnalysisEvent` ainda fora do 
 
 ---
 
+## 44. Fase 2B: modelos reais e benchmark de desempenho (2026-11-16)
+
+O criador autorizou a instalação ("permissao para instalar"), depois de ver a lista de modelos e os tamanhos estimados.
+
+**Decisão de ambiente: um só.** Os modelos entram como grupo opcional `ml` do engine (`uv sync --group ml`), fora do `uv sync`
+da CI e do `dev`; PyTorch vem do índice `cu128` da PyTorch (`[tool.uv.sources]` só para `torch` e `torchaudio`). Silero (PyTorch),
+faster-whisper (CTranslate2, CUDA) e o classificador (PyTorch, CUDA) rodaram em sequência **no mesmo processo** na RTX 3060, sem
+conflito de DLL: a exceção do CTranslate2 (plano, seção 5.2) **não precisou de processo separado**. A 1C já tinha testado as duas
+ordens de importação num ambiente descartável. `audio_models: true` só em `config/prod.yaml`; sem o grupo `ml`, `cronista analyze`
+volta aos sinais de CPU e avisa o que não rodou.
+
+**Versões verificadas:** driver NVIDIA 610.88 (CUDA 13.3), torch 2.11.0+cu128, torchaudio 2.11.0+cu128, ctranslate2 4.9.0,
+faster-whisper 1.2.1, silero-vad 6.2.3, transformers 5.23.0, onnxruntime 1.32.0, huggingface-hub 2.4.0, psutil 7.2.2.
+
+**Modelos (em `data/prod/models/`, fora do git):**
+
+| Modelo | Origem | Tamanho medido | Licença (⚠️ de memória, conferir) |
+|---|---|---|---|
+| Silero VAD | pacote `silero-vad` (modelo embutido) | ~2 MB | MIT |
+| faster-whisper `large-v3-turbo` | `mobiuslabsgmbh/faster-whisper-large-v3-turbo` (Hugging Face; conversão CT2 dos pesos da OpenAI) | 1,6 GB | MIT |
+| AST AudioSet | `MIT/ast-finetuned-audioset-10-10-0.4593` (Hugging Face) | 331 MB | BSD-3-Clause |
+
+Classificador de eventos: o primeiro candidato é o **AST** (AudioSet, 527 classes, com Laughter, Screaming, Typing, Breathing,
+Explosion, Music), porque é o que mais rápido vira medida com `transformers`; PANNs, BEATs e CLAP continuam candidatos da 2C. Tem
+resolução de 2,5 s (janela de 10,24 s com passo de 2,5 s): marca onde há o evento, não corta com precisão.
+
+**Desempenho medido** (`cronista bench-audio 1 --minutes 10`, primeiros 10 min de `claude_teste.mp4`, RTX 3060, `prod`):
+
+| Modelo | Faixa | x tempo real | 10 h de sessão em | VRAM (pico, com pesos) |
+|---|---|---|---|---|
+| Silero VAD (CPU) | microfone | 79 | ~8 min | ~0 |
+| faster-whisper large-v3-turbo (int8_float16) | microfone | 34 | ~18 min | ~1,3 GB |
+| AST AudioSet | microfone | 116 | ~5 min | ~0,9 GB |
+| AST AudioSet | jogo | 121 | ~5 min | (modelo já carregado) |
+
+Análise completa da sessão real (`cronista analyze 1`, 37 min, os três modelos mais os sinais): **3m14**, incluindo carregar os
+modelos. Saída: 550 falas (1158 s), 15 eventos de música no jogo, 0 de risada/grito no microfone. A transcrição é PT-BR coerente
+em amostra (conf. média 0,80); **a qualidade só se mede na 2C com o gabarito**. O Whisper roda só nos trechos de fala (54% do
+trecho medido), então o "x tempo real" depende de quanto o criador fala. As estimativas de 10 h são **extrapoladas de 10 min**,
+não medidas em 10 h reais.
+
+**Correção de método:** a primeira medição de VRAM lia a linha de base depois do aquecimento e deixava os pesos de fora (Whisper
+aparecia com 210 MiB). A linha de base agora é de antes da carga.
+
+**DeepFilterNet:** instala (0.5.6), mas rebaixa o NumPy 2.5 do projeto para 1.26 e o `packaging`. Não entra no ambiente principal;
+vira teste da 2C num ambiente descartável.
+
+**Não feito na 2B:** pausa com o OBS gravando de verdade (precisa do criador gravando); 10 h reais de áudio; cobertura
+`@pytest.mark.gpu` rodada (os testes existem em `tests/test_adapters_gpu.py`, ver resultado no PR).
+
+---
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

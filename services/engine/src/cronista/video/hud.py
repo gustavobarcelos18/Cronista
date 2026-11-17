@@ -16,7 +16,7 @@ import numpy as np
 import numpy.typing as npt
 
 from cronista.audio.events import EVENTS_KEY, events_from_result, write_events_file
-from cronista.audio.signals import load_signal, signal_metas
+from cronista.audio.signals import SIGNALS_KEY, load_signal, signal_metas, write_signal
 from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 from cronista.domain.frames import FPS
@@ -120,7 +120,7 @@ class HudStage:
     """Eventos `hud_oculto`: trechos de cena de jogo sem o HUD que a sessão mostra no resto do tempo."""
 
     name = "video_hud"
-    version = "2"
+    version = "3"
     needs: tuple[str, ...] = ("proxy", "video_scenes", "video_signals")
     uses_gpu = False
 
@@ -185,4 +185,112 @@ class HudStage:
             for a, b, conf in hidden_spans(score, blocked, self.hud)
         ]
         path = write_events_file(ctx.out_dir, events)
-        return StageResult(files=[path], data={EVENTS_KEY: path, "count": len(events)}, warnings=warnings)
+        meta = write_signal(
+            ctx.out_dir,
+            "video.hud_match",
+            score,
+            unit="0-1",
+            source_track="video",
+            version=self.version,
+            params=self.params(ctx.settings),
+            hop_frames=FPS,
+            model="video-heuristica",
+        )
+        return StageResult(
+            files=[path, meta.path],
+            data={
+                EVENTS_KEY: path,
+                "count": len(events),
+                SIGNALS_KEY: {"video.hud_match": meta.model_dump()},
+            },
+            warnings=warnings,
+        )
+
+
+@dataclass(frozen=True)
+class IdleParams:
+    still_min: float = 0.90
+    """Fração de pixels parados (sinal `still` da 3A) para a cena contar como parada."""
+    hud_full: float = 0.9
+    """HUD inteiro à vista: painel, chat ou boas-vindas cobrem parte dele (0,2 a 0,85)."""
+    dark_luma: float = 0.03
+    min_seconds: float = 10.0
+
+
+def idle_spans(
+    still: FloatArray, luma: FloatArray, hud_match: FloatArray, params: IdleParams
+) -> list[tuple[int, int, float]]:
+    """Trechos `(inicio, fim, confiança)` em segundos: cena de jogo parada, com o HUD inteiro à vista."""
+    n = min(len(still), len(luma), len(hud_match))
+    ok = (still[:n] >= params.still_min) & (hud_match[:n] >= params.hud_full) & (luma[:n] >= params.dark_luma)
+    out: list[tuple[int, int, float]] = []
+    i = 0
+    while i < n:
+        if not ok[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and ok[j]:
+            j += 1
+        if j - i >= params.min_seconds:
+            conf = float(
+                np.clip(
+                    0.3 + 0.4 * (hud_match[i:j].mean() - params.hud_full) / (1 - params.hud_full), 0.3, 0.7
+                )
+            )
+            out.append((i, j, conf))
+        i = j
+    return out
+
+
+class IdleStage:
+    """Eventos `idle`: personagem parado com o jogo rodando (cena parada e HUD inteiro, nunca menu)."""
+
+    name = "video_idle"
+    version = "1"
+    needs: tuple[str, ...] = ("video_signals", "video_hud")
+    uses_gpu = False
+
+    def __init__(self, params: IdleParams | None = None) -> None:
+        self.idle = params or IdleParams()
+
+    def params(self, settings: Settings) -> dict[str, Any]:
+        return dict(self.idle.__dict__)
+
+    def run(self, ctx: StageContext) -> StageResult:
+        if ctx.inputs["video_hud"].warnings:  # sem HUD estável não há como separar jogo de tela de interface
+            path = write_events_file(ctx.out_dir, [])
+            return StageResult(
+                files=[path],
+                data={EVENTS_KEY: path, "count": 0},
+                warnings=["sem HUD estável nesta sessão: idle não detectável"],
+            )
+        sig = signal_metas(ctx.inputs["video_signals"])
+        per_s = vframes.SAMPLE_FPS
+
+        def by_second(name: str) -> FloatArray:
+            v = np.asarray(load_signal(sig[f"video.{name}"]).values, np.float32)
+            return v[: len(v) // per_s * per_s].reshape(-1, per_s).mean(axis=1)
+
+        match_s = np.asarray(
+            load_signal(signal_metas(ctx.inputs["video_hud"])["video.hud_match"]).values, np.float32
+        )
+        digest = params_hash(self.params(ctx.settings))
+        events = [
+            AnalysisEvent(
+                kind="idle",
+                evidence=Evidence(
+                    source=EvidenceSource.CENA,
+                    start_frame=a * FPS,
+                    end_frame=b * FPS,
+                    confidence=conf,
+                    model="video-heuristica",
+                    model_version=self.version,
+                    params_hash=digest,
+                ),
+                payload={"motivo": "cena parada com o HUD inteiro", "hud_match": float(match_s[a:b].mean())},
+            )
+            for a, b, conf in idle_spans(by_second("still"), by_second("luma_mean"), match_s, self.idle)
+        ]
+        path = write_events_file(ctx.out_dir, events)
+        return StageResult(files=[path], data={EVENTS_KEY: path, "count": len(events)})

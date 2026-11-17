@@ -85,3 +85,17 @@ def test_tipos_de_menu_agrupam_parecidos_e_separam_diferentes() -> None:
     vec /= np.linalg.norm(vec, axis=1, keepdims=True)
     labels, cents = group(vec, MenuParams(similarity=0.8))
     assert len(cents) == 3 and labels[0] == labels[2] == labels[5] and labels[1] == labels[4]
+
+
+def test_idle_so_com_cena_parada_e_hud_inteiro() -> None:
+    from cronista.video.hud import IdleParams, idle_spans
+
+    n = 60
+    still = np.full(n, 0.95, np.float32)
+    luma = np.full(n, 0.3, np.float32)
+    match_ = np.ones(n, np.float32)
+    match_[30:] = 0.4  # painel aberto sobre o jogo: HUD parcial
+    spans = idle_spans(still, luma, match_, IdleParams(min_seconds=10))
+    assert [(a, b) for a, b, _ in spans] == [(0, 30)]
+    still[:10] = 0.2  # o personagem se mexeu: o trecho cai abaixo de 10 s
+    assert idle_spans(still, luma, match_, IdleParams(min_seconds=10)) == [(10, 30, spans[0][2])]

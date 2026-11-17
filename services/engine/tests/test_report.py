@@ -169,7 +169,10 @@ def test_only_limits_the_analysis_and_rejects_unknown_values(
     session_id = db.scalars(select(RecordingSession.id)).one()
     only_video = analyze_session(db, session_id, settings, AlwaysFreeGate(), None, "video")
     executed = next(iter(only_video.files.values())).executed
-    assert set(executed) == {"video_signals", "video_scenes", "video_hud"} and not only_video.skipped
+    assert (
+        set(executed) == {"video_signals", "video_scenes", "video_hud", "video_idle"}
+        and not only_video.skipped
+    )
     only_audio = analyze_session(db, session_id, settings, AlwaysFreeGate(), None, "audio")
     assert "video_signals" not in next(iter(only_audio.files.values())).executed
     with pytest.raises(AnalysisError, match="--only"):

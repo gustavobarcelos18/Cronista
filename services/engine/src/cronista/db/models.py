@@ -135,3 +135,80 @@ class Marker(Base):
     source: Mapped[str] = mapped_column(String(20), default="journal")  # journal | file | synthetic
     phase: Mapped[str | None] = mapped_column(String(10), default=None)  # construção: start | end
     warning: Mapped[str | None] = mapped_column(Text, default=None)
+
+
+class Objective(Base):
+    """Objetivo do projeto (Fase 5A): principal, secundário, subobjetivo ou restrição/regra."""
+
+    __tablename__ = "objective"
+    __table_args__ = (Index("ix_objective_project", "project_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id"))
+    kind: Mapped[str] = mapped_column(String(20))  # principal | secundario | subobjetivo | restricao
+    title: Mapped[str] = mapped_column(String(300))
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("objective.id"), default=None)
+    origin: Mapped[str] = mapped_column(String(20), default="perfil")  # perfil | fala | humano
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ObjectiveState(Base):
+    """Estado de um objetivo numa sessão. Só inserção: o estado atual é a última linha não substituída.
+
+    A evidência vai embutida (`ev_*`): a tabela `evidence` normalizada fica para quando o Studio precisar.
+    """
+
+    __tablename__ = "objective_state"
+    __table_args__ = (Index("ix_objective_state_obj", "objective_id", "session_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    objective_id: Mapped[int] = mapped_column(ForeignKey("objective.id"))
+    session_id: Mapped[int] = mapped_column(ForeignKey("session.id"))
+    state: Mapped[str] = mapped_column(String(20))  # proposto, em_andamento, concluido, falhou, ...
+    media_file_id: Mapped[int | None] = mapped_column(ForeignKey("media_file.id"), default=None)
+    start_frame: Mapped[int] = mapped_column(Integer, default=0)
+    end_frame: Mapped[int] = mapped_column(Integer, default=0)
+    ev_source: Mapped[str] = mapped_column(String(20), default="transcricao")
+    ev_quote: Mapped[str | None] = mapped_column(Text, default=None)
+    ev_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    ev_model: Mapped[str] = mapped_column(String(100), default="")
+    origin: Mapped[str] = mapped_column(String(10), default="auto")  # auto | humano
+    replaces_id: Mapped[int | None] = mapped_column(ForeignKey("objective_state.id"), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class NarrativeEvent(Base):
+    """Acontecimento narrativo observado (conquista, dificuldade, decisão, falha), sempre com evidência."""
+
+    __tablename__ = "narrative_event"
+    __table_args__ = (Index("ix_narrative_event_session", "session_id", "start_frame"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("session.id"))
+    media_file_id: Mapped[int | None] = mapped_column(ForeignKey("media_file.id"), default=None)
+    kind: Mapped[str] = mapped_column(String(20))  # acontecimento | conquista | dificuldade | decisao | falha
+    description: Mapped[str] = mapped_column(Text)
+    start_frame: Mapped[int] = mapped_column(Integer)
+    end_frame: Mapped[int] = mapped_column(Integer)
+    ev_source: Mapped[str] = mapped_column(String(20), default="marcador")
+    ev_quote: Mapped[str | None] = mapped_column(Text, default=None)
+    ev_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    origin: Mapped[str] = mapped_column(String(10), default="auto")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class NarrativeLink(Base):
+    """Relação entre objetivos/eventos (`contribui_para`, `depende_de`, `impede`, `retoma`, `resolve`)."""
+
+    __tablename__ = "narrative_link"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    src_kind: Mapped[str] = mapped_column(String(10))  # objective | event
+    src_id: Mapped[int] = mapped_column(Integer)
+    dst_kind: Mapped[str] = mapped_column(String(10))
+    dst_id: Mapped[int] = mapped_column(Integer)
+    relation: Mapped[str] = mapped_column(String(20))
+    ev_quote: Mapped[str | None] = mapped_column(Text, default=None)
+    hypothesis: Mapped[bool] = mapped_column(default=True)
+    """Sem evidência a relação fica como hipótese (plano da 5A)."""
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

@@ -1,6 +1,6 @@
 # Fase 4 — Motor de relevância
 
-Plano de execução. Fonte: plano mestre, seção 7 (Fase 4) e histórico §52. Roda em `dev` (CPU): funções puras sobre
+Plano de execução. Fonte: plano mestre, seção 7 (Fase 4) e histórico §51. Roda em `dev` (CPU): funções puras sobre
 eventos e marcadores já gravados no banco, sem GPU nem modelo.
 
 ## Entrega (2026-11-17, primeira versão por regras)

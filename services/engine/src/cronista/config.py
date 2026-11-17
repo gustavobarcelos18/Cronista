@@ -49,6 +49,14 @@ class Settings(BaseModel):
     gpu_gate: bool = False  # `dev` não tem GPU nem OBS; `prod` liga
     gpu_busy_percent: int | None = None  # opcional: GPU >= isso por outro programa = ocupada (nvidia-smi)
     gpu_poll_seconds: float = 5.0
+    audio_models: bool = (
+        False  # liga os modelos reais de áudio (grupo `ml`, só prod); dev usa só os sinais de CPU
+    )
+    models_dir: Path | None = None  # padrão: data/models (fora do git)
+    audio_language: str = "pt"
+    whisper_model: str = "large-v3-turbo"
+    whisper_compute_type: str = "int8_float16"
+    sound_model: str = "MIT/ast-finetuned-audioset-10-10-0.4593"
     log_level: str = "INFO"
 
     @field_validator("marker_hotkeys")
@@ -60,6 +68,10 @@ class Settings(BaseModel):
     @property
     def db_path(self) -> Path:
         return self.data_dir / "cronista.db"
+
+    @property
+    def models_path(self) -> Path:
+        return self.models_dir or self.data_dir / "models"
 
     @property
     def cache_dir(self) -> Path:

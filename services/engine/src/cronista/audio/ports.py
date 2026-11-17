@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -55,6 +55,8 @@ class SoundEventSpan(BaseModel):
 class SpeechDetector(Protocol):
     name: str
     version: str
+    options: dict[str, Any]
+    """Hiperparâmetros que mudam o resultado (limiar, idioma, precisão): entram na chave de cache."""
 
     def detect(self, wav: Path, *, pause: Pause) -> list[SpeechSpan]:
         """Trechos com fala (VAD). Clique de teclado e respiração são não-fala e ficam de fora."""
@@ -64,6 +66,8 @@ class SpeechDetector(Protocol):
 class Transcriber(Protocol):
     name: str
     version: str
+    options: dict[str, Any]
+    """Hiperparâmetros que mudam o resultado (limiar, idioma, precisão): entram na chave de cache."""
 
     def transcribe(self, wav: Path, spans: Sequence[SpeechSpan], *, pause: Pause) -> list[Utterance]:
         """Transcreve só os trechos de fala, com tempo por palavra."""
@@ -73,6 +77,8 @@ class Transcriber(Protocol):
 class SoundEventClassifier(Protocol):
     name: str
     version: str
+    options: dict[str, Any]
+    """Hiperparâmetros que mudam o resultado (limiar, idioma, precisão): entram na chave de cache."""
 
     def classify(self, wav: Path, *, pause: Pause) -> list[SoundEventSpan]:
         """Eventos sonoros da faixa (rótulos do Cronista)."""

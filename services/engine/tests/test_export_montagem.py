@@ -161,3 +161,72 @@ def test_timelapse_renderizado_tem_a_duracao_do_plano(tmp_path: Path, settings: 
     )  # fmt: skip
     assert int(probe.stdout.strip()) == item.timeline_frames
     assert render_timelapses(plan, {1: master}, tmp_path / "tl", settings)[0] == out  # reaproveita
+
+
+# ----------------------------------------------------------------------------- retomada e pausa (6E)
+
+
+def _manifest(directory: Path, digest: str, problems: list[str] | None = None) -> None:
+    import json
+
+    directory.mkdir(parents=True)
+    (directory / "manifesto.json").write_text(
+        json.dumps(
+            {"entrada_hash": digest, "cortes_v1": 3, "duracao_s": 90.0, "marcadores": 2,
+             "problemas": problems or [], "avisos": ["a"]}
+        ),
+        encoding="utf-8",
+    )  # fmt: skip
+
+
+def test_mesma_entrada_reaproveita_a_ultima_versao_completa(tmp_path: Path) -> None:
+    from cronista.export.pacote import _resume_target, input_hash
+
+    digest = input_hash(_plan(), None)
+    _manifest(tmp_path / "versao-1", digest)
+    directory, version, done = _resume_target(tmp_path, digest)
+    assert (directory.name, version) == ("versao-1", 1)
+    assert done is not None and done.reused and done.clips == 3 and done.warnings == ["a"]
+
+
+def test_entrada_diferente_ou_com_problemas_cria_versao_nova(tmp_path: Path) -> None:
+    from cronista.export.pacote import _resume_target, input_hash
+
+    digest = input_hash(_plan(), None)
+    _manifest(tmp_path / "versao-1", "outro")
+    _, version, done = _resume_target(tmp_path, digest)
+    assert version == 2 and done is None
+    _manifest(tmp_path / "versao-2", digest, ["ruim"])
+    _, version, done = _resume_target(tmp_path, digest)
+    assert version == 3 and done is None
+
+
+def test_versao_interrompida_e_continuada_na_mesma_pasta(tmp_path: Path) -> None:
+    from cronista.export.pacote import _resume_target
+
+    (tmp_path / "versao-1").mkdir()  # sem manifesto: a execução anterior caiu no meio
+    directory, version, done = _resume_target(tmp_path, "x")
+    assert (directory.name, version, done) == ("versao-1", 1, None)
+
+
+@needs_ffmpeg
+def test_timelapse_espera_a_gpu_liberar(tmp_path: Path, settings: Settings) -> None:
+    class BusyThenFree:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def is_free(self) -> bool:
+            self.calls += 1
+            return self.calls > 2
+
+    master = tmp_path / "m.mp4"
+    subprocess.run(
+        ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=60", "-t", "30",
+         "-pix_fmt", "yuv420p", str(master)],
+        check=True,
+    )  # fmt: skip
+    plan = build_edit_plan([Chapter(1, [_seg(0, 30, "farm")], 600.0)], durations={1: 30 * FPS})
+    gate = BusyThenFree()
+    fast = settings.model_copy(update={"gpu_poll_seconds": 0.0})
+    render_timelapses(plan, {1: master}, tmp_path / "tl", fast, gate)
+    assert gate.calls == 3

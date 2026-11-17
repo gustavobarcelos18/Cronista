@@ -126,7 +126,10 @@ do capítulo; stems nivelados; SRT alinhado.
 
 ## Estado da fase
 
-6A a 6D codificadas em `fase/6-montagem`; da 6E existem os comandos `montar`, `mixar`, `montagem` e `shorts`. O
-`montagem` encadeia plano, timelapse, mixagem e exportação, mas **não** tem retomada por cache de hash (só reaproveita
-timelapses já renderizados) e **não** pausa com o OBS gravando ou jogo em tela cheia: ficam pendentes. Falta para o
-aceite: spike do Resolve (bloco D), mídia real e ouvir a mixagem.
+6A a 6E codificadas. O `montagem` encadeia plano, timelapse, mixagem e exportação e agora (histórico §54):
+**pausa** (`GpuGate`, o mesmo das outras etapas) antes de cada timelapse e da mixagem, e **retoma por hash**: a
+entrada (plano + roteiro) vira `entrada_hash` no `manifesto.json`; se a última versão é completa, idêntica e sem
+problemas, é reaproveitada sem regerar; se foi interrompida (sem manifesto), continua na mesma pasta; senão sai uma
+versão nova. Os timelapses ficam em `<base>/timelapses`, compartilhados entre versões. Limite: a pausa vale entre
+etapas e renders, não no meio de um FFmpeg em andamento. Falta para o aceite: spike do Resolve (bloco D), mídia real
+e ouvir a mixagem.

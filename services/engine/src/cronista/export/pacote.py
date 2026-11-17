@@ -14,6 +14,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from cronista.assembly.plan import EditPlan
 from cronista.assembly.service import build_assembly
 from cronista.config import Settings
 from cronista.db.models import Marker, RecordingSession
@@ -31,6 +32,7 @@ from cronista.export.timelapse import render_timelapses
 from cronista.logging_setup import log_event
 from cronista.mix.service import MixReport, mix_session
 from cronista.montage import _load_source
+from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.story.models import Script
 from cronista.story.service import DEFAULT_TARGET_S
 
@@ -62,6 +64,48 @@ class PackageReport:
     problems: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     mix: MixReport | None = None
+    reused: bool = False  # True: nada mudou desde a última versão completa, então nada foi regerado
+
+
+def _version_numbers(base: Path) -> list[int]:
+    return sorted(
+        int(m.group(1)) for p in base.glob("versao-*") if (m := re.fullmatch(r"versao-(\d+)", p.name))
+    )
+
+
+def input_hash(plan: EditPlan, script: Script | None) -> str:
+    """Identifica a entrada da exportação: o mesmo plano e roteiro geram o mesmo pacote."""
+    h = hashlib.sha256()
+    h.update(str(PLAN_VERSION).encode())
+    h.update(plan.to_json().encode())
+    h.update((script.model_dump_json() if script else "").encode())
+    return h.hexdigest()
+
+
+def _resume_target(base: Path, digest: str) -> tuple[Path, int, PackageReport | None]:
+    """Versão idêntica e completa → reaproveita; interrompida → continua nela; senão, versão nova."""
+    versions = _version_numbers(base)
+    if versions:
+        last = base / f"versao-{versions[-1]}"
+        manifest_path = last / "manifesto.json"
+        if not manifest_path.is_file():
+            return last, versions[-1], None
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if manifest.get("entrada_hash") == digest and not manifest.get("problemas"):
+            report = PackageReport(
+                last,
+                versions[-1],
+                manifest["cortes_v1"],
+                manifest["duracao_s"],
+                manifest["marcadores"],
+                [],
+                list(manifest.get("avisos", [])),
+                None,
+                True,
+            )
+            return last, versions[-1], report
+    directory, version = next_version_dir(base)
+    return directory, version, None
 
 
 def next_version_dir(base: Path) -> tuple[Path, int]:
@@ -84,18 +128,29 @@ def export_montagem(
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     out_base: Path | None = None,
+    gate: GpuGate | None = None,
 ) -> PackageReport:
     base = out_base or settings.data_dir / "export" / "montagem" / str(session_id)
-    directory, version = next_version_dir(base)
-    directory.mkdir(parents=True)
-
     plan = build_assembly(db, session_id, settings, target_s, profile_objectives)
+    digest = input_hash(plan, script)
+    directory, version, done = _resume_target(base, digest)
+    if done is not None:
+        log_event("montagem_reaproveitada", session_id=session_id, version=version)
+        return done
+    directory.mkdir(parents=True, exist_ok=True)
+
+    def wait(stage: str) -> None:
+        if gate is not None:
+            wait_until_free(gate, settings.gpu_poll_seconds, etapa=stage)
+
     session = db.get(RecordingSession, session_id)
     assert session is not None  # build_assembly já validou
     sources = {m.id: _load_source(db, m) for m in session.media_files}
     masters = {fid: s.master for fid, s in sources.items()}
 
-    timelapses = render_timelapses(plan, masters, directory / "timelapses", settings)
+    # Os timelapses ficam na base (não na versão): versões novas reaproveitam o que já foi renderizado.
+    timelapses = render_timelapses(plan, masters, base / "timelapses", settings, gate)
+    wait("mixagem")
     mix = mix_session(
         db, session_id, settings, script, target_s, profile_objectives, directory / "stems", plan=plan
     )
@@ -142,6 +197,7 @@ def export_montagem(
         "versao": version,
         "versao_do_plano": PLAN_VERSION,
         "sessao": session_id,
+        "entrada_hash": digest,
         "fps": 60,
         "duracao_s": round(plan.total_s, 2),
         "cortes_v1": len(plan.v1),

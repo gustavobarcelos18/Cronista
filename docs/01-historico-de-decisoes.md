@@ -1334,6 +1334,12 @@ Decisões tomadas ao implementar o Studio (`docs/fase-7-studio.md`):
 6. **Feedback em texto livre (Q26/Q27)** fica guardado sem interpretação (`feedback`). O LLM local só entra se passar o
    benchmark da seção 6.1 (precisa da GPU de `prod`); até lá, nada ajusta a edição a partir do texto.
 
+## 57. Aviso de capítulos com pouco material no Studio (2026-11-17)
+
+O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos revisados, em ordem de sessão e arquivo
+por projeto. Capítulos podem atravessar sessões e aparecem no aviso quando têm menos de 30 s de material estimado,
+a referência existente da alocação narrativa. O Studio consulta o painel novamente após salvar uma decisão.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

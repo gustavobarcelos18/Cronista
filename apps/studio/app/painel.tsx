@@ -4,6 +4,7 @@ import type { SeriesPanelOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+const SEGUNDOS = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 
 const SITUACAO: Record<SeriesPanelOut["situacao"], string> = {
   faltando: "ainda falta material",
@@ -11,15 +12,25 @@ const SITUACAO: Record<SeriesPanelOut["situacao"], string> = {
   acima: "acima da meta (dá para cortar)",
 };
 
-export default function Painel() {
+export default function Painel({ revisao }: { revisao: number }) {
   const [panel, setPanel] = useState<SeriesPanelOut | null>(null);
 
   useEffect(() => {
-    fetch(`${API}/series`)
-      .then((r) => r.json() as Promise<SeriesPanelOut>)
-      .then(setPanel)
-      .catch(() => setPanel(null));
-  }, []);
+    const controller = new AbortController();
+    const { signal } = controller;
+    fetch(`${API}/series`, { signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Painel da série (${r.status})`);
+        return r.json() as Promise<SeriesPanelOut>;
+      })
+      .then((next) => {
+        if (!signal.aborted) setPanel(next);
+      })
+      .catch(() => {
+        if (!signal.aborted) setPanel(null);
+      });
+    return () => controller.abort();
+  }, [revisao]);
 
   if (!panel) return null;
   const meta = panel.meta_min ?? 40;
@@ -41,6 +52,19 @@ export default function Painel() {
       <small>
         {panel.sessoes.map((s) => `sessão ${s.sessao}: ${s.gravado_h} h → ${s.produto_min} min, ${s.dias} dias`).join(" · ")}
       </small>
+      {panel.capitulos_com_pouco_material.length > 0 && (
+        <>
+          <h4>Capítulos com pouco material</h4>
+          <p>Referência de {panel.referencia_capitulo_s} s por capítulo.</p>
+          <ul>
+            {panel.capitulos_com_pouco_material.map((c) => (
+              <li key={`${c.projeto_id}-${c.capitulo}`}>
+                {c.projeto} · capítulo {c.capitulo} · {SEGUNDOS.format(c.produto_s)} s estimados
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }

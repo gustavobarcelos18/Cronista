@@ -13,6 +13,10 @@ junto com B10/B12 na 10C). O C10 só registra o erro no log; expor o motivo na A
 adaptador do VLM (só rejeita texto livre). O D4 muda a chave de decisão dos Shorts para `<arquivo>-<início>-<fim>`: decisões
 antigas ficam sem efeito (é a intenção). Próxima: 10B.
 
+**Andamento da 10B (2026-11-18):** feitos T1 (`domain/frames` com `duration_frames` e `fcpxml_time`; `expected_fps` validado),
+T2 (`media/ffmpeg.py`: `ffmpeg_cmd`, `run_ffmpeg`, `pipe_raw`, `grab_frame`, `video_args(quality)`) e T3 (`paths.py`:
+`SessionPaths`). T4: `docs/glossario.md` escrito como **proposta, aguardando aprovação**; os renomes públicos dependem dela.
+
 ## Divisão lógica do projeto
 
 | Bloco | Escopo | Tamanho aprox. | Plano |

@@ -29,8 +29,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-from cronista.assembly.plan import Card, EditPlan, Mode, Track
+from cronista.assembly.plan import Card, EditPlan, Mode
 from cronista.domain.frames import FPS, fcpxml_time
+from cronista.domain.tracks import Track
 from cronista.export.fcpxml import _parse_time, check_fcpxml
 from cronista.export.finish_fcpxml import FinishLayers, add_finish_clips
 from cronista.mix.envelope import narration_cues
@@ -39,8 +40,8 @@ from cronista.story.models import ScriptLine
 WIDTH, HEIGHT = 1920, 1080
 _XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n\n'
 TITLE_UID = ".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"
-LANE_B_ROLL, LANE_CARD = 2, 4
-STEM_LANES = {"A1": -1, "A2": -2, "A4": -4, "A6": -6, "A7": -7}
+LANE_B_ROLL, LANE_CARD = Track.V3.lane, Track.V5.lane
+STEM_LANES = {t.value: t.lane for t in (Track.A1, Track.A2, Track.A4, Track.A6, Track.A7)}
 DISABLED_STEMS = frozenset({"A6", "A7"})
 
 

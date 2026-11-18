@@ -24,10 +24,10 @@ import math
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass, replace
-from enum import StrEnum
 from typing import Any, Protocol
 
 from cronista.domain.frames import FPS, seconds_to_frame
+from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 
 """Igual a `cronista.domain.frames.FPS` (conferido em teste); repetido para não importar pydantic."""
@@ -41,15 +41,6 @@ NEEDS_ASSET = frozenset({EffectKind.SFX, EffectKind.SFX_MEME, EffectKind.MUSICA}
 
 BEAT_MOOD = {"setup": "calmo", "conflito": "tenso", "falha": "tenso", "virada": "epico", "conquista": "epico"}
 """Clima sugerido pelo beat narrativo (Fase 5); o criador pode trocar as trilhas por clima no brand kit."""
-
-
-class Track(StrEnum):
-    V1 = "V1"
-    V2 = "V2"
-    V4 = "V4"
-    V5 = "V5"
-    A4 = "A4"
-    A5 = "A5"
 
 
 TRACK_OF: dict[EffectKind, Track] = {

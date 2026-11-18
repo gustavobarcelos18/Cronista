@@ -6,9 +6,10 @@ from collections.abc import Mapping
 from functools import partial
 from pathlib import Path
 
-from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
+from cronista.assembly.plan import EditItem, EditPlan, Mode
 from cronista.config import Settings
 from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.finishing.render.atomic import render_to
 from cronista.media.ffmpeg import run_ffmpeg, video_args
 from cronista.pipeline.gpu import GpuGate, wait_until_free

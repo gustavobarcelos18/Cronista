@@ -19,15 +19,16 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from cronista.assembly.plan import LIVE_MODES, EditItem, Track
+from cronista.assembly.plan import LIVE_MODES, EditItem
 from cronista.domain.frames import fcpxml_time
+from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.audio import MUSIC_BED_DB
 from cronista.finishing.render.video import HEIGHT, shake_state, zoom_curve
 
-LANE_V2, LANE_V4 = 1, 3
-LANE_MUSIC, LANE_SFX = -4, -5
+LANE_V2, LANE_V4 = Track.V2.lane, Track.V4.lane
+LANE_MUSIC, LANE_SFX = Track.A4.lane, Track.A5.lane
 APPLIED = frozenset({EffectMode.EDITAVEL, EffectMode.RENDERIZADO})
 ZOOM_KEY_STEP = 5
 """Um keyframe de zoom a cada 5 quadros (a curva é suave); o tremor leva um por quadro."""

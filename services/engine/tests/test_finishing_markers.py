@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.markers import SUGGESTION_COLORS, SUGGESTION_NAMES, describe, suggestion_markers
-from cronista.finishing.plan import FinishItem, FinishPlan, Track
+from cronista.finishing.plan import FinishItem, FinishPlan
 
 CREATOR_COLORS = {"Red", "Yellow", "Green", "Purple", "Cyan", "Pink", "Fuchsia", "Blue"}
 

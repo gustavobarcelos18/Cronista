@@ -7,11 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
+from cronista.assembly.plan import EditItem, EditPlan, Mode
 from cronista.config import Settings
+from cronista.domain.tracks import Track
+from cronista.domain.tracks import Track as FxTrack
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import FinishItem, FinishPlan
-from cronista.finishing.plan import Track as FxTrack
 from cronista.finishing.render.video import (
     SourceWindow,
     clip_name,

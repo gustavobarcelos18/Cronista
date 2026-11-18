@@ -18,9 +18,10 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-from cronista.assembly.plan import LIVE_MODES, EditItem, EditPlan, Track
+from cronista.assembly.plan import LIVE_MODES, EditItem, EditPlan
 from cronista.config import Settings
 from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.atomic import render_to

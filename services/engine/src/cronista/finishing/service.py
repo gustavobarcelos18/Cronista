@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from cronista.assembly.plan import LIVE_MODES, EditPlan, Track
+from cronista.assembly.plan import LIVE_MODES, EditPlan
 from cronista.assembly.service import assemble
 from cronista.config import Settings
 from cronista.db.models import (
@@ -19,6 +19,7 @@ from cronista.db.models import (
     RecordingSession,
     SegmentDecision,
 )
+from cronista.domain.tracks import Track
 from cronista.finishing.brand import ResolvedStyle
 from cronista.finishing.library import Library
 from cronista.finishing.plan import (

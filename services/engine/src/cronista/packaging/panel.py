@@ -26,7 +26,7 @@ from cronista.thumbnails.service import MANIFEST_NAME, current_thumbnail, load_m
 
 class TitleOptionOut(BaseModel):
     n: int
-    """Número da sugestão (1, 2, …), o mesmo de `cronista titulo-escolher --sugestao`."""
+    """Número da sugestão (1, 2, …), o mesmo de `cronista titulos-escolher --sugestao`."""
     text: str
     reason: str | None = None
 

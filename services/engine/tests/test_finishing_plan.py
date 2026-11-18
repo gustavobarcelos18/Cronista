@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from itertools import pairwise
 
 from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import (
     AssetRef,
     CardRef,
     FinishPlan,
     Moment,
-    Track,
     build_finish_plan,
     chapter_mood,
     intensity_of,

@@ -217,12 +217,13 @@ def preview(
         typer.echo(f"  aviso: {warning}")
 
 
-@app.command()
+@app.command(deprecated=True)
 def export(
     session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
     out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/export)")] = None,
 ) -> None:
-    """Grava a timeline da sessão (V1 + A1/A2, 60 fps) como .fcpxml e .otio para importar no Resolve."""
+    """DEPRECADO (use `cronista montagem`): timeline simples da Fase 1, como .fcpxml e .otio."""
+    typer.echo("aviso: `export` é da Fase 1 e foi substituído por `cronista montagem`", err=True)
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
@@ -1240,7 +1241,8 @@ def titulos_import(
         typer.echo(f"{n}. {option.text} ({len(option.text)})")
 
 
-@app.command("titulo-escolher")
+@app.command("titulos-escolher")
+@app.command("titulo-escolher", deprecated=True, hidden=True)
 def titulo_escolher(
     session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
     sugestao: Annotated[int | None, typer.Option(help="Número da sugestão escolhida (1, 2, …)")] = None,
@@ -1315,7 +1317,8 @@ def thumbnails(
         typer.echo("Escolha com `cronista thumbnail-escolher <sessão> --variacao N`.")
 
 
-@app.command("thumbnail-escolher")
+@app.command("thumbnails-escolher")
+@app.command("thumbnail-escolher", deprecated=True, hidden=True)
 def thumbnail_escolher(
     session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
     variacao: Annotated[int, typer.Option(help="Número da variação escolhida (1, 2, 3)")],
@@ -1361,7 +1364,8 @@ def shorts_status(
         typer.echo("nenhum Short")
 
 
-@app.command("short-decidir")
+@app.command("shorts-decidir")
+@app.command("short-decidir", deprecated=True, hidden=True)
 def short_decidir(
     session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
     short: Annotated[str, typer.Argument(help="Chave do Short (`cronista shorts-status`)")],

@@ -304,9 +304,9 @@ def test_cli_flow_pack_import_choose(
     out = runner.invoke(cli.app, ["titulos-import", str(session_id), str(file)])
     assert out.exit_code == 1 and "clichê" in out.output
 
-    out = runner.invoke(cli.app, ["titulo-escolher", str(session_id), "--sugestao", "2"])
+    out = runner.invoke(cli.app, ["titulos-escolher", str(session_id), "--sugestao", "2"])
     assert out.exit_code == 0 and "sugerido: A casa que caiu" in out.output
-    out = runner.invoke(cli.app, ["titulo-escolher", str(session_id)])
+    out = runner.invoke(cli.app, ["titulos-escolher", str(session_id)])
     assert out.exit_code == 1 and "informe" in out.output
     out = runner.invoke(cli.app, ["titulos", "999"])
     assert out.exit_code == 1 and "cronista story" in out.output
@@ -364,3 +364,17 @@ def test_titulos_corrompidos_viram_erro_claro_e_nao_excecao(db: Session, tmp_pat
     with pytest.raises(TitleError, match="titulos-import"):
         record_title_choice(db, session.id, tmp_path, suggestion=1)
     assert packaging_panel(db, session.id, tmp_path, tmp_path).title.suggestions == []
+
+
+def test_nomes_antigos_dos_comandos_continuam_funcionando() -> None:
+    """D9: convenção `<objeto-plural>-<verbo>`, com os nomes antigos como alias (escondidos e deprecados)."""
+    from cronista import cli
+
+    runner = CliRunner()
+    for old, new in (
+        ("titulo-escolher", "titulos-escolher"),
+        ("thumbnail-escolher", "thumbnails-escolher"),
+        ("short-decidir", "shorts-decidir"),
+    ):
+        assert runner.invoke(cli.app, [old, "--help"]).exit_code == 0
+        assert runner.invoke(cli.app, [new, "--help"]).exit_code == 0

@@ -240,7 +240,7 @@ def build_publish_package(
         (target / "titulo.txt").write_text(title.text + "\n", encoding="utf-8")
         report.files.append("titulo.txt")
     else:
-        report.missing.append("título: `cronista titulo-escolher`")
+        report.missing.append("título: `cronista titulos-escolher`")
 
     thumb = current_thumbnail(db, session_id)
     if (
@@ -257,7 +257,7 @@ def build_publish_package(
         report.files.append(thumb_name)
     else:
         report.missing.append(
-            "thumbnail: `cronista thumbnails` e `cronista thumbnail-escolher`"
+            "thumbnail: `cronista thumbnails` e `cronista thumbnails-escolher`"
             if thumb is None
             else f"thumbnail: {thumb.file_name} não existe mais; rode `cronista thumbnails` de novo"
         )

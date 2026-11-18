@@ -17,6 +17,7 @@ from enum import StrEnum
 from typing import Any
 
 from cronista.domain.frames import FPS, seconds_to_frame
+from cronista.domain.tracks import Track
 from cronista.relevance.engine import MAX_FARM_S, MAX_KEPT_S
 from cronista.story.arc import BeatedSegment, Chapter
 from cronista.story.models import Beat
@@ -33,12 +34,6 @@ class Mode(StrEnum):
 
 LIVE_MODES = frozenset({Mode.AO_VIVO, Mode.MONTAGEM})
 """Cortes de gameplay ao vivo: os únicos que recebem zoom e shake (V2) e que o acabamento anima."""
-
-
-class Track(StrEnum):
-    V1 = "V1"
-    V3 = "V3"
-    V5 = "V5"
 
 
 @dataclass(frozen=True)

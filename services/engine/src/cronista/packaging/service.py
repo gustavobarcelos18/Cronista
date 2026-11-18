@@ -55,7 +55,7 @@ def save_titles(folder: Path, title_set: TitleSet) -> TitleReport:
         raise TitleError("títulos inválidos", report.errors)
     if not report.titles:
         raise TitleError(
-            "nenhum título sugerido; o criador titula sozinho (`cronista titulo-escolher --texto`)"
+            "nenhum título sugerido; o criador titula sozinho (`cronista titulos-escolher --texto`)"
         )
     folder.mkdir(parents=True, exist_ok=True)
     current = folder / TITLES_NAME

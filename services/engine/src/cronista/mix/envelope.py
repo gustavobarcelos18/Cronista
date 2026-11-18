@@ -12,8 +12,9 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
-from cronista.assembly.plan import EditItem, Mode, Track
+from cronista.assembly.plan import EditItem, Mode
 from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.story.models import ScriptLine
 from cronista.story.script import estimate_seconds
 

@@ -7,12 +7,12 @@ from cronista.assembly.plan import (
     AssemblyParams,
     BrollClip,
     Mode,
-    Track,
     WordSpan,
     build_edit_plan,
     snap_out_of_words,
 )
 from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.relevance.engine import Segment
 from cronista.story.arc import BeatedSegment, Chapter
 from cronista.story.models import Beat, Span

@@ -9,8 +9,9 @@ from typing import Any
 
 import pytest
 
-from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
+from cronista.assembly.plan import EditItem, EditPlan, Mode
 from cronista.config import Settings
+from cronista.domain.tracks import Track
 from cronista.export import pacote
 from cronista.finishing.brand import BrandKit, EffectPolicy, SeriesStyle, resolve_style
 from cronista.finishing.effects import EffectKind, EffectMode

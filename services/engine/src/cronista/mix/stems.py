@@ -13,8 +13,9 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from cronista.assembly.plan import EditItem, Mode, Track
+from cronista.assembly.plan import EditItem, Mode
 from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.mix.envelope import FloatArray, gain_at
 from cronista.pipeline.stage import StageError
 

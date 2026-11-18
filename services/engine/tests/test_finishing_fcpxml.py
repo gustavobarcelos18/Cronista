@@ -3,13 +3,14 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
+from cronista.assembly.plan import EditItem, EditPlan, Mode
 from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
+from cronista.domain.tracks import Track as FxTrack
 from cronista.export.finish_fcpxml import AudioFile, FinishLayers
 from cronista.export.montagem import ExportMedia, MediaFileInfo, check_plan_fcpxml, render_plan_fcpxml
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import FinishItem, FinishPlan
-from cronista.finishing.plan import Track as FxTrack
 
 
 def cut(start: int, *, in_frame: int, frames: int, mode: Mode = Mode.AO_VIVO, speed: int = 1) -> EditItem:

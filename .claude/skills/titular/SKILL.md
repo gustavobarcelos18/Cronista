@@ -30,5 +30,5 @@ Escreve `titulos.json` para a sessão. Entrada: `data/<ambiente>/packaging/<sess
 ```
 
 Valide e guarde: `uv run cronista titulos-import <sessão> titulos.json`. Corrija o que o validador apontar.
-O criador escolhe com `cronista titulo-escolher <sessão> --sugestao N` (ou `--texto "..."` para o dele); só a escolha
+O criador escolhe com `cronista titulos-escolher <sessão> --sugestao N` (ou `--texto "..."` para o dele); só a escolha
 dele fica registrada.

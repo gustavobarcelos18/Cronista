@@ -175,11 +175,12 @@ class SoundEventsStage:
     name = "sound_events"
     version = "1"
     needs: tuple[str, ...] = ("audio",)
-    uses_gpu = True
+    uses_gpu = True  # padrão; por instância, vale o `uses_gpu` do classificador (o de grito é só CPU)
 
     def __init__(self, classifier: SoundEventClassifier, track: str, min_score: float = 0.3) -> None:
         if track not in (GAME_TRACK, MIC_TRACK):
             raise ValueError(f"faixa desconhecida: {track}")
+        self.uses_gpu = getattr(classifier, "uses_gpu", True)
         self.classifier, self.track, self.min_score = classifier, track, min_score
         self.variant = make_variant(f"{track}-{classifier.name}")
 
@@ -226,10 +227,11 @@ class SoundEventsStage:
         )
 
 
-def analysis_stages(models: AudioModels) -> list[Stage]:
+def analysis_stages(models: AudioModels, scream_enabled: bool = False) -> list[Stage]:
     """Etapas de análise de áudio para os modelos disponíveis, em ordem topológica.
 
     Os sinais de CPU rodam sempre; fala e eventos só com o modelo correspondente (`dev` não tem nenhum).
+    O detector de grito por energia (reprovado, 0 de 8; histórico §46) só entra com `scream_enabled`.
     """
     stages: list[Stage] = [AudioSignalsStage()]
     if models.detector is not None and models.transcriber is not None:
@@ -239,8 +241,8 @@ def analysis_stages(models: AudioModels) -> list[Stage]:
         # Microfone: janela curta (2 s) e corte baixo, porque risada curta some na janela de 10 s do AST (2C).
         mic = models.mic_classifier or models.classifier
         stages.append(SoundEventsStage(mic, MIC_TRACK, min_score=0.1))
-    # Exclamação (grito ou fala de emoção alta) por energia e altura da voz: CPU, sem modelo (histórico §46).
-    stages.append(SoundEventsStage(ScreamHeuristic(), MIC_TRACK, min_score=0.0))
+    if scream_enabled:  # experimento reprovado (histórico §46): desligado por padrão
+        stages.append(SoundEventsStage(ScreamHeuristic(), MIC_TRACK, min_score=0.0))
     return stages
 
 

@@ -105,6 +105,7 @@ class ScreamHeuristic:
 
     name = "grito-energia-f0"
     version = "1"
+    uses_gpu = False
 
     def __init__(self, params: ScreamParams | None = None) -> None:
         self.params = params or ScreamParams()

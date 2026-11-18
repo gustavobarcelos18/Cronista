@@ -82,6 +82,8 @@ def resolve_files(rec: Recording, directory: Path, settings: Settings) -> tuple[
         if not candidate.is_file():
             candidate = directory / _name(raw)
         if candidate.is_file():
+            # Uma só grafia por arquivo (relativo, `..`, letra de unidade): senão vira duas sessões (A3).
+            candidate = candidate.resolve()  # no Windows devolve a grafia real do disco
             if candidate not in files:
                 files.append(candidate)
         else:

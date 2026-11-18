@@ -67,7 +67,7 @@ def analyze_session(
         report.skipped.append("eventos sonoros (sem classificador nesta máquina)")
 
     analysis: list[Stage] = [
-        *([] if only == "video" else analysis_stages(models)),
+        *([] if only == "video" else analysis_stages(models, settings.scream_enabled)),
         *([] if only == "audio" else video_stages(video_models, with_audio=only is None)),
     ]
     stages = [*ingest_stages(), *analysis]

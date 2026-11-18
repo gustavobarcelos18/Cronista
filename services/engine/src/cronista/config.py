@@ -52,6 +52,9 @@ class Settings(BaseModel):
     audio_models: bool = (
         False  # liga os modelos reais de áudio (grupo `ml`, só prod); dev usa só os sinais de CPU
     )
+    scream_enabled: bool = (
+        False  # detector de grito por energia: reprovado (0/8, histórico §46), só experimento
+    )
     profiles_dir: Path | None = None  # padrão: `profiles/` na raiz do repositório
     models_dir: Path | None = None  # padrão: data/models (fora do git)
     brand_dir: Path | None = None  # brand kit versionado; padrão: `packages/brand-kit/` na raiz do repo

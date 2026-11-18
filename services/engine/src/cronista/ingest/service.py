@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cronista.config import Settings
-from cronista.db.models import Marker, MediaFile, Project, RecordingSession
+from cronista.db.models import MediaFile, Project, RecordingSession
 from cronista.ingest.markers import IngestedFile, MarkerReport, ingest_markers
 from cronista.ingest.stages import ingest_stages
 from cronista.logging_setup import log_event
@@ -98,8 +98,9 @@ def ingest_files(
         duration = normalized["probe"].get("duration_s")
         ingested.append(IngestedFile(media, Path(str(normalized["media"])), duration))
 
-    if report.failures and db.scalar(select(Marker.id).where(Marker.session_id == session.id).limit(1)):
-        # Com um arquivo falho, `ingested` é parcial: refazer os marcadores apagaria os do arquivo que falhou.
+    if report.failures:
+        # Com um arquivo falho, `ingested` é parcial: marcadores feitos agora teriam a lista incompleta
+        # (avisos enganosos, "dia implícito" errado) e refazê-los apagaria os do arquivo que falhou.
         report.markers.warnings.append(
             "marcadores não atualizados: há arquivo(s) com falha; corrija e ingira de novo"
         )

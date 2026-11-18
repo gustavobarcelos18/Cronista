@@ -86,6 +86,8 @@ CONCLUSION = re.compile(
 )
 FAILURE = re.compile(r"\b(morri|perdi tudo|falhei|nao consegui|fracassei)\b[^.!?]{0,60}", re.IGNORECASE)
 HYPOTHETICAL = re.compile(r"\b(se eu|e se|talvez|quem sabe|imagina se|poderia)\b", re.IGNORECASE)
+MIN_SHARED_FRACTION = 0.5
+"""Fração das palavras-chave do objetivo que a fala precisa ter (uma palavra solta, como "grande", não liga)."""
 STOP = {"de", "do", "da", "o", "a", "os", "as", "um", "uma", "que", "pra", "para", "e", "no", "na", "em"}
 
 
@@ -119,7 +121,7 @@ class RuleExtractor:
                     continue
                 words = keywords(text)
                 for title, kws in self.known:
-                    if kws and words & kws:
+                    if kws and len(words & kws) / len(kws) >= MIN_SHARED_FRACTION:
                         out.append(Candidate(title, ObjKind.SECUNDARIO, state, text, *frames, 0.5))
         return out
 

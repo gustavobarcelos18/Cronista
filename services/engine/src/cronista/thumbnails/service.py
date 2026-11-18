@@ -142,6 +142,25 @@ def record_thumbnail_choice(db: Session, session_id: int, folder: Path, variatio
     return row
 
 
+def valid_thumbnail_choice(db: Session, session_id: int, folder: Path) -> ThumbnailChoice | None:
+    """A escolha vigente, só se ainda vale: a variação está no manifesto atual e o arquivo existe.
+
+    Variações geradas de novo invalidam a escolha antiga. Painel e pacote de publicação usam esta regra única.
+    """
+    choice = current_thumbnail(db, session_id)
+    if choice is None:
+        return None
+    try:
+        entries = load_manifest(folder)
+    except (ThumbnailError, ValueError):
+        return None
+    ok = any(
+        str(e["arquivo"]) == choice.file_name and (thumbnails_in(folder) / str(e["arquivo"])).is_file()
+        for e in entries
+    )
+    return choice if ok else None
+
+
 def current_thumbnail(db: Session, session_id: int) -> ThumbnailChoice | None:
     """A escolha vigente: a última linha inserida para a sessão."""
     return db.scalars(

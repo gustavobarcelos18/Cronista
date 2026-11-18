@@ -21,7 +21,7 @@ from cronista.db.models import RecordingSession, ShortDecision
 from cronista.packaging.service import current_title
 from cronista.paths import PUBLISH_DIR_NAME, shorts_manifest_in, thumbnails_in
 from cronista.shorts.candidates import short_key
-from cronista.thumbnails.service import MANIFEST_NAME, current_thumbnail, load_manifest
+from cronista.thumbnails.service import current_thumbnail, valid_thumbnail_choice
 
 APPROVED = "aprovado"
 REJECTED = "rejeitado"
@@ -242,13 +242,7 @@ def build_publish_package(
     else:
         report.missing.append("título: `cronista titulos-escolher`")
 
-    thumb = current_thumbnail(db, session_id)
-    if (
-        thumb is not None
-        and (packaging_folder / MANIFEST_NAME).is_file()
-        and thumb.file_name not in {str(e["arquivo"]) for e in load_manifest(packaging_folder)}
-    ):
-        thumb = None  # variações geradas de novo: a escolha antiga não vale mais (o painel pensa igual)
+    thumb = valid_thumbnail_choice(db, session_id, packaging_folder)
     thumb_name: str | None = None
     source = thumbnails_in(packaging_folder) / thumb.file_name if thumb else None
     if source is not None and source.is_file():
@@ -256,10 +250,11 @@ def build_publish_package(
         thumb_name = "thumbnail.jpg"
         report.files.append(thumb_name)
     else:
+        stale_choice = current_thumbnail(db, session_id)
         report.missing.append(
             "thumbnail: `cronista thumbnails` e `cronista thumbnails-escolher`"
-            if thumb is None
-            else f"thumbnail: {thumb.file_name} não existe mais; rode `cronista thumbnails` de novo"
+            if stale_choice is None
+            else f"thumbnail: {stale_choice.file_name} não existe mais; rode `cronista thumbnails` de novo"
         )
 
     decisions = current_short_decisions(db, session_id)

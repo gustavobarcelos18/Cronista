@@ -57,7 +57,7 @@ from cronista.relevance.service import STAGE as RELEVANCE_STAGE
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, decision_for, record_decision
 from cronista.review.learning import MIN_DECISIONS, WEIGHT_NAMES, accept, params_for_project, propose
-from cronista.review.panel import SeriesPanelOut, series_panel_full
+from cronista.review.panel import TARGET_MIN, SeriesPanelOut, series_panel_full
 from cronista.review.reexport import ProfileLoader, ReexportJobs
 from cronista.story.models import Script
 from cronista.story.script import load_script
@@ -311,7 +311,7 @@ def create_app(
         return ExportStatusOut(**asdict(jobs.status(session_id)))
 
     @app.post("/sessions/{session_id}/export", response_model=ExportStatusOut, status_code=202)
-    def start_export(session_id: int, target_min: float = Query(40.0, gt=0, le=240)) -> ExportStatusOut:
+    def start_export(session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)) -> ExportStatusOut:
         """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou."""
         with _connect() as db:
             if db.get(RecordingSession, session_id) is None:
@@ -358,7 +358,9 @@ def create_app(
         ]
 
     @app.get("/sessions/{session_id}/finishing", response_model=FinishingOut)
-    def finishing_preview(session_id: int, target_min: float = Query(40.0, gt=0, le=240)) -> FinishingOut:
+    def finishing_preview(
+        session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)
+    ) -> FinishingOut:
         """Prévia do acabamento: o que o plano aplicaria em cada momento, com seus ajustes e decisões."""
         loaded = finishing_loader() if finishing_loader else None
         if loaded is None:
@@ -423,7 +425,7 @@ def create_app(
         session_id: int,
         item_id: str,
         body: FinishDecisionIn,
-        target_min: float = Query(40.0, gt=0, le=240),
+        target_min: float = Query(TARGET_MIN, gt=0, le=240),
     ) -> FinishDecisionIn:
         """Aceita uma sugestão (vira editável), tira um efeito ou volta ao padrão. Só insere.
 

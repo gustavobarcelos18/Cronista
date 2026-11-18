@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from pydantic import TypeAdapter
 
@@ -35,8 +36,22 @@ from cronista.packaging.panel import PackagingOut, PublishOut
 from cronista.review.panel import ProjectPanelOut, SeriesPanelOut, SeriesRowOut
 
 
+def _without_field_titles(node: object) -> object:
+    """Tira o `title` que o Pydantic põe em cada campo: o gerador de TypeScript o usa de nome de tipo
+    (`EndS`, `Decision1`...). O título do modelo (nível do `$defs`) fica."""
+    if isinstance(node, dict):
+        return {
+            key: _without_field_titles(value)
+            for key, value in node.items()
+            if not (key == "title" and isinstance(value, str))
+        }
+    if isinstance(node, list):
+        return [_without_field_titles(item) for item in node]
+    return node
+
+
 def build_schema() -> dict[str, object]:
-    defs: dict[str, object] = {}
+    defs: dict[str, Any] = {}
     for model in (
         MediaProbe,
         StageResult,
@@ -71,6 +86,10 @@ def build_schema() -> dict[str, object]:
         schema = model.model_json_schema(ref_template="#/$defs/{model}")
         defs.update(schema.pop("$defs", {}))
         defs[model.__name__] = schema
+    defs = {
+        name: {k: v if k == "title" else _without_field_titles(v) for k, v in body.items()}
+        for name, body in defs.items()
+    }
     kind = TypeAdapter(MarkerKind).json_schema()
     defs["MarkerKind"] = kind
     return {

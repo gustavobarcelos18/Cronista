@@ -61,7 +61,6 @@ def build_story(
     speech_by_file: dict[int, list[AnalysisEvent]] = {}
     kinds: dict[str, str] = {}
     discovery = DiscoveryReport()
-    known = [o.title for o in db.scalars(select(Objective).where(Objective.project_id == project.id))]
     for media in sorted(session.media_files, key=lambda m: m.ordinal):
         segments = load_effective_segments(db, media.id)
         if not segments:
@@ -75,6 +74,8 @@ def build_story(
         kinds.update({m.marker_id: m.kind for m in marks})
         corroboration = [(m.media_frame, m.media_frame) for m in marks if m.kind == "conquista"]
         failures = [(m.media_frame, m.media_frame) for m in marks if m.kind == "morte_falha"]
+        # Os objetivos mudam a cada arquivo (o anterior pode propor um novo): lê de novo antes de cada um.
+        known = [o.title for o in db.scalars(select(Objective).where(Objective.project_id == project.id))]
         part = discover(
             db, project.id, session_id, media.id, speech, RuleExtractor(known), corroboration, failures
         )

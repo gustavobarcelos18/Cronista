@@ -8,7 +8,6 @@
             "rejeitado",
             "ajustado"
           ],
-          "title": "Decision",
           "type": "string"
         },
         "end_s": {
@@ -20,8 +19,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "End S"
+          "default": null
         },
         "start_s": {
           "anyOf": [
@@ -32,8 +30,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Start S"
+          "default": null
         }
       },
       "required": [
@@ -76,13 +73,11 @@
         "max_per_minute": {
           "maximum": 60,
           "minimum": 0,
-          "title": "Max Per Minute",
           "type": "number"
         },
         "min_score": {
           "maximum": 1,
           "minimum": 0,
-          "title": "Min Score",
           "type": "number"
         },
         "mode": {
@@ -104,11 +99,9 @@
           "$ref": "#/$defs/EffectKind"
         },
         "max_per_minute": {
-          "title": "Max Per Minute",
           "type": "number"
         },
         "min_score": {
-          "title": "Min Score",
           "type": "number"
         },
         "mode": {
@@ -120,7 +113,6 @@
             "serie",
             "criador"
           ],
-          "title": "Source",
           "type": "string"
         }
       },
@@ -137,15 +129,12 @@
     "EventOut": {
       "properties": {
         "confidence": {
-          "title": "Confidence",
           "type": "number"
         },
         "end_s": {
-          "title": "End S",
           "type": "number"
         },
         "kind": {
-          "title": "Kind",
           "type": "string"
         },
         "quote": {
@@ -156,23 +145,18 @@
             {
               "type": "null"
             }
-          ],
-          "title": "Quote"
+          ]
         },
         "source": {
-          "title": "Source",
           "type": "string"
         },
         "stage": {
-          "title": "Stage",
           "type": "string"
         },
         "start_s": {
-          "title": "Start S",
           "type": "number"
         },
         "variant": {
-          "title": "Variant",
           "type": "string"
         }
       },
@@ -200,12 +184,10 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Directory"
+          "default": null
         },
         "message": {
           "default": "",
-          "title": "Message",
           "type": "string"
         },
         "problems": {
@@ -213,12 +195,10 @@
           "items": {
             "type": "string"
           },
-          "title": "Problems",
           "type": "array"
         },
         "reused": {
           "default": false,
-          "title": "Reused",
           "type": "boolean"
         },
         "state": {
@@ -228,7 +208,6 @@
             "done",
             "error"
           ],
-          "title": "State",
           "type": "string"
         },
         "version": {
@@ -240,15 +219,13 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Version"
+          "default": null
         },
         "warnings": {
           "default": [],
           "items": {
             "type": "string"
           },
-          "title": "Warnings",
           "type": "array"
         }
       },
@@ -269,11 +246,9 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Seg Start S"
+          "default": null
         },
         "text": {
-          "title": "Text",
           "type": "string"
         }
       },
@@ -286,11 +261,9 @@
     "FeedbackOut": {
       "properties": {
         "id": {
-          "title": "Id",
           "type": "integer"
         },
         "interpreted": {
-          "title": "Interpreted",
           "type": "boolean"
         }
       },
@@ -309,7 +282,6 @@
             "removido",
             "padrao"
           ],
-          "title": "Decision",
           "type": "string"
         }
       },
@@ -331,8 +303,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Asset Id"
+          "default": null
         },
         "decision": {
           "anyOf": [
@@ -347,11 +318,9 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Decision"
+          "default": null
         },
         "duration_s": {
-          "title": "Duration S",
           "type": "number"
         },
         "effective_mode": {
@@ -366,11 +335,9 @@
           "default": null
         },
         "id": {
-          "title": "Id",
           "type": "string"
         },
         "intensity": {
-          "title": "Intensity",
           "type": "number"
         },
         "kind": {
@@ -380,15 +347,12 @@
           "$ref": "#/$defs/EffectMode"
         },
         "reason": {
-          "title": "Reason",
           "type": "string"
         },
         "start_s": {
-          "title": "Start S",
           "type": "number"
         },
         "track": {
-          "title": "Track",
           "type": "string"
         }
       },
@@ -413,16 +377,13 @@
           "items": {
             "$ref": "#/$defs/EffectSettingOut"
           },
-          "title": "Effects",
           "type": "array"
         },
         "enabled": {
-          "title": "Enabled",
           "type": "boolean"
         },
         "has_library": {
           "default": false,
-          "title": "Has Library",
           "type": "boolean"
         },
         "items": {
@@ -430,17 +391,14 @@
           "items": {
             "$ref": "#/$defs/FinishItemOut"
           },
-          "title": "Items",
           "type": "array"
         },
         "max_effects_per_minute": {
           "default": 0,
-          "title": "Max Effects Per Minute",
           "type": "number"
         },
         "series": {
           "default": "",
-          "title": "Series",
           "type": "string"
         },
         "summary": {
@@ -451,7 +409,6 @@
             "type": "object"
           },
           "default": {},
-          "title": "Summary",
           "type": "object"
         },
         "warnings": {
@@ -459,7 +416,6 @@
           "items": {
             "type": "string"
           },
-          "title": "Warnings",
           "type": "array"
         }
       },
@@ -472,7 +428,6 @@
     "JobOut": {
       "properties": {
         "attempts": {
-          "title": "Attempts",
           "type": "integer"
         },
         "error": {
@@ -483,27 +438,21 @@
             {
               "type": "null"
             }
-          ],
-          "title": "Error"
+          ]
         },
         "id": {
-          "title": "Id",
           "type": "integer"
         },
         "media_file_id": {
-          "title": "Media File Id",
           "type": "integer"
         },
         "stage": {
-          "title": "Stage",
           "type": "string"
         },
         "status": {
-          "title": "Status",
           "type": "string"
         },
         "variant": {
-          "title": "Variant",
           "type": "string"
         }
       },
@@ -534,24 +483,20 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Applied"
+          "default": null
         },
         "explanation": {
           "default": [],
           "items": {
             "type": "string"
           },
-          "title": "Explanation",
           "type": "array"
         },
         "n_decisions": {
           "default": 0,
-          "title": "N Decisions",
           "type": "integer"
         },
         "needed": {
-          "title": "Needed",
           "type": "integer"
         },
         "weights": {
@@ -566,8 +511,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Weights"
+          "default": null
         }
       },
       "required": [
@@ -593,15 +537,12 @@
     "MarkerOut": {
       "properties": {
         "id": {
-          "title": "Id",
           "type": "integer"
         },
         "kind": {
-          "title": "Kind",
           "type": "string"
         },
         "marker_id": {
-          "title": "Marker Id",
           "type": "string"
         },
         "media_file_id": {
@@ -612,15 +553,12 @@
             {
               "type": "null"
             }
-          ],
-          "title": "Media File Id"
+          ]
         },
         "media_frame": {
-          "title": "Media Frame",
           "type": "integer"
         },
         "source": {
-          "title": "Source",
           "type": "string"
         },
         "warning": {
@@ -631,8 +569,7 @@
             {
               "type": "null"
             }
-          ],
-          "title": "Warning"
+          ]
         }
       },
       "required": [
@@ -650,19 +587,15 @@
     "MediaFileOut": {
       "properties": {
         "id": {
-          "title": "Id",
           "type": "integer"
         },
         "name": {
-          "title": "Name",
           "type": "string"
         },
         "ordinal": {
-          "title": "Ordinal",
           "type": "integer"
         },
         "size_bytes": {
-          "title": "Size Bytes",
           "type": "integer"
         }
       },
@@ -680,12 +613,10 @@
       "properties": {
         "audio_streams": {
           "default": 0,
-          "title": "Audio Streams",
           "type": "integer"
         },
         "bit_depth": {
           "default": 8,
-          "title": "Bit Depth",
           "type": "integer"
         },
         "duration_s": {
@@ -697,8 +628,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Duration S"
+          "default": null
         },
         "fps": {
           "anyOf": [
@@ -709,8 +639,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Fps"
+          "default": null
         },
         "height": {
           "anyOf": [
@@ -721,16 +650,13 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Height"
+          "default": null
         },
         "interrupted": {
           "default": false,
-          "title": "Interrupted",
           "type": "boolean"
         },
         "path": {
-          "title": "Path",
           "type": "string"
         },
         "pix_fmt": {
@@ -742,8 +668,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Pix Fmt"
+          "default": null
         },
         "video_codec": {
           "anyOf": [
@@ -754,8 +679,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Video Codec"
+          "default": null
         },
         "width": {
           "anyOf": [
@@ -766,8 +690,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Width"
+          "default": null
         }
       },
       "required": [
@@ -780,12 +703,10 @@
       "properties": {
         "approved_shorts": {
           "default": 0,
-          "title": "Approved Shorts",
           "type": "integer"
         },
         "min_shorts": {
           "default": 3,
-          "title": "Min Shorts",
           "type": "integer"
         },
         "missing": {
@@ -793,12 +714,10 @@
           "items": {
             "type": "string"
           },
-          "title": "Missing",
           "type": "array"
         },
         "ready": {
           "default": false,
-          "title": "Ready",
           "type": "boolean"
         },
         "shorts": {
@@ -806,7 +725,6 @@
           "items": {
             "$ref": "#/$defs/ShortOut"
           },
-          "title": "Shorts",
           "type": "array"
         },
         "thumbnails": {
@@ -814,7 +732,6 @@
           "items": {
             "$ref": "#/$defs/ThumbnailOut"
           },
-          "title": "Thumbnails",
           "type": "array"
         },
         "title": {
@@ -831,7 +748,6 @@
       "description": "Jobs da sessão por estado; `active` vale enquanto houver job pendente ou rodando.",
       "properties": {
         "active": {
-          "title": "Active",
           "type": "boolean"
         },
         "current": {
@@ -843,27 +759,21 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Current"
+          "default": null
         },
         "done": {
-          "title": "Done",
           "type": "integer"
         },
         "failed": {
-          "title": "Failed",
           "type": "integer"
         },
         "pending": {
-          "title": "Pending",
           "type": "integer"
         },
         "running": {
-          "title": "Running",
           "type": "integer"
         },
         "total": {
-          "title": "Total",
           "type": "integer"
         }
       },
@@ -884,29 +794,24 @@
           "items": {
             "$ref": "#/$defs/ThinChapterOut"
           },
-          "title": "Capitulos Com Pouco Material",
           "type": "array"
         },
         "por_classe_min": {
           "additionalProperties": {
             "type": "number"
           },
-          "title": "Por Classe Min",
           "type": "object"
         },
         "projeto": {
-          "title": "Projeto",
           "type": "string"
         },
         "projeto_id": {
-          "title": "Projeto Id",
           "type": "integer"
         },
         "sessoes": {
           "items": {
             "$ref": "#/$defs/SeriesRowOut"
           },
-          "title": "Sessoes",
           "type": "array"
         },
         "situacao": {
@@ -916,11 +821,9 @@
             "no_alvo",
             "acima"
           ],
-          "title": "Situacao",
           "type": "string"
         },
         "total_min": {
-          "title": "Total Min",
           "type": "number"
         }
       },
@@ -939,25 +842,21 @@
     "PublishOut": {
       "properties": {
         "directory": {
-          "title": "Directory",
           "type": "string"
         },
         "files": {
           "items": {
             "type": "string"
           },
-          "title": "Files",
           "type": "array"
         },
         "missing": {
           "items": {
             "type": "string"
           },
-          "title": "Missing",
           "type": "array"
         },
         "ready": {
-          "title": "Ready",
           "type": "boolean"
         }
       },
@@ -976,17 +875,14 @@
           "items": {
             "$ref": "#/$defs/ScriptLine"
           },
-          "title": "Lines",
           "type": "array"
         },
         "provider": {
           "default": "desconhecido",
-          "title": "Provider",
           "type": "string"
         },
         "version": {
           "default": 1,
-          "title": "Version",
           "type": "integer"
         }
       },
@@ -1005,8 +901,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Est S"
+          "default": null
         },
         "justification": {
           "anyOf": [
@@ -1017,8 +912,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Justification"
+          "default": null
         },
         "kind": {
           "default": "narracao",
@@ -1026,12 +920,10 @@
             "narracao",
             "antecipacao"
           ],
-          "title": "Kind",
           "type": "string"
         },
         "segment_id": {
           "minLength": 3,
-          "title": "Segment Id",
           "type": "string"
         },
         "start_s": {
@@ -1043,12 +935,10 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Start S"
+          "default": null
         },
         "text": {
           "minLength": 1,
-          "title": "Text",
           "type": "string"
         }
       },
@@ -1069,7 +959,6 @@
           "items": {
             "type": "string"
           },
-          "title": "Warnings",
           "type": "array"
         }
       },
@@ -1090,8 +979,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Adj End S"
+          "default": null
         },
         "adj_start_s": {
           "anyOf": [
@@ -1102,11 +990,9 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Adj Start S"
+          "default": null
         },
         "classe": {
-          "title": "Classe",
           "type": "string"
         },
         "decision": {
@@ -1118,40 +1004,33 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Decision"
+          "default": null
         },
         "end_s": {
-          "title": "End S",
           "type": "integer"
         },
         "features": {
           "additionalProperties": {
             "type": "number"
           },
-          "title": "Features",
           "type": "object"
         },
         "markers": {
           "items": {
             "type": "string"
           },
-          "title": "Markers",
           "type": "array"
         },
         "razoes": {
           "items": {
             "type": "string"
           },
-          "title": "Razoes",
           "type": "array"
         },
         "score": {
-          "title": "Score",
           "type": "number"
         },
         "start_s": {
-          "title": "Start S",
           "type": "integer"
         }
       },
@@ -1170,26 +1049,21 @@
     "SeriesPanelOut": {
       "properties": {
         "maximo_min": {
-          "title": "Maximo Min",
           "type": "number"
         },
         "meta_min": {
-          "title": "Meta Min",
           "type": "number"
         },
         "minimo_min": {
-          "title": "Minimo Min",
           "type": "number"
         },
         "projetos": {
           "items": {
             "$ref": "#/$defs/ProjectPanelOut"
           },
-          "title": "Projetos",
           "type": "array"
         },
         "referencia_capitulo_s": {
-          "title": "Referencia Capitulo S",
           "type": "number"
         }
       },
@@ -1206,30 +1080,24 @@
     "SeriesRowOut": {
       "properties": {
         "acumulado_min": {
-          "title": "Acumulado Min",
           "type": "number"
         },
         "dias": {
-          "title": "Dias",
           "type": "integer"
         },
         "gravado_h": {
-          "title": "Gravado H",
           "type": "number"
         },
         "por_classe_min": {
           "additionalProperties": {
             "type": "number"
           },
-          "title": "Por Classe Min",
           "type": "object"
         },
         "produto_min": {
-          "title": "Produto Min",
           "type": "number"
         },
         "sessao": {
-          "title": "Sessao",
           "type": "integer"
         }
       },
@@ -1250,23 +1118,18 @@
           "items": {
             "$ref": "#/$defs/MediaFileOut"
           },
-          "title": "Files",
           "type": "array"
         },
         "folder": {
-          "title": "Folder",
           "type": "string"
         },
         "id": {
-          "title": "Id",
           "type": "integer"
         },
         "project": {
-          "title": "Project",
           "type": "string"
         },
         "project_id": {
-          "title": "Project Id",
           "type": "integer"
         }
       },
@@ -1288,7 +1151,6 @@
             "rejeitado",
             "padrao"
           ],
-          "title": "Decision",
           "type": "string"
         }
       },
@@ -1307,27 +1169,21 @@
             "aprovado",
             "rejeitado"
           ],
-          "title": "Decision",
           "type": "string"
         },
         "duration_s": {
-          "title": "Duration S",
           "type": "number"
         },
         "has_clip": {
-          "title": "Has Clip",
           "type": "boolean"
         },
         "key": {
-          "title": "Key",
           "type": "string"
         },
         "reason": {
-          "title": "Reason",
           "type": "string"
         },
         "score": {
-          "title": "Score",
           "type": "number"
         }
       },
@@ -1346,21 +1202,18 @@
       "properties": {
         "data": {
           "additionalProperties": true,
-          "title": "Data",
           "type": "object"
         },
         "files": {
           "items": {
             "type": "string"
           },
-          "title": "Files",
           "type": "array"
         },
         "warnings": {
           "items": {
             "type": "string"
           },
-          "title": "Warnings",
           "type": "array"
         }
       },
@@ -1370,11 +1223,9 @@
     "ThinChapterOut": {
       "properties": {
         "capitulo": {
-          "title": "Capitulo",
           "type": "integer"
         },
         "produto_s": {
-          "title": "Produto S",
           "type": "number"
         }
       },
@@ -1390,7 +1241,6 @@
         "variation": {
           "maximum": 9,
           "minimum": 1,
-          "title": "Variation",
           "type": "integer"
         }
       },
@@ -1404,11 +1254,9 @@
       "properties": {
         "chosen": {
           "default": false,
-          "title": "Chosen",
           "type": "boolean"
         },
         "file_name": {
-          "title": "File Name",
           "type": "string"
         },
         "position": {
@@ -1420,8 +1268,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Position"
+          "default": null
         },
         "text": {
           "anyOf": [
@@ -1432,11 +1279,9 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Text"
+          "default": null
         },
         "variation": {
-          "title": "Variation",
           "type": "integer"
         }
       },
@@ -1460,8 +1305,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Suggestion"
+          "default": null
         },
         "text": {
           "anyOf": [
@@ -1473,8 +1317,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Text"
+          "default": null
         }
       },
       "title": "TitleChoiceIn",
@@ -1483,7 +1326,6 @@
     "TitleOptionOut": {
       "properties": {
         "n": {
-          "title": "N",
           "type": "integer"
         },
         "reason": {
@@ -1495,11 +1337,9 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Reason"
+          "default": null
         },
         "text": {
-          "title": "Text",
           "type": "string"
         }
       },
@@ -1521,8 +1361,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Chosen"
+          "default": null
         },
         "origin": {
           "anyOf": [
@@ -1538,8 +1377,7 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Origin"
+          "default": null
         },
         "provider": {
           "anyOf": [
@@ -1550,15 +1388,13 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Provider"
+          "default": null
         },
         "suggestions": {
           "default": [],
           "items": {
             "$ref": "#/$defs/TitleOptionOut"
           },
-          "title": "Suggestions",
           "type": "array"
         },
         "thumbnail_texts": {
@@ -1566,7 +1402,6 @@
           "items": {
             "type": "string"
           },
-          "title": "Thumbnail Texts",
           "type": "array"
         }
       },
@@ -1577,25 +1412,21 @@
       "description": "Envelope de energia (dBFS) por faixa, em até `points` buckets uniformes (máximo de cada bucket).",
       "properties": {
         "duration_s": {
-          "title": "Duration S",
           "type": "number"
         },
         "game": {
           "items": {
             "type": "number"
           },
-          "title": "Game",
           "type": "array"
         },
         "mic": {
           "items": {
             "type": "number"
           },
-          "title": "Mic",
           "type": "array"
         },
         "points": {
-          "title": "Points",
           "type": "integer"
         }
       },

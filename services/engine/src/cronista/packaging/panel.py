@@ -21,7 +21,7 @@ from cronista.packaging.publish import (
 from cronista.packaging.service import TITLES_NAME, Origin, current_title
 from cronista.packaging.titles import load_titles
 from cronista.paths import shorts_manifest_in, thumbnails_in
-from cronista.thumbnails.service import MANIFEST_NAME, current_thumbnail, load_manifest
+from cronista.thumbnails.service import MANIFEST_NAME, load_manifest, valid_thumbnail_choice
 
 
 class TitleOptionOut(BaseModel):
@@ -99,7 +99,7 @@ def packaging_panel(
         title.chosen = chosen_title.text
         title.origin = cast(Origin, chosen_title.origin)
 
-    chosen_thumb = current_thumbnail(db, session_id)
+    chosen_thumb = valid_thumbnail_choice(db, session_id, packaging_folder)
     thumbnails: list[ThumbnailOut] = []
     if (packaging_folder / MANIFEST_NAME).is_file():
         try:

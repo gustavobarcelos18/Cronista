@@ -168,3 +168,20 @@ def test_b7_human_state_is_never_overwritten(db, session_ids) -> None:  # type: 
     discover(db, pid, sid, 1, speech, RuleExtractor([obj.title]), [(1 * FPS, 1 * FPS)])
     state = current_state(db, obj.id, sid)
     assert state is not None and state.state == "abandonado" and state.origin == "humano"
+
+
+def test_conclusao_exige_duas_palavras_do_objetivo() -> None:
+    """B8: uma palavra em comum não basta para ligar uma conclusão a um objetivo com várias palavras-chave."""
+    from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
+    from cronista.story.objectives import RuleExtractor
+
+    def fala(texto: str) -> AnalysisEvent:
+        evidence = Evidence(
+            source=EvidenceSource.EVENTO, start_frame=0, end_frame=600, confidence=0.9,
+            model="t", model_version="1", params_hash="x", quote=texto,
+        )  # fmt: skip
+        return AnalysisEvent(kind="fala", evidence=evidence, payload={})
+
+    extractor = RuleExtractor(["construir a casa grande"])
+    assert extractor.extract([fala("consegui um diamante grande")]) == []
+    assert len(extractor.extract([fala("consegui construir a casa")])) == 1

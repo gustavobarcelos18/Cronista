@@ -18,8 +18,9 @@ from cronista.relevance.engine import Segment, kept_seconds
 from cronista.review.decisions import load_effective_segments
 from cronista.review.learning import params_for_project
 from cronista.story.arc import MIN_CHAPTER_S, arc_complete, build_chapters
+from cronista.story.service import DEFAULT_TARGET_S
 
-TARGET_MIN = 40.0
+TARGET_MIN = DEFAULT_TARGET_S / 60
 MIN_MIN = 30.0
 MAX_MIN = 50.0
 

@@ -13,8 +13,11 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from cronista.config import Settings
+from cronista.db.models import RecordingSession
 from cronista.db.session import open_db
 from cronista.export.pacote import export_montagem
+from cronista.finishing.loader import StyleLoader
+from cronista.finishing.overrides import current_item_decisions, current_settings, with_overrides
 from cronista.gates import build_gate
 from cronista.story.script import load_script
 
@@ -36,8 +39,14 @@ class ExportStatus:
 
 
 class ReexportJobs:
-    def __init__(self, settings: Settings, profile_loader: ProfileLoader | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        profile_loader: ProfileLoader | None = None,
+        finishing_loader: StyleLoader | None = None,
+    ) -> None:
         self._settings = settings
+        self._finishing = finishing_loader
         self._profile = profile_loader or (lambda: ([], []))
         self._status: dict[int, ExportStatus] = {}
         self._lock = threading.Lock()
@@ -63,7 +72,16 @@ class ReexportJobs:
             objetivos, regras = self._profile()
             script_path = s.data_dir / "story" / str(session_id) / "roteiro.json"
             script = load_script(script_path) if script_path.is_file() else None
+            loaded = self._finishing() if self._finishing else None
             with open_db(s.db_path) as db:
+                style = library = decisions = None
+                if (
+                    loaded is not None
+                ):  # acabamento configurado: ajustes e decisões do Studio entram no pacote
+                    session = db.get(RecordingSession, session_id)
+                    assert session is not None
+                    style = with_overrides(loaded[0], current_settings(db, session.project_id))
+                    library, decisions = loaded[1], current_item_decisions(db, session_id)
                 report = export_montagem(
                     db,
                     session_id,
@@ -73,6 +91,9 @@ class ReexportJobs:
                     (objetivos, regras),
                     None,
                     build_gate(s),
+                    style,
+                    library,
+                    decisions,
                 )
             result = ExportStatus(
                 state="done",

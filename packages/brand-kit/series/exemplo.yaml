@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../series.schema.json
+# Estilo de série (Q18): só o que muda em relação ao brand kit, mais modo e orçamento de cada efeito.
+name: exemplo
+title: Série de exemplo
+
+palette:
+  accent: "#3FA7D6"
+
+# Teto somado de efeitos (editável + renderizado) por minuto de vídeo.
+max_effects_per_minute: 5
+
+# Só o que difere de DEFAULT_EFFECTS (cronista/finishing/brand.py).
+effects:
+  zoom:
+    mode: editavel
+    max_per_minute: 1.5
+    min_score: 0.6
+  sfx_meme:
+    mode: sugerir
+    max_per_minute: 0.3
+    min_score: 0.7

@@ -42,6 +42,98 @@
       "title": "DecisionIn",
       "type": "object"
     },
+    "EffectKind": {
+      "description": "Efeitos que o acabamento pode aplicar, cada um com modo e orçamento próprios.",
+      "enum": [
+        "zoom",
+        "shake",
+        "musica",
+        "sfx",
+        "sfx_meme",
+        "piada_visual",
+        "contador_mortes",
+        "freeze_texto",
+        "barra_progresso",
+        "legenda_pontual",
+        "cartela_dia",
+        "cor_lut"
+      ],
+      "title": "EffectKind",
+      "type": "string"
+    },
+    "EffectMode": {
+      "description": "Os três modos da seção 6.4: só marcador, aplicado e editável no Resolve, ou renderizado pelo app.",
+      "enum": [
+        "sugerir",
+        "editavel",
+        "renderizado"
+      ],
+      "title": "EffectMode",
+      "type": "string"
+    },
+    "EffectSettingIn": {
+      "properties": {
+        "max_per_minute": {
+          "maximum": 60,
+          "minimum": 0,
+          "title": "Max Per Minute",
+          "type": "number"
+        },
+        "min_score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Min Score",
+          "type": "number"
+        },
+        "mode": {
+          "$ref": "#/$defs/EffectMode"
+        }
+      },
+      "required": [
+        "mode",
+        "max_per_minute",
+        "min_score"
+      ],
+      "title": "EffectSettingIn",
+      "type": "object"
+    },
+    "EffectSettingOut": {
+      "description": "Política de um efeito e de onde ela vem (padrão do app, estilo da série ou ajuste seu no Studio).",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/EffectKind"
+        },
+        "max_per_minute": {
+          "title": "Max Per Minute",
+          "type": "number"
+        },
+        "min_score": {
+          "title": "Min Score",
+          "type": "number"
+        },
+        "mode": {
+          "$ref": "#/$defs/EffectMode"
+        },
+        "source": {
+          "enum": [
+            "padrao",
+            "serie",
+            "criador"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "mode",
+        "max_per_minute",
+        "min_score",
+        "source"
+      ],
+      "title": "EffectSettingOut",
+      "type": "object"
+    },
     "EventOut": {
       "properties": {
         "confidence": {
@@ -207,6 +299,174 @@
         "interpreted"
       ],
       "title": "FeedbackOut",
+      "type": "object"
+    },
+    "FinishDecisionIn": {
+      "properties": {
+        "decision": {
+          "enum": [
+            "aceito",
+            "removido",
+            "padrao"
+          ],
+          "title": "Decision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "title": "FinishDecisionIn",
+      "type": "object"
+    },
+    "FinishItemOut": {
+      "description": "Um efeito planejado para um momento do vídeo, com a decisão do criador (se houver).",
+      "properties": {
+        "asset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "enum": [
+                "aceito",
+                "removido"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision"
+        },
+        "duration_s": {
+          "title": "Duration S",
+          "type": "number"
+        },
+        "effective_mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EffectMode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "intensity": {
+          "title": "Intensity",
+          "type": "number"
+        },
+        "kind": {
+          "$ref": "#/$defs/EffectKind"
+        },
+        "mode": {
+          "$ref": "#/$defs/EffectMode"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "start_s": {
+          "title": "Start S",
+          "type": "number"
+        },
+        "track": {
+          "title": "Track",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "mode",
+        "track",
+        "start_s",
+        "duration_s",
+        "intensity",
+        "reason"
+      ],
+      "title": "FinishItemOut",
+      "type": "object"
+    },
+    "FinishingOut": {
+      "description": "Prévia do acabamento da sessão: políticas por efeito e o que seria aplicado, momento a momento.",
+      "properties": {
+        "effects": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EffectSettingOut"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "has_library": {
+          "default": false,
+          "title": "Has Library",
+          "type": "boolean"
+        },
+        "items": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FinishItemOut"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "max_effects_per_minute": {
+          "default": 0,
+          "title": "Max Effects Per Minute",
+          "type": "number"
+        },
+        "series": {
+          "default": "",
+          "title": "Series",
+          "type": "string"
+        },
+        "summary": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "default": {},
+          "title": "Summary",
+          "type": "object"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "title": "FinishingOut",
       "type": "object"
     },
     "JobOut": {

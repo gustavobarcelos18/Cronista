@@ -555,12 +555,12 @@ Trilhas da timeline exportada (no Resolve, a trilha de número maior fica por ci
 | V1 | Gameplay cortada + timelapses |
 | V2 | Efeitos renderizados sobre a gameplay (zoom/punch-in, shake), logo acima do clipe original (seção 6.4) |
 | V3 | B-roll / cinemáticas |
-| V4 | Overlays com transparência (Remotion): contador de mortes, freeze-frame + texto, barra de progresso |
+| V4 | Overlays com transparência: contador de mortes (MOV com alfa do FFmpeg ou título editável; freeze-frame + texto e barra de progresso só como sugestão por ora, Fase 8) |
 | V5 | Cartelas e contador "Dia N" (sugestão do app; número final decidido na edição, por isso editáveis), sempre por cima |
 | A1 | Áudio do jogo (a partir da Fase 6: stem com ducking e loudness aplicados pelo app) |
 | A2 | Sua narração ao vivo (microfone; a partir da Fase 6: stem com a cadeia de voz aplicada) |
 | A3 | Vazia — narração complementar gravada a partir do roteiro (só onde A2 não tem fala) |
-| A4 | Música (vazia até a Fase 8; depois, trilhas da biblioteca com corte no beat e ducking) |
+| A4 | Música (vazia até a Fase 8; depois, trilhas da biblioteca com corte no beat: stem com ducking sob a voz no modo renderizado, ou arquivo com volume fixo no editável) |
 | A5 | SFX: sons do brand kit (transição de dia, "som de morte") e SFX de meme (Fase 8) |
 | A6 | Áudio do jogo cru (faixa 2 original), desativado; só existe quando A1 recebe um stem processado |
 | A7 | Microfone original (faixa 3, já com RNNoise do OBS), desativado; só existe quando A2 recebe um stem processado |
@@ -1001,13 +1001,22 @@ Só se avança com os critérios da fase anterior cumpridos.
 - ✅ Aceite: um vídeo completo produzido de ponta a ponta pelo fluxo Studio → Resolve.
 
 ### Fase 8 — Acabamento automático e identidade do canal
+Plano de execução em [fase-8-acabamento.md](fase-8-acabamento.md) (8A brand kit/série/biblioteca → 8B plano de acabamento →
+8C render → 8D exportação → 8E Studio; histórico §57).
 - Brand kit (identidade visual e sonora, seção 6.4).
 - Zooms/punch-ins, LUT de série, música da biblioteca com corte no beat.
-- Pacote de templates Remotion (contador de mortes, cartelas regeneráveis pelo app, que são a opção 2 da
-  seção 6.3, freeze-frame + texto, barra de progresso) + SFX.
-- Modos sugerir / editável / renderizado por efeito, controlados no Studio; orçamento de efeitos por minuto.
-- **Legendas pontuais no vídeo longo** (Q25): só falas e momentos importantes, com animação de palavras e reações, a partir dos
-  timestamps por palavra do Whisper (Fase 2) e como overlay Remotion (V4). Não confundir com a trilha "Legendas" da seção 6.3
+- Overlays e SFX: contador de mortes (overlay MOV com alfa feito com `drawtext` do FFmpeg, ou título editável) e SFX da
+  biblioteca na A5. **Decisão (histórico §57):** sem Remotion nesta fase, porque a licença dele para o uso do criador segue
+  sem verificação (§45); o contrato (um MOV com alfa por item do plano) não muda se ele entrar depois. Freeze-frame + texto
+  e piada visual ficam só como sugestão (o texto é decisão do criador); barra de progresso e legenda pontual dependem dos
+  dias ajustados no Studio e das palavras do Whisper e ficam **fora da Fase 8** (o plano avisa quando estão ligados).
+- Modos sugerir / editável / renderizado por efeito, controlados no Studio (painel de acabamento: modo, máximo por minuto e
+  nota mínima por efeito, prévia por momento, aceitar/tirar, tudo só por inserção); orçamento de efeitos por minuto.
+- Exportação: zoom e shake na V2 (lane 1), contador na V4 (lane 3), música na A4 (lane -4) e SFX na A5 (lane -5), sempre
+  acima do original; LUT por Lua (`SetLUT`) e `manifesto.json` com o como desfazer cada efeito. ⚠️ Lanes, keyframes de
+  `adjust-transform`, `SetLUT` e o alfa do ProRes 4444 dependem de conferência no Resolve (seção 6.5).
+- **Legendas pontuais no vídeo longo** (Q25) — *adiadas para depois da Fase 8*: só falas e momentos importantes, com animação
+  de palavras e reações, a partir dos timestamps por palavra do Whisper (Fase 2) e como overlay (V4). Não confundir com a trilha "Legendas" da seção 6.3
   (SRT do roteiro). Sem legenda automática do Resolve, que é do Studio.
 - **Estilo por série** (Q18): configuração declarativa em YAML sobre o brand kit, separada do perfil de jogo.
 - ✅ Aceite: vídeo exportado precisando só de narração gravada e ajustes finos; efeitos reversíveis no Resolve.
@@ -1052,7 +1061,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Nome "Cronista" mantido (o nome não é prioridade).
 - Processamento a cada sessão de gravação, com painel da série.
 - O painel sinaliza capítulos abaixo da referência narrativa de 30 s e atualiza a estimativa após decisões no Studio
-  (seção 4.1, histórico §57).
+  (seção 4.1, histórico §59).
 - Código no PC do trabalho; produção no PC de casa.
 - Fluxo git: branch por fase, commits no nome do criador, revisão com Opus, CI no GitHub Actions.
 - O "dia" é fictício (unidade de progresso); hotkey `Novo dia` obrigatória (seção 4).
@@ -1060,6 +1069,11 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Studio (Fase 7, histórico §56): decisões do criador só por inserção e presas à janela do segmento; roteiro, montagem e
   Shorts usam os segmentos com as decisões aplicadas; escrita da API só da origem do Studio; recalibração de pesos só vale
   depois de aceita; feedback em texto fica guardado sem interpretação até o benchmark do LLM local.
+- Acabamento (Fase 8, histórico §57): brand kit e estilo por série em YAML versionado (`packages/brand-kit/`); cada efeito com
+  modo, máximo por minuto e nota mínima, mais teto somado; humor e impacto nascem só como `sugerir`; biblioteca pessoal com
+  licença obrigatória por item e bloqueio de uso comercial. Render e exportação (8C/8D): zoom/shake por `zoompan` do FFmpeg
+  com enquadramento original nas pontas; overlay do contador por `drawtext` (sem Remotion); música com `sidechaincompress`;
+  Studio (8E) com ajustes por projeto e decisões por item, só inserção (histórico §57).
 - Contêiner Hybrid MP4; marcadores do OBS dentro do arquivo + diário de eventos, com reconciliação (seções 2 e 4).
 - Sem facecam (seções 6.6 e 6.7).
 - Produto: **um único vídeo de 30–50 min** por série, montado a partir de sessões de duração variável (3 h, 6 h, 10 h…) (seções 0.1, 1 e 2).

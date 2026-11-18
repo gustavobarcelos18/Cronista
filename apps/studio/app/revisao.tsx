@@ -9,6 +9,7 @@ import type {
   WaveformOut,
 } from "@cronista/contracts";
 import { useEffect, useRef, useState } from "react";
+import Acabamento from "./acabamento";
 import Aprendizado from "./aprendizado";
 import Exportar from "./exportar";
 import Feedback from "./feedback";
@@ -172,6 +173,9 @@ export default function Revisao() {
             </ol>
             {sessionId !== null && <Roteiro key={sessionId} sessionId={sessionId} />}
             {projectId !== null && <Aprendizado key={projectId} projectId={projectId} />}
+            {sessionId !== null && projectId !== null && (
+              <Acabamento key={sessionId} sessionId={sessionId} projectId={projectId} />
+            )}
             {sessionId !== null && <Exportar key={sessionId} sessionId={sessionId} />}
           </>
         ) : (

@@ -1334,7 +1334,64 @@ Decisões tomadas ao implementar o Studio (`docs/fase-7-studio.md`):
 6. **Feedback em texto livre (Q26/Q27)** fica guardado sem interpretação (`feedback`). O LLM local só entra se passar o
    benchmark da seção 6.1 (precisa da GPU de `prod`); até lá, nada ajusta a edição a partir do texto.
 
-## 57. Aviso de capítulos com pouco material no Studio (2026-11-17)
+## 57. Fase 8: plano do acabamento e identidade do canal (2026-11-18)
+
+Branch `fase/8-acabamento`, a partir da `main` (Fase 7 mergeada). Escrito [fase-8-acabamento.md](fase-8-acabamento.md) com 8A
+(brand kit, estilo por série, inventário da biblioteca), 8B (plano de acabamento por orçamento), 8C (render: zoom, shake, LUT,
+templates, legendas pontuais, música), 8D (exportação) e 8E (Studio). Decisões: (1) brand kit e estilo por série são YAML
+versionado em `packages/brand-kit/`, validados por Pydantic com JSON Schema gerado; a série só sobrepõe o que muda (Q18);
+(2) cada efeito tem modo (`sugerir`/`editavel`/`renderizado`), máximo por minuto e nota mínima, mais um teto somado por minuto
+(seção 6.4); (3) padrão conservador: humor e impacto nascem só como `sugerir`, o criador liga por série; (4) inventário da
+biblioteca pessoal exige origem e licença por item, BPM em música e a flag `commercial_use`, que bloqueia o item no vídeo
+monetizado; (5) o brand kit referencia a biblioteca por `id`, nunca por caminho; (6) licença do Remotion a verificar antes de
+adotar (alternativa: overlays por FFmpeg/Pillow).
+
+Decisões da 8B (plano de acabamento, escrito sem poder rodar o ambiente completo): (7) orçamento por efeito é um **espaçamento
+mínimo** de `60/max_per_minute` s entre dois do mesmo efeito (garante variação, não só média) mais um teto somado por janela de
+60 s que só conta o que é aplicado; `sugerir` é só marcador e fica fora do teto; música, cartela de dia e LUT são estruturais e
+ficam fora do orçamento; (8) vagas disputadas vão para as maiores notas, e SFX/música rodam entre os itens menos usados (determinístico,
+por `id`); (9) o contador de mortes numera todas as mortes da montagem, mesmo as que o orçamento corta; (10) o clima do capítulo
+vem do beat dominante (`BEAT_MOOD`, palpite a validar) e o brand kit pode fixar trilhas por clima; (11) o módulo do plano usa só a
+biblioteca padrão e recebe políticas e biblioteca por interfaces simples, para ser testável sem o ambiente do projeto; (12) as
+sugestões entram no pacote como marcadores "Sugestão: ..." no Lua do Resolve, com cores que não repetem as do criador.
+
+Decisões da 8C (render de vídeo, `finishing/render/video.py`): (13) zoom e shake saem de `scale` 2x + `zoompan` do FFmpeg
+(nada do Studio do Resolve), em um MP4 por efeito para a V2, 60 fps, sem áudio, com o enquadramento original no primeiro e no
+último quadro (curva `sin²` no zoom; tremor com ataque em 10 % e queda a zero, ampliação proporcional à amplitude), então a emenda
+com a V1 não aparece e desligar a V2 devolve a gravação intacta; (14) o clipe nasce da janela de origem do corte de V1 sob o
+efeito (só gameplay ao vivo em velocidade 1; o que passa do corte é aparado); (15) nome do arquivo com hash do filtro e do encoder:
+mesma entrada reaproveita o render; (16) **LUT em modo `renderizado` não é gerado**: a V1 por baixo ficaria sem cor e o clipe
+da V2 destoaria; LUT fica `editavel` (Resolve) e o render avisa; (17) o executor espera o `GpuGate` antes de cada render, como o
+timelapse.
+
+Decisões da 8C restante, 8D e 8E (2026-11-18): (18) o contador de mortes sai de overlay MOV (ProRes 4444 com alfa) feito com
+`drawtext` do FFmpeg, sem Remotion (licença não verificada, §45); fonte do brand kit ou do sistema; o número é o da morte, nunca
+o do dia; (19) **freeze + texto e piada visual ficam só como sugestão** (o texto é decisão do criador) e **barra de progresso e
+legenda pontual ficam fora da Fase 8**: dependem dos dias do Studio e das palavras do Whisper, e o plano avisa quando estão
+ligados; (20) música renderizada = um stem A4 do tamanho da timeline, com fade e `sidechaincompress` contra o stem de voz;
+editável = arquivo da biblioteca por corte, com volume fixo de -20 dB; SFX é o mesmo nos dois modos; (21) no FCPXML os efeitos
+entram como clipes conectados ao corte de V1: V2 = lane 1, V4 = lane 3, A4 = lane -4, A5 = lane -5; zoom/shake editáveis são
+cópias do corte com keyframes de `adjust-transform` (escala; posição em % da altura no tremor); (22) LUT editável = `.cube` copiado
+para `luts/` e um Lua de uma linha com `SetLUT` no nó 1 de cada clipe da V1 (o FCPXML não carrega LUT de forma portável);
+(23) `manifesto.json` ganha `efeitos` (o quê, onde, quando e como desfazer) e o LEIA-ME uma seção do acabamento; (24) Studio:
+ajuste de efeito (modo, máximo por minuto, nota mínima) é por **projeto** e decisão sobre item é por **sessão**, ambos só
+inserção, a última linha vale; `aceito` promove sugestão a editável (só onde há forma editável), `removido` tira o item, `padrao`
+desfaz a decisão; a decisão fica presa ao **item e ao momento** (`<id>@<momento>`), porque o `id` é posicional e o mesmo `id`
+pode cair em outro trecho se o plano mudar; o POST confere o item contra o plano atual; tirar um item não libera a vaga de
+outro (o orçamento não é refeito); (25) o Studio usa a série de
+`finishing_series` da configuração; sem brand kit, o painel avisa e a exportação segue sem acabamento.
+
+Correções da revisão de código da Fase 8 (2026-11-18): (26) o hash da exportação passou a cobrir o brand kit, os arquivos que ele
+referencia (LUT, fontes) e os arquivos da biblioteca usados pelo plano, para trocar um `.cube` ou uma fonte gerar versão nova em
+vez de reaproveitar a antiga; (27) renders de zoom, shake e overlay são escritos em arquivo temporário e só então renomeados
+(cancelar no meio não deixa clipe parcial no cache); (28) áudio ilegível da biblioteca vira aviso e o item é ignorado;
+(29) a prévia do Studio guarda a montagem (história + cortes) por sessão e alvo, com impressão digital das tabelas que a
+alimentam, e só refaz o plano de acabamento a cada clique.
+
+⚠️ Sem conferência no Resolve (plano 6.5): se ele respeita as lanes 1, 3, -4 e -5, os keyframes de `adjust-transform`, `SetLUT` e
+o alfa do MOV. Se algo falhar, o modo `renderizado` (MP4/MOV prontos) é o caminho mais seguro.
+
+## 59. Aviso de capítulos com pouco material no Studio (2026-11-17)
 
 O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos revisados, em ordem de sessão e arquivo
 por projeto. Capítulos podem atravessar sessões e aparecem no aviso quando têm menos de 30 s de material estimado,

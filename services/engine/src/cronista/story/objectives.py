@@ -110,8 +110,12 @@ class RuleExtractor:
             if match := DECLARATION.search(norm):
                 title = match.group(0).strip()
                 out.append(Candidate(title, ObjKind.SECUNDARIO, ObjState.PROPOSTO, text, *frames, 0.4))
-            for pattern, state in ((CONCLUSION, ObjState.CONCLUIDO), (FAILURE, ObjState.FALHOU)):
-                if not pattern.search(norm):
+            # "não consegui" contém "consegui": a falha sai do texto antes de procurar a conclusão.
+            for pattern, state, scope in (
+                (CONCLUSION, ObjState.CONCLUIDO, FAILURE.sub(" ", norm)),
+                (FAILURE, ObjState.FALHOU, norm),
+            ):
+                if not pattern.search(scope):
                     continue
                 words = keywords(text)
                 for title, kws in self.known:

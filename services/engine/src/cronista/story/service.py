@@ -26,7 +26,7 @@ from cronista.story.objectives import (
     sync_profile_objectives,
 )
 from cronista.story.pack import build_story_pack
-from cronista.story.script import ValidationReport, to_srt, validate_script, voice_profile
+from cronista.story.script import LIVE_KINDS, ValidationReport, to_srt, validate_script, voice_profile
 
 DEFAULT_TARGET_S = 40 * 60.0
 
@@ -67,7 +67,8 @@ def build_story(
         files.append((media.id, segments))
         events = load_active_events(db, media.id)
         speech = speech_events([e for e in events if e.kind == "fala"])
-        speech_by_file[media.id] = speech
+        # Para as lacunas valem também risada, exclamação e voz sem texto: a narração não pode cobri-las.
+        speech_by_file[media.id] = [e for e in events if e.kind in LIVE_KINDS]
         marks = list(db.scalars(select(Marker).where(Marker.media_file_id == media.id)))
         kinds.update({m.marker_id: m.kind for m in marks})
         corroboration = [(m.media_frame, m.media_frame) for m in marks if m.kind == "conquista"]
@@ -99,7 +100,7 @@ def build_story(
     pack = build_story_pack(
         chapters, speech_by_file, {"nome": project.name, "jogo": project.game}, objectives, target_s
     )
-    quotes = [e.evidence.quote or "" for sp in speech_by_file.values() for e in sp]
+    quotes = [e.evidence.quote or "" for sp in speech_by_file.values() for e in sp if e.kind == "fala"]
     return StoryResult(chapters, pack, discovery, voice_profile(quotes))
 
 

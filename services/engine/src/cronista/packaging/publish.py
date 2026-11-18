@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from cronista.db.models import RecordingSession, ShortDecision
 from cronista.packaging.service import current_title
+from cronista.shorts.candidates import short_key
 from cronista.thumbnails.service import MANIFEST_NAME, current_thumbnail, load_manifest
 
 APPROVED = "aprovado"
@@ -75,11 +76,11 @@ def list_shorts(shorts_folder: Path, session_id: int) -> list[ShortEntry]:
     """Candidatos do `shorts-<sessão>.json` com o MP4 pronto de cada um, na ordem do manifesto (por nota)."""
     out: list[ShortEntry] = []
     for row in _manifest(shorts_folder, session_id).get("candidatos", []):
-        file_id, start = int(row["file_id"]), int(row["start_frame"])
+        file_id, start, end = int(row["file_id"]), int(row["start_frame"]), int(row["end_frame"])
         clip = _clip_of(shorts_folder, row)
         out.append(
             ShortEntry(
-                f"{file_id}-{start}",
+                short_key(file_id, start, end),
                 file_id,
                 start,
                 float(row["duracao_s"]),

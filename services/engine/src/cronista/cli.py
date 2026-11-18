@@ -1148,7 +1148,7 @@ def shorts_render(
     """Renderiza os Shorts 9:16 com legenda gravada e margens seguras (Fase 9A)."""
     from pydantic import ValidationError
 
-    from cronista.shorts.candidates import ShortsParams
+    from cronista.shorts.candidates import ShortsParams, short_key
     from cronista.shorts.render import ShortStyle
     from cronista.shorts.service import render_session_shorts
     from cronista.story.service import StoryError
@@ -1176,7 +1176,7 @@ def shorts_render(
     for warning in package.warnings:
         typer.echo(f"aviso: {warning}")
     for c in package.candidates:
-        clip = package.clips.get(f"{c.file_id}-{c.start_frame}")
+        clip = package.clips.get(short_key(c.file_id, c.start_frame, c.end_frame))
         typer.echo(f"{c.duration_s:.1f} s, nota {c.score:.2f}: {clip if clip else 'não renderizado'}")
     if not package.candidates:
         typer.echo("nenhum candidato a Short")

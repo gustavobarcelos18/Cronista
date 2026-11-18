@@ -1,3 +1,4 @@
+# ruff: noqa: F811
 """Regressões da auditoria 10A (bloco B): cada teste falhava antes da correção."""
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from cronista.domain.frames import FPS
 from cronista.story.models import Script, ScriptLine
 from cronista.story.objectives import RuleExtractor
 from cronista.story.script import LocalScriptProvider, free_gaps, validate_script
-from tests.test_story import FakeGen, fala
+from tests.test_story import FakeGen, fala, session_ids  # noqa: F401
 
 
 def event(kind: str, a: float, b: float) -> AnalysisEvent:
@@ -130,3 +131,40 @@ def test_b2_chapter_never_gets_more_than_its_material() -> None:
     chapters = build_chapters([(1, [seg(0, 60, "momento", 0.8)])], {})
     allocate_time(chapters, 2400)
     assert chapters[0].allocated_s == chapters[0].product_s
+
+
+def test_b7_rerunning_discovery_does_not_duplicate_or_flip_states(db, session_ids) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import func, select
+
+    from cronista.db.models import ObjectiveState
+    from cronista.story.models import ObjKind
+    from cronista.story.objectives import add_objective, discover
+
+    pid, sid = session_ids
+    obj = add_objective(db, pid, "construir a casa", ObjKind.PRINCIPAL)
+    speech = [
+        fala(0, 4, "eu nao consegui construir a casa"),
+        fala(60, 64, "finalmente consegui construir a casa"),
+    ]
+    marks = [(61 * FPS, 61 * FPS)]
+    extractor = RuleExtractor([obj.title])
+
+    def run() -> int:
+        discover(db, pid, sid, 1, speech, extractor, marks, [(1 * FPS, 1 * FPS)])
+        return db.scalar(select(func.count()).select_from(ObjectiveState)) or 0
+
+    first = run()
+    assert first >= 2 and run() == first and run() == first
+
+
+def test_b7_human_state_is_never_overwritten(db, session_ids) -> None:  # type: ignore[no-untyped-def]
+    from cronista.story.models import ObjKind, ObjState
+    from cronista.story.objectives import add_objective, current_state, discover, set_state
+
+    pid, sid = session_ids
+    obj = add_objective(db, pid, "construir a casa", ObjKind.PRINCIPAL)
+    set_state(db, obj.id, sid, ObjState.ABANDONADO, source="humano", quote=None, origin="humano")
+    speech = [fala(0, 4, "finalmente consegui construir a casa")]
+    discover(db, pid, sid, 1, speech, RuleExtractor([obj.title]), [(1 * FPS, 1 * FPS)])
+    state = current_state(db, obj.id, sid)
+    assert state is not None and state.state == "abandonado" and state.origin == "humano"

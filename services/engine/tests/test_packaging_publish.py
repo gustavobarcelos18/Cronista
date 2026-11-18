@@ -53,7 +53,7 @@ def make_shorts(folder: Path, session_id: int, n: int = 4, *, render: bool = Tru
     if render:
         for r in rows:
             (folder / f"short-1-{r['start_frame']}-{r['end_frame']}-abc123.mp4").write_bytes(b"mp4")
-    return [f"1-{r['start_frame']}" for r in rows]
+    return [f"1-{r['start_frame']}-{r['end_frame']}" for r in rows]
 
 
 def make_thumbnails(folder: Path, names: list[str]) -> None:

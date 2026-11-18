@@ -234,8 +234,18 @@ def discover(
                 ObjState.INCERTO
             )  # declaração não é conclusão nem falha: sem marcador por perto, só hipótese
         prior = current_state(db, obj.id, session_id)
-        if prior is not None and prior.state == state.value and prior.ev_quote == cand.quote:
-            continue  # nada mudou: reexecutar não cria transição falsa nem engorda a tabela
+        if prior is not None and prior.origin == "humano":
+            continue  # decisão do criador nunca é sobrescrita por reexecução
+        already = db.scalar(
+            select(ObjectiveState.id).where(
+                ObjectiveState.objective_id == obj.id,
+                ObjectiveState.session_id == session_id,
+                ObjectiveState.state == state.value,
+                ObjectiveState.ev_quote == cand.quote,
+            )
+        )
+        if already is not None:
+            continue  # (objetivo, estado, citação) já gravado: reexecutar não duplica nem alterna o estado
         set_state(
             db, obj.id, session_id, state, source="transcricao", quote=cand.quote,
             start_frame=cand.start_frame, end_frame=cand.end_frame, confidence=cand.confidence,

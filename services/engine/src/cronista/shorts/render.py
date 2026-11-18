@@ -33,7 +33,7 @@ from cronista.finishing.render.video import filter_path
 from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.pipeline.stage import StageError
-from cronista.shorts.candidates import ShortCandidate
+from cronista.shorts.candidates import ShortCandidate, short_key
 
 WIDTH, HEIGHT = 1080, 1920
 Reframe = Literal["desfoque", "recorte"]
@@ -251,7 +251,7 @@ class ShortsRender:
 
 
 def candidate_key(c: ShortCandidate) -> str:
-    return f"{c.file_id}-{c.start_frame}"
+    return short_key(c.file_id, c.start_frame, c.end_frame)
 
 
 def _encode(settings: Settings, c: ShortCandidate, master: Path, filters: str, audio: str, out: Path) -> None:

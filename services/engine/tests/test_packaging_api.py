@@ -139,14 +139,14 @@ def test_erros_viram_422_ou_404(client: TestClient, settings: Settings, session_
 def test_so_serve_arquivos_do_manifesto(client: TestClient, settings: Settings, session_id: int) -> None:
     base = f"/sessions/{session_id}/packaging"
     assert client.get(f"{base}/thumbnails/a.jpg").status_code == 404  # nada gerado ainda
-    assert client.get(f"{base}/shorts/1-600/video").status_code == 404
+    assert client.get(f"{base}/shorts/1-600-1200/video").status_code == 404
     seed(settings, session_id)
     ok = client.get(f"{base}/thumbnails/a.jpg")
     assert ok.status_code == 200 and ok.headers["content-type"] == "image/jpeg"
     (packaging(settings, session_id) / "segredo.jpg").write_bytes(b"x")
     assert client.get(f"{base}/thumbnails/segredo.jpg").status_code == 404  # fora do manifesto
     assert client.get(f"{base}/thumbnails/..%2Fsegredo.jpg").status_code == 404
-    video = client.get(f"{base}/shorts/1-600/video", headers={"Range": "bytes=2-4"})
+    video = client.get(f"{base}/shorts/1-600-1200/video", headers={"Range": "bytes=2-4"})
     assert video.status_code == 206 and video.content == b"234"
     assert client.get(f"{base}/shorts/1-999/video").status_code == 404
 

@@ -85,16 +85,14 @@ _JSON = re.compile(r"\{.*?\}", re.DOTALL)
 
 
 def parse_answer(raw: str, choices: Sequence[str]) -> str | None:
-    """Valida a resposta contra as opções. Aceita o JSON pedido; se vier texto, só se citar UMA opção."""
+    """Valida a resposta contra as opções. Só vale o JSON pedido; texto livre é resposta inválida (`None`)."""
     model = answer_model(choices)
     for chunk in _JSON.findall(raw):
         try:
             return str(cast(Any, model.model_validate(json.loads(chunk))).answer)
         except (ValueError, ValidationError):
             continue
-    lowered = raw.lower()
-    hits = [c for c in choices if re.search(rf"\b{re.escape(c.lower())}\b", lowered)]
-    return hits[0] if len(hits) == 1 else None
+    return None
 
 
 def ask_choice(vlm: ScreenVLM, image: RgbImage, question: Question) -> str | None:

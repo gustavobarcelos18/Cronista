@@ -192,7 +192,7 @@ def test_render_chama_ffmpeg_uma_vez_por_short_e_reaproveita(
 
     assert len(calls) == 1 and first.clips == again.clips
     (clip,) = first.clips.values()
-    assert clip.is_file() and first.clips[f"1-{round(10 * FPS)}"] == clip
+    assert clip.is_file() and first.clips[f"1-{round(10 * FPS)}-{round(20 * FPS)}"] == clip
     a = calls[0]
     assert a[a.index("-ss") + 1] == "10.000000" and a[a.index("-t") + 1] == "10.000000"
     assert a[a.index("-map") + 1] == "[v]" and "0:a:0" in a  # áudio = faixa 1 (o mix da entrega)

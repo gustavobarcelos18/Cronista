@@ -54,7 +54,7 @@ def test_d2_clip_that_failed_to_render_is_not_guessed_from_old_files(session_id:
 
 def test_d2_write_shorts_records_the_rendered_clip(tmp_path: Path) -> None:
     c = ShortCandidate(1, 600, 1200, 900, 700, "marcador", 0.9, "pico", 10)
-    path = write_shorts([c], tmp_path, 7, {"1-600": tmp_path / "short-1-600-1200-x.mp4"})
+    path = write_shorts([c], tmp_path, 7, {"1-600-1200": tmp_path / "short-1-600-1200-x.mp4"})
     row = json.loads(path.read_text(encoding="utf-8"))["candidatos"][0]
     assert row["clip"] == "short-1-600-1200-x.mp4"
 
@@ -84,3 +84,19 @@ def test_d5_new_video_replaces_the_old_one_in_the_publish_folder(
     report = build_publish_package(db, session_id, tmp_path / "shorts", pack, video=old)
     build_publish_package(db, session_id, tmp_path / "shorts", pack, video=new)
     assert sorted(p.name for p in report.directory.glob("*.mp4")) == ["novo.mp4"]
+
+
+def test_d4_short_key_includes_the_end_so_a_new_ending_needs_a_new_review(
+    session_id: int, tmp_path: Path, db: Session
+) -> None:
+    from cronista.packaging.publish import current_short_decisions, record_short_decision
+
+    (key,) = make_shorts(tmp_path, session_id, 1)
+    assert key == "1-600-1200"
+    record_short_decision(db, session_id, tmp_path, key, "aprovado")
+    data = json.loads((tmp_path / f"shorts-{session_id}.json").read_text(encoding="utf-8"))
+    data["candidatos"][0]["end_frame"] = 1500  # o mesmo começo, outro fim
+    (tmp_path / f"shorts-{session_id}.json").write_text(json.dumps(data), encoding="utf-8")
+    (entry,) = list_shorts(tmp_path, session_id)
+    assert entry.key == "1-600-1500"
+    assert current_short_decisions(db, session_id).get(entry.key) is None

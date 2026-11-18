@@ -285,7 +285,8 @@ nota). A narrativa completa do vídeo único é montada no fim, mas o app manté
 sessão:
 - minutos estimados de "produto final" por sessão e acumulados × meta do vídeo (30–50 min);
 - distribuição por tipo de momento (mortes/falhas, conquistas, chefes, construções, humor, farm);
-- dias cobertos e capítulos que ainda estão "magros" (pouco material bom).
+- dias cobertos e capítulos com menos de 30 s de material estimado, seguindo a divisão narrativa a partir dos
+  segmentos revisados. A referência de 30 s vem da alocação narrativa e serve como aviso.
 
 Isso responde, durante a série, "já tenho material suficiente?" e "o que está faltando gravar?". Arquiteturalmente,
 o projeto é incremental: cada sessão é independente e cacheada, e só as etapas de narrativa e montagem consideram
@@ -1061,6 +1062,8 @@ histórico §58).
 - Só a voz do criador nas gravações.
 - Nome "Cronista" mantido (o nome não é prioridade).
 - Processamento a cada sessão de gravação, com painel da série.
+- O painel sinaliza capítulos abaixo da referência narrativa de 30 s e atualiza a estimativa após decisões no Studio
+  (seção 4.1, histórico §59).
 - Código no PC do trabalho; produção no PC de casa.
 - Fluxo git: branch por fase, commits no nome do criador, revisão com Opus, CI no GitHub Actions.
 - O "dia" é fictício (unidade de progresso); hotkey `Novo dia` obrigatória (seção 4).

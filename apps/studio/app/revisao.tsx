@@ -48,6 +48,7 @@ export default function Revisao() {
   const [events, setEvents] = useState<EventOut[]>([]);
   const [wave, setWave] = useState<WaveformOut | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [decisaoVersao, setDecisaoVersao] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -88,6 +89,7 @@ export default function Revisao() {
     }
     const updated = (await res.json()) as Segment;
     setSegments((all) => all.map((x) => (x.start_s === g.start_s ? updated : x)));
+    setDecisaoVersao((versao) => versao + 1);
   }
 
   function adjust(g: Segment) {
@@ -117,7 +119,7 @@ export default function Revisao() {
       <aside>
         <h1>Cronista Studio</h1>
         {error && <p role="alert">{error}</p>}
-        <Painel />
+        <Painel revisao={decisaoVersao} />
         {sessions.map((s) => (
           <section key={s.id}>
             <h3>

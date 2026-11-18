@@ -1451,6 +1451,12 @@ fecha a citação e entra escapada (`'\''`), não `'`, que o FFmpeg não aceita 
 também vale para o contador da Fase 8); (29) `titulos.json` quebrado vira `TitleError` e o painel segue sem sugestões; (30) JPEG
 reaproveitado acima de 2 MB avisa de novo.
 
+## 59. Aviso de capítulos com pouco material no Studio (2026-11-17)
+
+O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos revisados, em ordem de sessão e arquivo
+por projeto. Capítulos podem atravessar sessões e aparecem no aviso quando têm menos de 30 s de material estimado,
+a referência existente da alocação narrativa. O Studio consulta o painel novamente após salvar uma decisão.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

@@ -1111,6 +1111,13 @@
     },
     "SeriesPanelOut": {
       "properties": {
+        "capitulos_com_pouco_material": {
+          "items": {
+            "$ref": "#/$defs/ThinChapterOut"
+          },
+          "title": "Capitulos Com Pouco Material",
+          "type": "array"
+        },
         "maximo_min": {
           "default": 50.0,
           "title": "Maximo Min",
@@ -1132,6 +1139,11 @@
           },
           "title": "Por Classe Min",
           "type": "object"
+        },
+        "referencia_capitulo_s": {
+          "default": 30.0,
+          "title": "Referencia Capitulo S",
+          "type": "number"
         },
         "sessoes": {
           "items": {
@@ -1158,7 +1170,8 @@
         "total_min",
         "situacao",
         "por_classe_min",
-        "sessoes"
+        "sessoes",
+        "capitulos_com_pouco_material"
       ],
       "title": "SeriesPanelOut",
       "type": "object"
@@ -1325,6 +1338,34 @@
         }
       },
       "title": "StageResult",
+      "type": "object"
+    },
+    "ThinChapterOut": {
+      "properties": {
+        "capitulo": {
+          "title": "Capitulo",
+          "type": "integer"
+        },
+        "produto_s": {
+          "title": "Produto S",
+          "type": "number"
+        },
+        "projeto": {
+          "title": "Projeto",
+          "type": "string"
+        },
+        "projeto_id": {
+          "title": "Projeto Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "projeto_id",
+        "projeto",
+        "capitulo",
+        "produto_s"
+      ],
+      "title": "ThinChapterOut",
       "type": "object"
     },
     "ThumbnailChoiceIn": {

@@ -17,6 +17,23 @@ antigas ficam sem efeito (é a intenção). Próxima: 10B.
 T2 (`media/ffmpeg.py`: `ffmpeg_cmd`, `run_ffmpeg`, `pipe_raw`, `grab_frame`, `video_args(quality)`) e T3 (`paths.py`:
 `SessionPaths`). T4: `docs/glossario.md` escrito como **proposta, aguardando aprovação**; os renomes públicos dependem dela.
 
+**Andamento da 10C (2026-11-18):** feitos B8, B9, B10, B11, B12, B13, B14, B16, B18, B19, C8 (só o pico), C12, C13 (já
+vinha da 10B), C14, C15, D7, D9, D10, D11, D13 (só o engine único e a docstring), E13, E14 e E15. Detalhes:
+
+- **Material mantido (B9):** `is_kept`/`kept_seconds` em `relevance/engine.py`, com `keep_score` lido do parâmetro. Vale
+  nota ≥ `keep_score`, farm, dia ou trecho com marcador. Painel, arco e qualidade usam a mesma regra.
+- **Painel (B10, B11, B12):** por projeto (`projetos[]` no contrato), e a CLI `series` usa `series_panel_full`. Abaixo de
+  30 min a situação é `curto_ok` (arco com setup, meio e clímax) ou `abaixo_da_referencia`.
+- **Lookback (B13):** campos `lookback_<tipo>` e `tail_s` em `RelevanceParams`; o perfil ajusta no grupo `relevance`.
+- **Janelas de marcador (B14):** a fusão não passa de `max_s` e o `novo_dia` mantém o início do próprio trecho.
+- **Trilha única (C15):** `domain/tracks.Track`, com a `lane` do FCPXML. **FCPXML (C12):** `export/fcpxml_base.py`.
+- **CLI (D9, D10):** `titulos-escolher`, `thumbnails-escolher` e `shorts-decidir` são os nomes novos; os antigos ficam
+  como alias escondido e deprecado. `export` é deprecado. `--decisao` é obrigatória e `--variacoes` vai de 2 a 3.
+- **Pendentes da 10C:** D8 (dividir `cli.py`; os testes fazem monkeypatch em `cronista.cli`, então a divisão pede ajuste
+  deles), D13 (um `APIRouter` por domínio), B17 (`StoryPack` como modelo Pydantic e `ExportStatusOut` único), C8 (foco
+  x/y do zoom: precisa da saliência da Fase 3, só `prod`) e os renomes públicos que dependem da aprovação do glossário
+  (T4). Os comandos `montar` e `montagem` ficam como estão até lá.
+
 ## Divisão lógica do projeto
 
 | Bloco | Escopo | Tamanho aprox. | Plano |

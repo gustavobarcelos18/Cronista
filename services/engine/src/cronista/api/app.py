@@ -1,12 +1,14 @@
-"""API HTTP local (FastAPI) que o Studio consome. 7A: só leitura de sessões, arquivos, jobs e marcadores."""
+"""API HTTP local (FastAPI) que o Studio consome: sessões, revisão, acabamento, embalagem e progresso.
+
+À origem do Studio é permitido escrever (decisões, exportação, escolhas); outras origens só leem."""
 
 from __future__ import annotations
 
 import asyncio
 import threading
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import AbstractContextManager
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
@@ -18,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from cronista.assembly.plan import EditPlan
 from cronista.assembly.service import assemble
@@ -26,7 +28,7 @@ from cronista.audio.events import load_stored_events
 from cronista.audio.signals import load_signal, signal_metas
 from cronista.config import Settings
 from cronista.db.models import Artifact, Feedback, Job, Marker, MediaFile, Project, RecordingSession
-from cronista.db.session import open_db
+from cronista.db.session import make_engine, upgrade_db
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.finishing.brand import EffectPolicy, ResolvedStyle
@@ -280,7 +282,17 @@ def create_app(
     profile_loader: ProfileLoader | None = None,
     finishing_loader: StyleLoader | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="Cronista Engine", version="0.1.0")
+    # Um engine só (migrado na partida) para todas as requisições; o `lifespan` o fecha ao desligar.
+    engine = make_engine(settings.db_path)
+    upgrade_db(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        yield
+        engine.dispose()
+
+    app = FastAPI(title="Cronista Engine", version="0.1.0", lifespan=lifespan)
     allowed = origins or settings.studio_origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
     app.add_middleware(
         CORSMiddleware, allow_origins=allowed, allow_methods=["GET", "POST", "PUT"], allow_headers=["*"]
@@ -297,11 +309,10 @@ def create_app(
             return JSONResponse({"detail": "origem não autorizada"}, status_code=403)
         return await call_next(request)
 
-    with open_db(settings.db_path):  # migra uma vez; as requisições reabrem o banco sem rodar o Alembic
-        pass
-
-    def _connect() -> AbstractContextManager[Session]:
-        return open_db(settings.db_path, migrate=False)
+    @contextmanager
+    def _connect() -> Iterator[Session]:
+        with factory() as session:
+            yield session
 
     jobs = ReexportJobs(settings, profile_loader, finishing_loader)
     app.state.reexport = jobs

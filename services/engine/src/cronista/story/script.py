@@ -20,6 +20,7 @@ from typing import Any, Protocol
 import numpy as np
 from pydantic import BaseModel, ValidationError
 
+from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent
 from cronista.domain.frames import FPS
 from cronista.story.models import Script, ScriptLine
@@ -278,6 +279,13 @@ class LocalScriptProvider:
                     continue
                 lines.append(ScriptLine(segment_id=beat["segmento_id"], text=text, start_s=gap[0]))
         return Script(provider=self.name, lines=lines)
+
+
+def script_provider(settings: Settings, generator: TextGenerator | None = None) -> ScriptProvider:
+    """Escolhe o provedor de roteiro: `NullProvider` por padrão; o local só com benchmark aprovado e gerador."""
+    if settings.script_provider == "local" and settings.script_benchmark_ok and generator is not None:
+        return LocalScriptProvider(generator)
+    return NullProvider()
 
 
 # ---------------------------------------------------------------- perfil de voz

@@ -43,7 +43,7 @@ from cronista.finishing.overrides import (
 )
 from cronista.finishing.plan import FinishPlan, apply_decisions, decision_key
 from cronista.finishing.service import assembly_fingerprint, build_finishing
-from cronista.montage import SessionPlanError, _load_source
+from cronista.montage import SessionPlanError, load_source
 from cronista.packaging.panel import PackagingOut, PublishOut, packaging_panel
 from cronista.packaging.publish import (
     PublishError,
@@ -269,7 +269,7 @@ MAX_STREAM_S = 6 * 3600.0
 def _media_duration(db: Session, media_id: int) -> float | None:
     media = db.get(MediaFile, media_id)
     try:
-        return _load_source(db, media).duration_s if media else None
+        return load_source(db, media).duration_s if media else None
     except SessionPlanError:
         return None  # ainda não ingerido: sem duração para conferir
 

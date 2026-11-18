@@ -40,7 +40,7 @@ from cronista.finishing.plan import FinishPlan, apply_decisions
 from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_segment
 from cronista.logging_setup import log_event
 from cronista.mix.service import MixReport, mix_session
-from cronista.montage import _load_source
+from cronista.montage import load_source
 from cronista.paths import SessionPaths
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.story.models import Script
@@ -128,10 +128,7 @@ def _resume_target(base: Path, digest: str) -> tuple[Path, int, PackageReport | 
 
 
 def next_version_dir(base: Path) -> tuple[Path, int]:
-    existing = [
-        int(m.group(1)) for p in base.glob("versao-*") if (m := re.fullmatch(r"versao-(\d+)", p.name))
-    ]
-    version = max(existing, default=0) + 1
+    version = max(_version_numbers(base), default=0) + 1
     return base / f"versao-{version}", version
 
 
@@ -184,7 +181,7 @@ def export_montagem(
 
     session = db.get(RecordingSession, session_id)
     assert session is not None  # build_assembly já validou
-    sources = {m.id: _load_source(db, m) for m in session.media_files}
+    sources = {m.id: load_source(db, m) for m in session.media_files}
     masters = {fid: s.master for fid, s in sources.items()}
 
     # Os timelapses ficam na base (não na versão): versões novas reaproveitam o que já foi renderizado.

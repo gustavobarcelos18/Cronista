@@ -29,13 +29,16 @@ from cronista.shorts.candidates import (
     to_json,
 )
 from cronista.shorts.render import CaptionWord, ShortStyle, render_shorts
-from cronista.story.service import StoryError
+
+
+class ShortsError(Exception):
+    """Sessão inexistente, sem segmentos ou sem material para os Shorts."""
 
 
 def build_shorts(db: Session, session_id: int, params: ShortsParams | None = None) -> list[ShortCandidate]:
     session = db.get(RecordingSession, session_id)
     if session is None:
-        raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
+        raise ShortsError(f"sessão {session_id} não existe (veja `cronista status`)")
     materials: list[FileMaterial] = []
     for media in sorted(session.media_files, key=lambda m: m.ordinal):
         segments = load_effective_segments(db, media.id)
@@ -58,7 +61,7 @@ def build_shorts(db: Session, session_id: int, params: ShortsParams | None = Non
                 speech.append(SpeechUtterance(ev.start_frame, ev.end_frame, words))
         materials.append(FileMaterial(media.id, segments, marks, emotions, speech))
     if not materials:
-        raise StoryError("sem segmentos; rode `cronista relevance` antes")
+        raise ShortsError("sem segmentos; rode `cronista relevance` antes")
     return pick_candidates(materials, params)
 
 
@@ -80,7 +83,7 @@ def load_caption_words(db: Session, session_id: int) -> dict[int, list[CaptionWo
     """Palavras do Whisper (com texto) de cada arquivo da sessão, para a legenda gravada."""
     session = db.get(RecordingSession, session_id)
     if session is None:
-        raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
+        raise ShortsError(f"sessão {session_id} não existe (veja `cronista status`)")
     out: dict[int, list[CaptionWord]] = {}
     for media in session.media_files:
         words = [
@@ -121,7 +124,7 @@ def render_session_shorts(
     try:
         masters, notes = load_masters(db, session)
     except SessionPlanError as exc:
-        raise StoryError(str(exc)) from exc
+        raise ShortsError(str(exc)) from exc
     base_style = replace(style or ShortStyle(), loudness_lufs=resolved.brand.sonic.loudness_lufs)
     result = render_shorts(
         candidates,

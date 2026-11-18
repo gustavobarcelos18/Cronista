@@ -32,8 +32,7 @@ from cronista.shorts.render import (
     short_name,
     video_chain,
 )
-from cronista.shorts.service import load_caption_words
-from cronista.story.service import StoryError
+from cronista.shorts.service import ShortsError, load_caption_words
 
 VISUAL = Visual(
     palette=Palette(
@@ -298,5 +297,5 @@ def test_palavras_do_whisper_vem_do_banco_com_texto(db: Session) -> None:
     db.commit()
     got = load_caption_words(db, session.id)
     assert got[media.id] == [CaptionWord(600, 650, "olha"), CaptionWord(660, 690, " isso")]
-    with pytest.raises(StoryError):
+    with pytest.raises(ShortsError):
         load_caption_words(db, 999)

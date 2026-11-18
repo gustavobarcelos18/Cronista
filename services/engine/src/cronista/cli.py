@@ -50,6 +50,17 @@ class AnalysisPart(StrEnum):
     VIDEO = "video"
 
 
+class Reframe(StrEnum):
+    DESFOQUE = "desfoque"
+    RECORTE = "recorte"
+
+
+class ShortChoice(StrEnum):
+    APROVADO = "aprovado"
+    REJEITADO = "rejeitado"
+    PADRAO = "padrao"
+
+
 def _pick_media(db: Session, session: int, file: str | None) -> MediaFile:
     """Primeiro arquivo da sessão (ou o primeiro cujo nome contém `file`); sai com erro se não houver."""
     media = [
@@ -1121,15 +1132,14 @@ def shorts(
     """Lista os candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D). Não grava nada:
     o manifesto é do `shorts-render`."""
     from cronista.shorts.candidates import ShortsParams
-    from cronista.shorts.service import build_shorts
-    from cronista.story.service import StoryError
+    from cronista.shorts.service import ShortsError, build_shorts
 
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
         try:
             found = build_shorts(db, session, ShortsParams(max_candidates=top))
-        except StoryError as exc:
+        except ShortsError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
     for n, c in enumerate(found, start=1):
@@ -1151,8 +1161,8 @@ def shorts_render(
     ] = 5,
     serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
     reframe: Annotated[
-        str, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
-    ] = "desfoque",
+        Reframe, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
+    ] = Reframe.DESFOQUE,
     focus_x: Annotated[float, typer.Option(help="Só no `recorte`: 0 = esquerda, 1 = direita")] = 0.5,
 ) -> None:
     """Renderiza os Shorts 9:16 com legenda gravada e margens seguras (Fase 9A)."""
@@ -1160,12 +1170,8 @@ def shorts_render(
 
     from cronista.shorts.candidates import ShortsParams, short_key
     from cronista.shorts.render import ShortStyle
-    from cronista.shorts.service import render_session_shorts
-    from cronista.story.service import StoryError
+    from cronista.shorts.service import ShortsError, render_session_shorts
 
-    if reframe not in ("desfoque", "recorte"):
-        typer.echo("erro: --reframe aceita `desfoque` ou `recorte`", err=True)
-        raise typer.Exit(1)
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
@@ -1176,11 +1182,11 @@ def shorts_render(
                 settings,
                 SessionPaths.of(settings, session).shorts_dir,
                 params=ShortsParams(max_candidates=top),
-                style=ShortStyle(reframe=reframe, focus_x=focus_x),  # type: ignore[arg-type]
+                style=ShortStyle(reframe=reframe.value, focus_x=focus_x),
                 serie=serie,
                 gate=build_gate(settings),
             )
-        except (StoryError, FileNotFoundError, ValueError, ValidationError, StageError) as exc:
+        except (ShortsError, FileNotFoundError, ValueError, ValidationError, StageError) as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
     for warning in package.warnings:
@@ -1267,7 +1273,7 @@ def thumbnails(
         ),
     ] = None,
     dia: Annotated[int | None, typer.Option(help="Número do dia para o selo (decidido na edição)")] = None,
-    variacoes: Annotated[int, typer.Option(help="Quantas variações gerar (2 ou 3)", min=1, max=3)] = 3,
+    variacoes: Annotated[int, typer.Option(help="Quantas variações gerar (2 ou 3)", min=2, max=3)] = 3,
     serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
 ) -> None:
     """Gera 2 a 3 variações de thumbnail a partir dos picos do vídeo e do modelo do brand kit (Fase 9B)."""
@@ -1360,8 +1366,8 @@ def short_decidir(
     session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
     short: Annotated[str, typer.Argument(help="Chave do Short (`cronista shorts-status`)")],
     decisao: Annotated[
-        str, typer.Option(help="`aprovado`, `rejeitado` ou `padrao` (volta a pendente)")
-    ] = "aprovado",
+        ShortChoice, typer.Option(help="`aprovado`, `rejeitado` ou `padrao` (volta a pendente)")
+    ],
 ) -> None:
     """Aprova ou rejeita um Short (só inserção; a última decisão vale)."""
     from cronista.packaging.publish import PublishError, record_short_decision
@@ -1370,7 +1376,7 @@ def short_decidir(
     with open_db(settings.db_path) as db:
         try:
             row = record_short_decision(
-                db, session, SessionPaths.of(settings, session).shorts_dir, short, decisao
+                db, session, SessionPaths.of(settings, session).shorts_dir, short, decisao.value
             )
         except PublishError as exc:
             typer.echo(f"erro: {exc}", err=True)

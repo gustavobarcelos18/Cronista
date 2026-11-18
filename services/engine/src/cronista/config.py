@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -75,6 +75,10 @@ class Settings(BaseModel):
     vlm_model: str = ""  # checkpoint do VLM local (3C-4), ex.: Qwen/Qwen3-VL-4B-Instruct; vazio = desligado
     vlm_4bit: bool = False
     video_embedder: str = ""  # checkpoint de embeddings de quadro (3B); vazio = desligado, sem baixar nada
+    script_provider: Literal["null", "local"] = "null"
+    """Roteiro local (experimental, §40): só vale com `script_benchmark_ok`; senão, `NullProvider`."""
+    script_benchmark_ok: bool = False
+    """Marcar `true` (em *.local.yaml) só depois de o roteiro local passar no benchmark."""
     log_level: str = "INFO"
 
     @field_validator("expected_fps")

@@ -260,9 +260,9 @@ def test_cli_fluxo_status_decidir_e_pacote(
     runner = CliRunner()
     status = runner.invoke(app, ["shorts-status", str(session_id)])
     assert status.exit_code == 0 and "pendente" in status.output and keys[0] in status.output
-    ok = runner.invoke(app, ["short-decidir", str(session_id), keys[0]])
+    ok = runner.invoke(app, ["short-decidir", str(session_id), keys[0], "--decisao", "aprovado"])
     assert ok.exit_code == 0 and f"{keys[0]}: aprovado" in ok.output
-    bad = runner.invoke(app, ["short-decidir", str(session_id), "9-9"])
+    bad = runner.invoke(app, ["short-decidir", str(session_id), "9-9", "--decisao", "aprovado"])
     assert bad.exit_code == 1
     pkg = runner.invoke(app, ["pacote-publicacao", str(session_id)])
     assert pkg.exit_code == 2 and "falta: título" in pkg.output  # incompleto: sai com 2 e lista o que falta

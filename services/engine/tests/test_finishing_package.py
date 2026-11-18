@@ -71,7 +71,7 @@ def setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     session = SimpleNamespace(media_files=[SimpleNamespace(id=1)])
     db = SimpleNamespace(get=lambda *_: session, scalars=lambda *_: [])
     monkeypatch.setattr(pacote, "assemble", lambda *a, **k: (plan, SimpleNamespace(chapters=[])))
-    monkeypatch.setattr(pacote, "_load_source", lambda *_: SourceFile(1, master, 400.0, None, None))
+    monkeypatch.setattr(pacote, "load_source", lambda *_: SourceFile(1, master, 400.0, None, None))
     monkeypatch.setattr(pacote, "render_timelapses", lambda *a, **k: {})
     monkeypatch.setattr(pacote, "mix_session", fake_mix)
 

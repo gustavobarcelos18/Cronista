@@ -11,7 +11,7 @@ from cronista.audio.events import load_active_events
 from cronista.config import Settings
 from cronista.db.models import RecordingSession
 from cronista.domain.frames import duration_frames
-from cronista.montage import SessionPlanError, _load_source
+from cronista.montage import SessionPlanError, load_source
 from cronista.story.service import DEFAULT_TARGET_S, StoryResult, build_story
 
 
@@ -55,7 +55,7 @@ def assemble(
                     BrollClip(media.id, ev.start_frame, ev.end_frame, ev.confidence, tags)
                 )
         try:
-            duration_s = _load_source(db, media).duration_s
+            duration_s = load_source(db, media).duration_s
         except SessionPlanError:
             duration_s = None
         if duration_s is not None:

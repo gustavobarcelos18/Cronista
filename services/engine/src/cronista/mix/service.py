@@ -25,10 +25,11 @@ from cronista.mix.envelope import (
 )
 from cronista.mix.loudness import Loudness, measure
 from cronista.mix.stems import render_stem
-from cronista.montage import SessionPlanError, _load_source
+from cronista.montage import SessionPlanError, load_source
 from cronista.paths import SessionPaths
 from cronista.pipeline.stage import StageError
 from cronista.story.models import Script
+from cronista.story.service import DEFAULT_TARGET_S
 
 VOICE_CHAIN = (
     "highpass=f=80,afftdn=nr=12:nf=-30,acompressor=threshold=0.125:ratio=3:attack=5:release=120:makeup=2"
@@ -145,7 +146,7 @@ def mix_session(
     session_id: int,
     settings: Settings,
     script: Script | None = None,
-    target_s: float = 40 * 60.0,
+    target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     out_dir: Path | None = None,
     plan: EditPlan | None = None,
@@ -157,7 +158,7 @@ def mix_session(
     mic: dict[int, Path] = {}
     speech: dict[int, list[tuple[int, int]]] = {}
     for media in session.media_files:
-        source = _load_source(db, media)
+        source = load_source(db, media)
         if source.game_wav is None or source.mic_wav is None:
             raise SessionPlanError(
                 f"{source.master.name}: WAVs não encontrados (rode `cronista ingest` de novo)"

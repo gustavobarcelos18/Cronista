@@ -71,7 +71,6 @@ def build_story_pack(
             "projeto": dict(project),
             "alvo_s": target_s,
             "objetivos": list(objectives),
-            "antecipacoes": [],
             "instrucoes": INSTRUCTIONS,
             "capitulos": [
                 {

@@ -652,6 +652,7 @@ def relevance(
     top: Annotated[int, typer.Option(help="Quantos candidatos mostrar por arquivo")] = 15,
 ) -> None:
     """Segmenta a sessão, dá nota explicável a cada trecho e grava os segmentos (Fase 4)."""
+    from cronista.profiles import load_settings_profile
     from cronista.relevance.quality import top_candidates
     from cronista.relevance.service import RelevanceError, relevance_session
 
@@ -659,7 +660,9 @@ def relevance(
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
         try:
-            results = relevance_session(db, session)
+            results = relevance_session(
+                db, session, overrides=load_settings_profile(settings).thresholds.get("relevance")
+            )
         except RelevanceError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
@@ -706,17 +709,22 @@ def bench_relevance(
 
 @app.command("series")
 def series() -> None:
-    """Painel da série: horas gravadas e minutos estimados de produto por sessão, e o acumulado."""
-    from cronista.relevance.service import series_panel
+    """Painel da série por projeto: horas gravadas e minutos de produto por sessão, e o acumulado."""
+    from cronista.review.panel import series_panel_full
 
     settings = load_settings()
     with open_db(settings.db_path) as db:
-        rows = series_panel(db)
-    typer.echo(f"{'sessão':>7}{'gravado (h)':>13}{'produto (min)':>15}{'acumulado (min)':>17}")
-    for r in rows:
-        typer.echo(f"{r['sessao']:>7}{r['gravado_h']:>13}{r['produto_min']:>15}{r['acumulado_min']:>17}")
+        panel = series_panel_full(db)
+    for project in panel.projetos:
+        typer.echo(
+            f"{project.projeto} (projeto {project.projeto_id}): {project.total_min} min, {project.situacao}"
+        )
+        typer.echo(f"{'sessão':>7}{'gravado (h)':>13}{'produto (min)':>15}{'acumulado (min)':>17}")
+        for r in project.sessoes:
+            typer.echo(f"{r.sessao:>7}{r.gravado_h:>13}{r.produto_min:>15}{r.acumulado_min:>17}")
     typer.echo(
-        "estimativa: trechos relevantes (até 45 s cada) + farm em timelapse; alvo do vídeo: 30 a 50 min"
+        "estimativa: trechos relevantes (até 45 s cada) + farm em timelapse, com as suas decisões; "
+        f"alvo do vídeo: {panel.minimo_min:.0f} a {panel.maximo_min:.0f} min"
     )
 
 

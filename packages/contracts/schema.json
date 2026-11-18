@@ -878,6 +878,64 @@
       "title": "ProgressOut",
       "type": "object"
     },
+    "ProjectPanelOut": {
+      "properties": {
+        "capitulos_com_pouco_material": {
+          "items": {
+            "$ref": "#/$defs/ThinChapterOut"
+          },
+          "title": "Capitulos Com Pouco Material",
+          "type": "array"
+        },
+        "por_classe_min": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Por Classe Min",
+          "type": "object"
+        },
+        "projeto": {
+          "title": "Projeto",
+          "type": "string"
+        },
+        "projeto_id": {
+          "title": "Projeto Id",
+          "type": "integer"
+        },
+        "sessoes": {
+          "items": {
+            "$ref": "#/$defs/SeriesRowOut"
+          },
+          "title": "Sessoes",
+          "type": "array"
+        },
+        "situacao": {
+          "enum": [
+            "curto_ok",
+            "abaixo_da_referencia",
+            "no_alvo",
+            "acima"
+          ],
+          "title": "Situacao",
+          "type": "string"
+        },
+        "total_min": {
+          "title": "Total Min",
+          "type": "number"
+        }
+      },
+      "required": [
+        "projeto_id",
+        "projeto",
+        "total_min",
+        "situacao",
+        "por_classe_min",
+        "sessoes",
+        "capitulos_com_pouco_material"
+      ],
+      "title": "ProjectPanelOut",
+      "type": "object"
+    },
     "PublishOut": {
       "properties": {
         "directory": {
@@ -1111,67 +1169,36 @@
     },
     "SeriesPanelOut": {
       "properties": {
-        "capitulos_com_pouco_material": {
-          "items": {
-            "$ref": "#/$defs/ThinChapterOut"
-          },
-          "title": "Capitulos Com Pouco Material",
-          "type": "array"
-        },
         "maximo_min": {
-          "default": 50.0,
           "title": "Maximo Min",
           "type": "number"
         },
         "meta_min": {
-          "default": 40.0,
           "title": "Meta Min",
           "type": "number"
         },
         "minimo_min": {
-          "default": 30.0,
           "title": "Minimo Min",
           "type": "number"
         },
-        "por_classe_min": {
-          "additionalProperties": {
-            "type": "number"
-          },
-          "title": "Por Classe Min",
-          "type": "object"
-        },
-        "referencia_capitulo_s": {
-          "default": 30.0,
-          "title": "Referencia Capitulo S",
-          "type": "number"
-        },
-        "sessoes": {
+        "projetos": {
           "items": {
-            "$ref": "#/$defs/SeriesRowOut"
+            "$ref": "#/$defs/ProjectPanelOut"
           },
-          "title": "Sessoes",
+          "title": "Projetos",
           "type": "array"
         },
-        "situacao": {
-          "enum": [
-            "faltando",
-            "no_alvo",
-            "acima"
-          ],
-          "title": "Situacao",
-          "type": "string"
-        },
-        "total_min": {
-          "title": "Total Min",
+        "referencia_capitulo_s": {
+          "title": "Referencia Capitulo S",
           "type": "number"
         }
       },
       "required": [
-        "total_min",
-        "situacao",
-        "por_classe_min",
-        "sessoes",
-        "capitulos_com_pouco_material"
+        "meta_min",
+        "minimo_min",
+        "maximo_min",
+        "referencia_capitulo_s",
+        "projetos"
       ],
       "title": "SeriesPanelOut",
       "type": "object"
@@ -1349,19 +1376,9 @@
         "produto_s": {
           "title": "Produto S",
           "type": "number"
-        },
-        "projeto": {
-          "title": "Projeto",
-          "type": "string"
-        },
-        "projeto_id": {
-          "title": "Projeto Id",
-          "type": "integer"
         }
       },
       "required": [
-        "projeto_id",
-        "projeto",
         "capitulo",
         "produto_s"
       ],

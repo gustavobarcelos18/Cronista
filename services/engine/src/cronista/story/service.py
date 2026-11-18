@@ -16,6 +16,7 @@ from cronista.domain.evidence import AnalysisEvent
 from cronista.paths import SCRIPT, STORY_PACK, VOICE_PROFILE
 from cronista.relevance.engine import Segment
 from cronista.review.decisions import load_effective_segments
+from cronista.review.learning import params_for_project
 from cronista.story.arc import Chapter, allocate_time, build_chapters
 from cronista.story.models import Script
 from cronista.story.objectives import (
@@ -83,7 +84,7 @@ def build_story(
     if not files:
         raise StoryError("sem segmentos; rode `cronista relevance` antes")
 
-    chapters = build_chapters(files, kinds)
+    chapters = build_chapters(files, kinds, params_for_project(db, project.id).keep_score)
     allocate_time(chapters, target_s)
     objectives = []
     for obj in db.scalars(select(Objective).where(Objective.project_id == project.id)):

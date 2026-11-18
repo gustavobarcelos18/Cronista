@@ -17,7 +17,7 @@ from enum import StrEnum
 from typing import Any
 
 from cronista.domain.frames import FPS, seconds_to_frame
-from cronista.relevance.service import MAX_FARM_S, MAX_KEPT_S
+from cronista.relevance.engine import MAX_FARM_S, MAX_KEPT_S
 from cronista.story.arc import BeatedSegment, Chapter
 from cronista.story.models import Beat
 

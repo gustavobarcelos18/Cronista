@@ -10,6 +10,7 @@ universal: os pesos são do projeto, não do jogo.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 
 import numpy as np
@@ -125,16 +126,19 @@ def accept(db: Session, project_id: int, proposal: Proposal) -> WeightCalibratio
     return row
 
 
-def params_for_project(db: Session, project_id: int) -> RelevanceParams:
-    """Parâmetros de relevância do projeto: os padrão, com os pesos da última calibração aceita."""
+def params_for_project(
+    db: Session, project_id: int, overrides: Mapping[str, float] | None = None
+) -> RelevanceParams:
+    """Parâmetros de relevância do projeto: os padrão, com os pesos da última calibração aceita e, por cima,
+    os limiares do perfil de jogo (`overrides`, o grupo `relevance`: lookback, nota mínima...), se houver."""
     row = db.scalar(
         select(WeightCalibration)
         .where(WeightCalibration.project_id == project_id)
         .order_by(WeightCalibration.id.desc())
     )
     params = RelevanceParams()
-    if row is None:
-        return params
-    valid = {f.name for f in fields(params)}
-    saved = {k: float(v) for k, v in json.loads(row.weights).items() if k in valid}
-    return RelevanceParams(**{**params.__dict__, **saved})
+    if row is not None:
+        valid = {f.name for f in fields(params)}
+        saved = {k: float(v) for k, v in json.loads(row.weights).items() if k in valid}
+        params = RelevanceParams(**{**params.__dict__, **saved})
+    return RelevanceParams(**{**params.__dict__, **overrides}) if overrides else params

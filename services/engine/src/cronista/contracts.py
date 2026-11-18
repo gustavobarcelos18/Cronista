@@ -32,7 +32,7 @@ from cronista.api.app import (
 )
 from cronista.domain.models import MarkerKind, MediaProbe, StageResult
 from cronista.packaging.panel import PackagingOut, PublishOut
-from cronista.review.panel import SeriesPanelOut, SeriesRowOut
+from cronista.review.panel import ProjectPanelOut, SeriesPanelOut, SeriesRowOut
 
 
 def build_schema() -> dict[str, object]:
@@ -51,6 +51,7 @@ def build_schema() -> dict[str, object]:
         LearningOut,
         ProgressOut,
         SeriesRowOut,
+        ProjectPanelOut,
         SeriesPanelOut,
         ExportStatusOut,
         ScriptOut,

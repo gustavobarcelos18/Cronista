@@ -266,13 +266,13 @@ def test_api_painel_da_serie(settings: Settings, db: Session) -> None:
     segs = [Segment(0, 30, "conquista", 0.9), Segment(60, 90, "morte_falha", 0.8)]
     replace_events(db, 1, "relevance", "", segments_to_events(segs, RelevanceParams()))
     client = TestClient(create_app(settings))
-    panel = client.get("/series").json()
-    assert panel["total_min"] == 1.0 and panel["situacao"] == "faltando"
+    panel = client.get("/series").json()["projetos"][0]
+    assert panel["total_min"] == 1.0 and panel["situacao"] == "abaixo_da_referencia"  # sem clímax no arco
     assert panel["sessoes"][0]["dias"] == 1
     assert set(panel["por_classe_min"]) == {"conquista", "morte_falha"}
 
     record_decision(db, 1, 60, "rejeitado")  # rejeitar baixa a estimativa
-    assert client.get("/series").json()["total_min"] == 0.5
+    assert client.get("/series").json()["projetos"][0]["total_min"] == 0.5
 
 
 def test_painel_avisa_capitulos_curtos_e_recalcula_apos_revisao(settings: Settings, db: Session) -> None:
@@ -313,15 +313,15 @@ def test_painel_avisa_capitulos_curtos_e_recalcula_apos_revisao(settings: Settin
         ),
     )
     client = TestClient(create_app(settings))
-    chapter_2 = {"projeto_id": 1, "projeto": "serie", "capitulo": 2, "produto_s": 10.0}
+    chapter_2 = {"capitulo": 2, "produto_s": 10.0}
     before = client.get("/series").json()
     assert before["referencia_capitulo_s"] == 30
     # O primeiro capítulo soma 16 + 14 s, atravessa duas sessões e já alcança a referência.
-    assert before["capitulos_com_pouco_material"] == [chapter_2]
+    assert before["projetos"][0]["capitulos_com_pouco_material"] == [chapter_2]
 
     decision = client.post(f"/media/{next_media.id}/segments/0/decision", json={"decision": "rejeitado"})
     assert decision.status_code == 200
-    assert client.get("/series").json()["capitulos_com_pouco_material"] == [
+    assert client.get("/series").json()["projetos"][0]["capitulos_com_pouco_material"] == [
         {**chapter_2, "capitulo": 1, "produto_s": 16.0},
         chapter_2,
     ]

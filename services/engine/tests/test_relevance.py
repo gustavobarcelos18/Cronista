@@ -7,9 +7,17 @@ import itertools
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
 from cronista.domain.frames import FPS
 from cronista.gabarito import Annotation
-from cronista.relevance.engine import MarkerRef, RelevanceParams, Segment, build_segments, speech_blocks
+from cronista.relevance.engine import (
+    MarkerRef,
+    RelevanceParams,
+    Segment,
+    build_segments,
+    is_kept,
+    kept_seconds,
+    speech_blocks,
+)
 from cronista.relevance.quality import evaluate_relevance, render_quality
-from cronista.relevance.service import events_to_segments, product_seconds, segments_to_events
+from cronista.relevance.service import events_to_segments, segments_to_events
 
 
 def ev(kind: str, a: float, b: float, conf: float = 0.8, **payload: object) -> AnalysisEvent:
@@ -108,7 +116,7 @@ def test_quality_metrics_and_product() -> None:
     assert q.moments_expected == 2 and q.moments_in_top >= 1
     assert q.farm_recall is not None and q.farm_recall > 0.5
     assert "meta 85%" in render_quality(q)
-    assert product_seconds(segs) > 0
+    assert sum(kept_seconds(s) for s in segs) > 0
 
 
 def test_marker_beats_pause_discard() -> None:
@@ -118,3 +126,48 @@ def test_marker_beats_pause_discard() -> None:
     marked = [s for s in segs if "c" in s.markers]
     assert marked and all(s.classe != "descartavel" for s in marked)
     assert by_class(build_segments(events, [], 120.0), "descartavel")
+
+
+def test_kept_criterion_is_single_and_reads_keep_score() -> None:
+    """B9: painel, arco e qualidade usam a mesma regra; `keep_score` do parâmetro vale."""
+    weak = Segment(0, 100, "jogo", 0.40)
+    assert is_kept(weak) and not is_kept(weak, keep_score=0.5)
+    assert kept_seconds(weak) == 45.0 and kept_seconds(weak, 0.5) == 0.0
+    assert not is_kept(Segment(0, 10, "descartavel", 0.9, markers=["x"]))
+    assert is_kept(Segment(0, 10, "jogo", 0.0, markers=["x"]))  # o voto do criador
+    assert kept_seconds(Segment(0, 100, "farm", 0.0)) == 10.0  # timelapse 10x
+
+
+def test_lookback_is_a_param_and_a_profile_can_change_it() -> None:
+    """B13: o lookback sai de `RelevanceParams` (e o perfil o ajusta no grupo `relevance`)."""
+    from cronista.profiles import GameProfile, apply_thresholds
+
+    events = talk(0, 40)
+    marker = [MarkerRef("x", "momento", 100.0)]
+    default = build_segments(events, marker, 200.0, RelevanceParams(snap_s=0))
+    longer = apply_thresholds(
+        GameProfile(name="p", thresholds={"relevance": {"lookback_momento": 40.0}}),
+        "relevance",
+        RelevanceParams(snap_s=0),
+    )
+    wide = build_segments(events, marker, 200.0, longer)
+
+    def start(segs: list[Segment]) -> int:
+        return next(s.start_s for s in segs if "x" in s.markers)
+
+    assert start(default) == 75 and start(wide) == 60
+    assert RelevanceParams().lookback("tipo-sem-campo") == 20.0
+
+
+def test_merged_windows_respect_max_s_and_never_cross_novo_dia() -> None:
+    """B14: a fusão não passa de `max_s` e o `novo_dia` mantém o início do próprio trecho."""
+    params = RelevanceParams(snap_s=0, max_s=60)
+    markers = [MarkerRef(str(i), "momento", 100.0 + 15 * i) for i in range(6)]
+    segs = build_segments([], markers, 400.0, params)
+    assert all(s.duration_s <= 60 for s in segs if s.markers)
+    assert {m for s in segs for m in s.markers} == {m.marker_id for m in markers}
+    marks = [MarkerRef("a", "momento", 100.0), MarkerRef("d", "novo_dia", 105.0)]
+    segs = build_segments([], marks, 300.0, RelevanceParams(snap_s=0))
+    day = next(s for s in segs if "d" in s.markers)
+    assert day.start_s == 100  # lookback de 5 s do `novo_dia`, e o momento anterior terminou ali
+    assert not any(s.start_s < day.start_s < s.end_s for s in segs)

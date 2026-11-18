@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from cronista.domain.frames import FPS
 from cronista.gabarito import Annotation
-from cronista.relevance.engine import Segment
+from cronista.relevance.engine import Segment, kept_seconds
 
 DISCARDED = ("descartavel",)
 FARM = "farm"
@@ -21,7 +21,7 @@ class RelevanceQuality:
     farm_recall: float | None
     farm_precision: float | None
     raw_s: int
-    kept_s: int
+    kept_s: float
 
     @property
     def moment_recall(self) -> float | None:
@@ -58,7 +58,7 @@ def evaluate_relevance(
     pred_s = sum(b - a for a, b in farm_pred)
     covered = sum(_overlap(t, p) for t in farm_truth for p in farm_pred)
     raw = max((s.end_s for s in segments), default=0)
-    kept = sum(s.duration_s for s in segments if s.classe not in (*DISCARDED, FARM) and s.score >= keep_score)
+    kept = round(sum(kept_seconds(s, keep_score) for s in segments), 1)
     return RelevanceQuality(
         len(moments),
         hit,

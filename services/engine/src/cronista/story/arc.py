@@ -9,11 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from cronista.relevance.engine import Segment
-from cronista.relevance.service import MAX_FARM_S, MAX_KEPT_S, TIMELAPSE_FACTOR
+from cronista.relevance.engine import RelevanceParams, Segment, is_kept, kept_seconds
 from cronista.story.models import Beat, Span
 
-KEEP_SCORE = 0.35
 MIN_CHAPTER_S = 30.0
 SETUP_FRACTION = 0.2
 
@@ -24,13 +22,11 @@ class BeatedSegment:
     segment: Segment
     beat: Beat
     marker_kinds: list[str] = field(default_factory=list)
+    keep_score: float = RelevanceParams.keep_score
 
     @property
     def product_s(self) -> float:
-        s = self.segment
-        if s.classe == "farm":
-            return min(s.duration_s / TIMELAPSE_FACTOR, MAX_FARM_S)
-        return min(float(s.duration_s), MAX_KEPT_S)
+        return kept_seconds(self.segment, self.keep_score)
 
 
 @dataclass
@@ -44,14 +40,10 @@ class Chapter:
         return sum(i.product_s for i in self.items)
 
 
-def is_kept(seg: Segment) -> bool:
-    if seg.classe == "descartavel":
-        return False
-    return seg.classe in ("farm", "dia") or seg.score >= KEEP_SCORE or bool(seg.markers)
-
-
 def build_chapters(
-    files: Sequence[tuple[int, Sequence[Segment]]], marker_kinds: Mapping[str, str]
+    files: Sequence[tuple[int, Sequence[Segment]]],
+    marker_kinds: Mapping[str, str],
+    keep_score: float = RelevanceParams.keep_score,
 ) -> list[Chapter]:
     """`files`: `(file_id, segmentos)` na ordem da sessão. Um `novo_dia` abre um capítulo novo."""
     chapters: list[Chapter] = [Chapter(1)]
@@ -60,11 +52,15 @@ def build_chapters(
             kinds = sorted({marker_kinds[m] for m in seg.markers if m in marker_kinds})
             if "novo_dia" in kinds and chapters[-1].items:
                 chapters.append(Chapter(len(chapters) + 1))
-            if not is_kept(seg):
+            if not is_kept(seg, keep_score):
                 continue
             chapters[-1].items.append(
                 BeatedSegment(
-                    Span(file_id=file_id, start_s=seg.start_s, end_s=seg.end_s), seg, Beat.CONFLITO, kinds
+                    Span(file_id=file_id, start_s=seg.start_s, end_s=seg.end_s),
+                    seg,
+                    Beat.CONFLITO,
+                    kinds,
+                    keep_score,
                 )
             )
     chapters = [c for c in chapters if c.items]
@@ -123,3 +119,13 @@ def allocate_time(chapters: Sequence[Chapter], target_s: float) -> None:
         break
     for n, c in enumerate(chapters):
         c.allocated_s = round(fixed[n], 1)
+
+
+def arc_complete(chapters: Sequence[Chapter]) -> bool:
+    """Arco completo (§40): começo (setup), meio (conflito/falha) e fim com clímax (virada/conquista)."""
+    beats = {item.beat for chapter in chapters for item in chapter.items}
+    return (
+        Beat.SETUP in beats
+        and bool(beats & {Beat.CONFLITO, Beat.FALHA})
+        and bool(beats & {Beat.VIRADA, Beat.CONQUISTA})
+    )

@@ -1,6 +1,7 @@
 """Painel da série (Fase 7D, plano 4.1): quanto produto já existe, por sessão e por tipo de momento.
 
 Usa os segmentos efetivos (com as decisões do criador), então rejeitar um trecho já baixa a estimativa.
+Totais e situação são por projeto (série): cada projeto é um vídeo, com a sua meta de 30 a 50 min.
 """
 
 from __future__ import annotations
@@ -13,14 +14,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cronista.db.models import Marker, RecordingSession
-from cronista.relevance.engine import Segment
-from cronista.relevance.service import product_seconds
+from cronista.relevance.engine import Segment, kept_seconds
 from cronista.review.decisions import load_effective_segments
-from cronista.story.arc import MIN_CHAPTER_S, build_chapters
+from cronista.review.learning import params_for_project
+from cronista.story.arc import MIN_CHAPTER_S, arc_complete, build_chapters
 
 TARGET_MIN = 40.0
 MIN_MIN = 30.0
 MAX_MIN = 50.0
+
+
+Situacao = Literal["curto_ok", "abaixo_da_referencia", "no_alvo", "acima"]
+"""Abaixo de 30 min: `curto_ok` se o arco está completo (histórico §40), `abaixo_da_referencia` se não."""
 
 
 class SeriesRowOut(BaseModel):
@@ -34,52 +39,73 @@ class SeriesRowOut(BaseModel):
 
 
 class ThinChapterOut(BaseModel):
-    projeto_id: int
-    projeto: str
     capitulo: int
     produto_s: float
 
 
-class SeriesPanelOut(BaseModel):
-    meta_min: float = TARGET_MIN
-    minimo_min: float = MIN_MIN
-    maximo_min: float = MAX_MIN
+class ProjectPanelOut(BaseModel):
+    projeto_id: int
+    projeto: str
     total_min: float
-    situacao: Literal["faltando", "no_alvo", "acima"]
+    situacao: Situacao
     por_classe_min: dict[str, float]
     sessoes: list[SeriesRowOut]
     capitulos_com_pouco_material: list[ThinChapterOut]
-    referencia_capitulo_s: float = MIN_CHAPTER_S
+
+
+class SeriesPanelOut(BaseModel):
+    meta_min: float
+    minimo_min: float
+    maximo_min: float
+    referencia_capitulo_s: float
+    projetos: list[ProjectPanelOut]
+
+
+def situation(total_min: float, complete_arc: bool) -> Situacao:
+    if total_min < MIN_MIN:
+        return "curto_ok" if complete_arc else "abaixo_da_referencia"
+    return "acima" if total_min > MAX_MIN else "no_alvo"
 
 
 def series_panel_full(db: Session) -> SeriesPanelOut:
+    sessions_by_project: dict[int, list[RecordingSession]] = defaultdict(list)
+    for session in db.scalars(select(RecordingSession).order_by(RecordingSession.id)):
+        sessions_by_project[session.project_id].append(session)
+    return SeriesPanelOut(
+        meta_min=TARGET_MIN,
+        minimo_min=MIN_MIN,
+        maximo_min=MAX_MIN,
+        referencia_capitulo_s=MIN_CHAPTER_S,
+        projetos=[
+            _project_panel(db, sessions, params_for_project(db, project_id).keep_score)
+            for project_id, sessions in sessions_by_project.items()
+        ],
+    )
+
+
+def _project_panel(db: Session, sessions: list[RecordingSession], keep_score: float) -> ProjectPanelOut:
     rows: list[SeriesRowOut] = []
     totals: dict[str, float] = {}
-    files_by_project: dict[int, list[tuple[int, list[Segment]]]] = defaultdict(list)
-    markers_by_project: dict[int, dict[str, str]] = defaultdict(dict)
-    project_names: dict[int, str] = {}
+    files: list[tuple[int, list[Segment]]] = []
+    markers: dict[str, str] = {}
     cumulative = 0.0
-    for session in db.scalars(select(RecordingSession).order_by(RecordingSession.id)):
-        project_id = session.project_id
-        project_names[project_id] = session.project.name
+    for session in sessions:
         days = db.execute(
             select(Marker.marker_id, Marker.media_file_id).where(
                 Marker.session_id == session.id, Marker.kind == "novo_dia"
             )
         ).all()
-        markers_by_project[project_id].update(
-            {marker_id: "novo_dia" for marker_id, media_id in days if media_id is not None}
-        )
+        markers.update({marker_id: "novo_dia" for marker_id, media_id in days if media_id is not None})
         raw = kept = 0.0
         by_class: dict[str, float] = {}
         for media in session.media_files:
             segs = load_effective_segments(db, media.id)
             if not segs:
                 continue
-            files_by_project[project_id].append((media.id, segs))
+            files.append((media.id, segs))
             raw += max(s.end_s for s in segs)
             for s in segs:
-                sec = product_seconds([s])
+                sec = kept_seconds(s, keep_score)
                 kept += sec
                 if sec > 0:
                     by_class[s.classe] = by_class.get(s.classe, 0.0) + sec
@@ -96,27 +122,18 @@ def series_panel_full(db: Session) -> SeriesPanelOut:
                 por_classe_min={k: round(v / 60, 1) for k, v in sorted(by_class.items())},
             )
         )
+    chapters = build_chapters(files, markers, keep_score)
     total = round(cumulative / 60, 1)
-    situacao: Literal["faltando", "no_alvo", "acima"] = (
-        "faltando" if total < MIN_MIN else "acima" if total > MAX_MIN else "no_alvo"
-    )
-    thin_chapters: list[ThinChapterOut] = []
-    for project_id, files in files_by_project.items():
-        for chapter in build_chapters(files, markers_by_project[project_id]):
-            seconds = round(chapter.product_s, 2)
-            if seconds < MIN_CHAPTER_S:
-                thin_chapters.append(
-                    ThinChapterOut(
-                        projeto_id=project_id,
-                        projeto=project_names[project_id],
-                        capitulo=chapter.number,
-                        produto_s=seconds,
-                    )
-                )
-    return SeriesPanelOut(
+    return ProjectPanelOut(
+        projeto_id=sessions[0].project_id,
+        projeto=sessions[0].project.name,
         total_min=total,
-        situacao=situacao,
+        situacao=situation(total, arc_complete(chapters)),
         por_classe_min={k: round(v / 60, 1) for k, v in sorted(totals.items())},
         sessoes=rows,
-        capitulos_com_pouco_material=thin_chapters,
+        capitulos_com_pouco_material=[
+            ThinChapterOut(capitulo=c.number, produto_s=round(c.product_s, 2))
+            for c in chapters
+            if round(c.product_s, 2) < MIN_CHAPTER_S
+        ],
     )

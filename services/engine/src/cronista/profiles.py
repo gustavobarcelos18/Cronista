@@ -18,6 +18,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from cronista.config import Settings, find_repo_root
+from cronista.relevance.engine import RelevanceParams
 from cronista.video.hud import HudParams, IdleParams
 from cronista.video.models import build_video_models
 from cronista.video.ports import HudRegionSpec, VideoModels
@@ -26,7 +27,12 @@ from cronista.video.screen_state import ScreenParams
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-THRESHOLD_GROUPS: dict[str, type] = {"screen": ScreenParams, "hud": HudParams, "idle": IdleParams}
+THRESHOLD_GROUPS: dict[str, type] = {
+    "screen": ScreenParams,
+    "hud": HudParams,
+    "idle": IdleParams,
+    "relevance": RelevanceParams,
+}
 """Grupos de limiares ajustáveis por perfil -> dataclass de parâmetros do núcleo."""
 
 

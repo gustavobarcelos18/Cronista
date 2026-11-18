@@ -6,10 +6,13 @@ V1 no `spine`, tudo o mais como clipes conectados (`lane`) ao clipe de V1 que es
 | lane | trilha | conteúdo |
 |---|---|---|
 | spine | V1 | gameplay e timelapses |
-| 2 | V3 | B-roll (V2 fica vazia: o FCPXML não cria trilha vazia) |
-| 4 | V5 | cartela de capítulo, título editável (V4 vazia) |
+| 1 | V2 | zoom e tremor do acabamento (8D; vazia sem acabamento) |
+| 2 | V3 | B-roll |
+| 3 | V4 | contador de mortes do acabamento (8D) |
+| 4 | V5 | cartela de capítulo, título editável |
 | -1 / -2 | A1 / A2 | stems de jogo e de voz |
-| -6 / -7 | A6 / A7 | stems crus, desativados (A3 a A5 vazias) |
+| -4 / -5 | A4 / A5 | música (stem ou arquivo) e SFX do acabamento (8D); A3 vazia |
+| -6 / -7 | A6 / A7 | stems crus, desativados |
 
 ⚠️ O que o spike ainda não provou (plano 6.5, itens A16 e bloco D): se o Resolve respeita esses números de lane
 sem trilhas intermediárias e se o canal desativado vale para A6/A7. Marcadores e trilhas vazias, se faltarem,
@@ -29,6 +32,7 @@ from urllib.request import url2pathname
 from cronista.assembly.plan import Card, EditPlan, Mode, Track
 from cronista.domain.frames import FPS
 from cronista.export.fcpxml import _parse_time, check_fcpxml
+from cronista.export.finish_fcpxml import FinishLayers, add_finish_clips
 from cronista.mix.envelope import narration_cues
 from cronista.story.models import ScriptLine
 
@@ -36,7 +40,7 @@ WIDTH, HEIGHT = 1920, 1080
 _XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n\n'
 TITLE_UID = ".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"
 LANE_B_ROLL, LANE_CARD = 2, 4
-STEM_LANES = {"A1": -1, "A2": -2, "A6": -6, "A7": -7}
+STEM_LANES = {"A1": -1, "A2": -2, "A4": -4, "A6": -6, "A7": -7}
 DISABLED_STEMS = frozenset({"A6", "A7"})
 
 
@@ -60,7 +64,9 @@ def _t(frames: int) -> str:
     return f"{frames}/{FPS}s"
 
 
-def render_plan_fcpxml(plan: EditPlan, media: ExportMedia, name: str = "Cronista") -> str:
+def render_plan_fcpxml(
+    plan: EditPlan, media: ExportMedia, name: str = "Cronista", layers: FinishLayers | None = None
+) -> str:
     root = ET.Element("fcpxml", version="1.9")
     resources = ET.SubElement(root, "resources")
     ET.SubElement(
@@ -114,6 +120,7 @@ def render_plan_fcpxml(plan: EditPlan, media: ExportMedia, name: str = "Cronista
     broll = [i for i in plan.items if i.track == Track.V3]
     cards = {c.timeline_start: c for c in plan.cards}
     title_count = 0
+    fx_titles = [0]
     for n, item in v1:
         if item.mode == Mode.TIMELAPSE:
             ref, start = asset(media.timelapses[n], item.timeline_frames, video=True), 0
@@ -163,6 +170,8 @@ def render_plan_fcpxml(plan: EditPlan, media: ExportMedia, name: str = "Cronista
                 duration=_t(b.timeline_frames),
                 format="r1",
             )
+        if layers is not None:
+            add_finish_clips(parent, item, start, layers, lambda p, f, v: asset(p, f, video=v), fx_titles)
         card = cards.get(item.timeline_start)
         if card is not None:
             title_count += 1

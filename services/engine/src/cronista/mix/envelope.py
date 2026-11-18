@@ -57,7 +57,7 @@ def narration_cues(
 
     Linha de segmento que não está na montagem (ou está em timelapse) é ignorada.
     """
-    by_segment = {i.segment_id: i for i in plan_items if i.track == Track.V1 and i.speed == 1}
+    by_segment = {sid: i for i in plan_items if i.track == Track.V1 and i.speed == 1 for sid in i.segment_ids}
     out: list[tuple[int, int, ScriptLine]] = []
     for line in lines:
         item = by_segment.get(line.segment_id)

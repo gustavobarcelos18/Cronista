@@ -89,6 +89,13 @@ class EditItem:
     score: float
     protected: bool = False
     timeline_start: int = 0
+    merged_ids: tuple[str, ...] = ()
+    """Ids dos outros trechos fundidos neste corte (`segment_id` é o do primeiro)."""
+
+    @property
+    def segment_ids(self) -> tuple[str, ...]:
+        """Todos os trechos da história que este corte cobre (falas e marcadores de cada um valem aqui)."""
+        return (self.segment_id, *self.merged_ids)
 
     @property
     def source_frames(self) -> int:
@@ -250,6 +257,11 @@ def _merge_and_clip(items: list[EditItem], min_frames: int) -> list[EditItem]:
                     score=max(prev.score, item.score),
                     protected=prev.protected or item.protected,
                     beat=item.beat if (item.protected and not prev.protected) else prev.beat,
+                    merged_ids=tuple(
+                        i
+                        for i in dict.fromkeys([*prev.merged_ids, *item.segment_ids])
+                        if i != prev.segment_id
+                    ),
                 )
                 continue
             item = replace(item, in_frame=prev.out_frame)

@@ -219,3 +219,11 @@ def test_cli_brand_check_ok_and_series_listing() -> None:
 def test_cli_brand_check_unknown_series_fails() -> None:
     result = CliRunner().invoke(app, ["brand-check", "--serie", "nao-existe"])
     assert result.exit_code == 1
+
+
+def test_lut_is_a_suggestion_by_default() -> None:
+    """C6 (auditoria 10A): o `SetLUT` do gratuito falhou no spike; o padrão não promete aplicar."""
+    from cronista.finishing.brand import DEFAULT_EFFECTS
+    from cronista.finishing.effects import EffectKind, EffectMode
+
+    assert DEFAULT_EFFECTS[EffectKind.COR_LUT].mode == EffectMode.SUGERIR

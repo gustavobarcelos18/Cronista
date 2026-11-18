@@ -50,15 +50,19 @@ class FinishArtifacts:
 
 
 def lua_lut(lut_path: Path) -> str:
-    """Lua de uma linha: LUT no nó 1 de cada clipe da V1 (sem `io`, `dofile` nem `require`).
+    """Lua de uma linha: LUT no nó 1 de cada clipe da V1 e da V2 (sem `io`, `dofile` nem `require`).
+
+    A V2 leva os efeitos (zoom e shake, editáveis ou renderizados): sem LUT nela, a cor "pula" durante cada
+    efeito, porque o clipe da V2 cobre a V1 já corrigida.
 
     ⚠️ `SetLUT` do scripting do Resolve ainda não foi conferido na versão gratuita (plano 6.5).
     """
     escaped = lut_path.resolve().as_posix().replace("\\", "\\\\").replace('"', '\\"')
     return (
         "local t = resolve:GetProjectManager():GetCurrentProject():GetCurrentTimeline(); local n = 0; "
-        'for _, i in ipairs(t:GetItemListInTrack("video", 1)) do '
-        f'if i:SetLUT(1, "{escaped}") then n = n + 1 end end; '
+        "for _, track in ipairs({1, 2}) do "
+        'for _, i in ipairs(t:GetItemListInTrack("video", track)) do '
+        f'if i:SetLUT(1, "{escaped}") then n = n + 1 end end end; '
         'print("LUT aplicada em " .. n .. " clipes")'
     )
 

@@ -134,7 +134,8 @@ DEFAULT_EFFECTS: dict[EffectKind, EffectPolicy] = {
     EffectKind.BARRA_PROGRESSO: EffectPolicy(mode=EffectMode.RENDERIZADO, max_per_minute=1.0, min_score=0.0),
     EffectKind.LEGENDA_PONTUAL: EffectPolicy(mode=EffectMode.RENDERIZADO, max_per_minute=4.0, min_score=0.5),
     EffectKind.CARTELA_DIA: EffectPolicy(max_per_minute=2.0, min_score=0.0),
-    EffectKind.COR_LUT: EffectPolicy(mode=EffectMode.EDITAVEL, max_per_minute=60.0, min_score=0.0),
+    # `sugerir` até conferir em prod se o `SetLUT` funciona no Resolve gratuito (o spike devolveu false; §60)
+    EffectKind.COR_LUT: EffectPolicy(mode=EffectMode.SUGERIR, max_per_minute=60.0, min_score=0.0),
 }
 """Padrão conservador: efeitos de humor e impacto só como sugestão; o criador liga o resto por série."""
 

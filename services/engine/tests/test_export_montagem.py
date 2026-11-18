@@ -4,6 +4,8 @@ import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import pytest
+
 from cronista.assembly.plan import BrollClip, EditPlan, Mode, build_edit_plan
 from cronista.config import Settings
 from cronista.domain.frames import FPS
@@ -230,3 +232,20 @@ def test_timelapse_espera_a_gpu_liberar(tmp_path: Path, settings: Settings) -> N
     fast = settings.model_copy(update={"gpu_poll_seconds": 0.0})
     render_timelapses(plan, {1: master}, tmp_path / "tl", fast, gate)
     assert gate.calls == 3
+
+
+def test_timelapse_interrompido_nao_deixa_arquivo_parcial(
+    tmp_path: Path, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C1 (auditoria 10A): o render grava num temporário; se o FFmpeg cai, o nome final não existe."""
+    from cronista.export import timelapse
+
+    def crash(_settings: Settings, args: list[str]) -> None:
+        Path(args[-1]).write_bytes(b"parcial")
+        raise RuntimeError("ffmpeg caiu")
+
+    monkeypatch.setattr(timelapse, "run_ffmpeg", crash)
+    plan = build_edit_plan([Chapter(1, [_seg(0, 30, "farm")], 600.0)], durations={1: 30 * FPS})
+    with pytest.raises(RuntimeError):
+        render_timelapses(plan, {1: tmp_path / "m.mp4"}, tmp_path / "tl", settings)
+    assert list((tmp_path / "tl").iterdir()) == []

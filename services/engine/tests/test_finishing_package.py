@@ -12,7 +12,8 @@ import pytest
 from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
 from cronista.config import Settings
 from cronista.export import pacote
-from cronista.finishing.brand import BrandKit, resolve_style
+from cronista.finishing.brand import BrandKit, EffectPolicy, SeriesStyle, resolve_style
+from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.mix.service import MixReport
 from cronista.montage import SourceFile
 
@@ -79,7 +80,9 @@ def setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
     monkeypatch.setattr("cronista.finishing.render.video.run_ffmpeg", fake_ffmpeg)
     settings = Settings(env="test", data_dir=tmp_path / "data", brand_dir=brand_dir)
-    return {"db": db, "settings": settings, "base": tmp_path / "out", "style": resolve_style(BRAND)}
+    # O LUT é `sugerir` por padrão (SetLUT não confirmado no gratuito, §60): a série o liga como `editavel`.
+    series = SeriesStyle(name="teste", effects={EffectKind.COR_LUT: EffectPolicy(mode=EffectMode.EDITAVEL)})
+    return {"db": db, "settings": settings, "base": tmp_path / "out", "style": resolve_style(BRAND, series)}
 
 
 def export(setup: dict[str, Any], **kwargs: Any) -> pacote.PackageReport:

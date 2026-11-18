@@ -40,10 +40,7 @@ def marker_kinds_by_segment(chapters: Sequence[Chapter]) -> dict[str, frozenset[
 
 
 def moments_from_plan(plan: EditPlan, kinds: Mapping[str, frozenset[str]]) -> list[Moment]:
-    """Um momento por corte de V1, em tempo de timeline. Sem pico conhecido, o pico é o meio do corte.
-
-    Limite conhecido: cortes fundidos pela montagem guardam só os marcadores do primeiro trecho.
-    """
+    """Um momento por corte de V1, em tempo de timeline. Sem pico conhecido, o pico é o meio do corte."""
     return [
         Moment(
             id=f"{item.file_id}:{item.segment_id}:{item.timeline_start}",
@@ -53,7 +50,7 @@ def moments_from_plan(plan: EditPlan, kinds: Mapping[str, frozenset[str]]) -> li
             score=min(1.0, max(0.0, item.score)),
             beat=item.beat,
             live=item.mode in LIVE_MODES,
-            tags=kinds.get(item.segment_id, frozenset()),
+            tags=frozenset().union(*(kinds.get(sid, frozenset()) for sid in item.segment_ids)),
         )
         for item in plan.items
         if item.track == Track.V1

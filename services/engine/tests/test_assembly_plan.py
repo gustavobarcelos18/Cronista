@@ -90,6 +90,19 @@ def test_trechos_que_se_tocam_no_mesmo_arquivo_sao_fundidos() -> None:
     assert plan.v1[0].in_frame == int(8.5 * FPS) and plan.v1[0].out_frame == int(31.5 * FPS)
 
 
+def test_corte_fundido_guarda_os_ids_de_todos_os_trechos() -> None:
+    """C2 (auditoria 10A): a fala do segundo trecho fundido não pode sumir do SRT e do ducking."""
+    from cronista.mix.envelope import narration_cues
+    from cronista.story.models import ScriptLine
+
+    plan = build_edit_plan([_chapter([_seg(10, 20), _seg(21, 30)])])
+    (item,) = plan.v1
+    assert item.segment_ids == ("1:10", "1:21")
+    line = ScriptLine(segment_id="1:21", text="Aqui eu voltei.", est_s=2.0, start_s=22.0)
+    cues = narration_cues(plan.items, [line])
+    assert len(cues) == 1 and cues[0][2] is line
+
+
 def test_limite_do_arquivo_e_sequencia_sem_buracos() -> None:
     plan = build_edit_plan([_chapter([_seg(0, 10), _seg(100, 109)])], durations={1: 110 * FPS})
     first, second = plan.v1

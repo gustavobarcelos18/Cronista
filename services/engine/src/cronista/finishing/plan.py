@@ -459,6 +459,30 @@ def _music_items(
     return out
 
 
+SUGGEST_ONLY = frozenset({EffectKind.PIADA_VISUAL, EffectKind.FREEZE_TEXTO})
+"""Efeitos que nada gera nem renderiza (só marcador): em `editavel`/`renderizado` ocupariam vaga do orçamento
+sem aparecer no vídeo, então a política é rebaixada para `sugerir`, com aviso."""
+
+
+@dataclass(frozen=True)
+class _Policy:
+    mode: EffectMode
+    max_per_minute: float
+    min_score: float
+
+
+def _only_what_can_be_applied(
+    policies: Mapping[EffectKind, PolicyLike], warnings: set[str]
+) -> dict[EffectKind, PolicyLike]:
+    out: dict[EffectKind, PolicyLike] = {}
+    for kind, p in policies.items():
+        if kind in SUGGEST_ONLY and p.mode != EffectMode.SUGERIR:
+            warnings.add(f"{kind.value}: não há forma {p.mode.value} (só marcador); rebaixado para sugerir")
+            p = _Policy(EffectMode.SUGERIR, p.max_per_minute, p.min_score)
+        out[kind] = p
+    return out
+
+
 def build_finish_plan(
     moments: Sequence[Moment],
     policies: Mapping[EffectKind, PolicyLike],
@@ -474,6 +498,7 @@ def build_finish_plan(
     params = params or FinishParams()
     preferred = preferred_music or {}
     warnings: set[str] = set()
+    policies = _only_what_can_be_applied(policies, warnings)
     plan = FinishPlan(
         input_hash=input_hash(
             PLAN_VERSION,

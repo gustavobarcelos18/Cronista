@@ -269,6 +269,58 @@ def test_api_painel_da_serie(settings: Settings, db: Session) -> None:
     assert client.get("/series").json()["total_min"] == 0.5
 
 
+def test_painel_avisa_capitulos_curtos_e_recalcula_apos_revisao(settings: Settings, db: Session) -> None:
+    from cronista.audio.events import replace_events
+    from cronista.relevance.engine import RelevanceParams, Segment
+    from cronista.relevance.service import segments_to_events
+
+    _seed(db)
+    next_session = RecordingSession(project_id=1, folder="segunda")
+    next_media = MediaFile(session=next_session, path="C:/x/b.mp4", ordinal=0)
+    db.add(next_media)
+    db.flush()
+    db.add(
+        Marker(
+            session_id=next_session.id,
+            media_file_id=next_media.id,
+            marker_id="2",
+            kind="novo_dia",
+            media_frame=20 * 60,
+        )
+    )
+    db.commit()
+    replace_events(
+        db,
+        1,
+        "relevance",
+        "",
+        segments_to_events([Segment(0, 16, "conquista", 0.9, markers=["1"])], RelevanceParams()),
+    )
+    replace_events(
+        db,
+        next_media.id,
+        "relevance",
+        "",
+        segments_to_events(
+            [Segment(0, 14, "conquista", 0.9), Segment(20, 30, "conquista", 0.9, markers=["2"])],
+            RelevanceParams(),
+        ),
+    )
+    client = TestClient(create_app(settings))
+    chapter_2 = {"projeto_id": 1, "projeto": "serie", "capitulo": 2, "produto_s": 10.0}
+    before = client.get("/series").json()
+    assert before["referencia_capitulo_s"] == 30
+    # O primeiro capítulo soma 16 + 14 s, atravessa duas sessões e já alcança a referência.
+    assert before["capitulos_com_pouco_material"] == [chapter_2]
+
+    decision = client.post(f"/media/{next_media.id}/segments/0/decision", json={"decision": "rejeitado"})
+    assert decision.status_code == 200
+    assert client.get("/series").json()["capitulos_com_pouco_material"] == [
+        {**chapter_2, "capitulo": 1, "produto_s": 16.0},
+        chapter_2,
+    ]
+
+
 def test_decisao_presa_a_janela_e_ajuste_validado(settings: Settings, db: Session) -> None:
     from cronista.audio.events import replace_events
     from cronista.relevance.engine import RelevanceParams, Segment

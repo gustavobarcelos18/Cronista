@@ -1391,6 +1391,12 @@ alimentam, e só refaz o plano de acabamento a cada clique.
 ⚠️ Sem conferência no Resolve (plano 6.5): se ele respeita as lanes 1, 3, -4 e -5, os keyframes de `adjust-transform`, `SetLUT` e
 o alfa do MOV. Se algo falhar, o modo `renderizado` (MP4/MOV prontos) é o caminho mais seguro.
 
+## 59. Aviso de capítulos com pouco material no Studio (2026-11-17)
+
+O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos revisados, em ordem de sessão e arquivo
+por projeto. Capítulos podem atravessar sessões e aparecem no aviso quando têm menos de 30 s de material estimado,
+a referência existente da alocação narrativa. O Studio consulta o painel novamente após salvar uma decisão.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

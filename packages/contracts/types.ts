@@ -138,9 +138,15 @@ export type Markers = string[];
 export type Razoes = string[];
 export type Score = number;
 export type StartS4 = number;
+export type Capitulo = number;
+export type ProdutoS = number;
+export type Projeto = string;
+export type ProjetoId = number;
+export type CapitulosComPoucoMaterial = ThinChapterOut[];
 export type MaximoMin = number;
 export type MetaMin = number;
 export type MinimoMin = number;
+export type ReferenciaCapituloS = number;
 export type AcumuladoMin = number;
 export type Dias = number;
 export type GravadoH = number;
@@ -422,13 +428,25 @@ export interface Features {
  * via the `definition` "SeriesPanelOut".
  */
 export interface SeriesPanelOut {
+  capitulos_com_pouco_material: CapitulosComPoucoMaterial;
   maximo_min?: MaximoMin;
   meta_min?: MetaMin;
   minimo_min?: MinimoMin;
   por_classe_min: PorClasseMin;
+  referencia_capitulo_s?: ReferenciaCapituloS;
   sessoes: Sessoes;
   situacao: Situacao;
   total_min: TotalMin;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ThinChapterOut".
+ */
+export interface ThinChapterOut {
+  capitulo: Capitulo;
+  produto_s: ProdutoS;
+  projeto: Projeto;
+  projeto_id: ProjetoId;
 }
 export interface PorClasseMin {
   [k: string]: number;

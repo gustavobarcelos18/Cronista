@@ -35,8 +35,9 @@ Plano de execução (detalhes do produto na seção "Fase 7" do [plano mestre](0
 - **7D codificada:** `GET /sessions/{id}/progress` e `/progress/stream` (SSE: um evento por mudança, encerra quando não há job
   pendente ou rodando; `progresso.tsx` na lista de sessões) e `GET /series` (painel do plano 4.1: minutos de produto por sessão
   e acumulados × meta de 30–50 min, distribuição por tipo de momento, dias pelo `Novo dia`, usando os segmentos com as
-  decisões do criador; `painel.tsx`). **Falta:** capítulos "magros" (precisa dos capítulos da história no painel) e conferir
-  o SSE com o pipeline rodando de verdade em `prod`.
+  decisões do criador; `painel.tsx`). O painel também lista capítulos com menos de 30 s de material estimado. A divisão
+  narrativa começa em `Novo dia`, pode atravessar sessões da mesma série e é recalculada após decisões no Studio.
+  **Falta:** conferir o SSE com o pipeline rodando de verdade em `prod`.
 - **7E parcial (código):** recalibração por manter/tirar (`review/learning.py`): regressão logística pequena sobre os sinais do
   segmento (marcador, emoção, fala, novidade, pausa), encolhida para os pesos padrão (`n/(n+30)`), mínimo de 20 decisões com 5 de
   cada lado; devolve uma linha em português por peso. Só vale depois de aceita (`POST /projects/{id}/learning/accept`, tabela

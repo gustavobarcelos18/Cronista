@@ -8,14 +8,9 @@ from __future__ import annotations
 import opentimelineio as otio
 from opentimelineio.opentime import RationalTime, TimeRange
 
+from cronista.domain.frames import FPS, duration_frames, seconds_to_frame
 from cronista.domain.preview import ClipWindow
 from cronista.montage import SessionPlan, SessionPlanError, SourceFile
-
-FPS = 60
-
-
-def _frames(seconds: float) -> int:
-    return round(seconds * FPS)
 
 
 def _range(start_frames: int, duration_frames: int) -> TimeRange:
@@ -24,10 +19,10 @@ def _range(start_frames: int, duration_frames: int) -> TimeRange:
 
 def snap_window(window: ClipWindow, source: SourceFile) -> tuple[int, int]:
     """Início e duração em quadros inteiros, sem passar do fim do arquivo."""
-    start = _frames(window.start_s)
-    end = _frames(window.end_s)
+    start = seconds_to_frame(window.start_s)
+    end = seconds_to_frame(window.end_s)
     if source.duration_s is not None:
-        end = min(end, int(source.duration_s * FPS))
+        end = min(end, duration_frames(source.duration_s))
     return start, max(0, end - start)
 
 
@@ -55,7 +50,7 @@ def build_timeline(plan: SessionPlan, name: str) -> otio.schema.Timeline:
         start, duration = snap_window(window, source)
         if duration == 0:
             continue
-        total = _frames(source.duration_s) if source.duration_s is not None else start + duration
+        total = seconds_to_frame(source.duration_s) if source.duration_s is not None else start + duration
         label = f"{window.kind.value}|{window.marker_id}"
         for track, path in ((video, source.master), (game, source.game_wav), (mic, source.mic_wav)):
             assert path is not None

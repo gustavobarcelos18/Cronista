@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from cronista.assembly.plan import LIVE_MODES, EditItem, Track
-from cronista.domain.frames import FPS
+from cronista.domain.frames import fcpxml_time
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.audio import MUSIC_BED_DB
@@ -61,10 +61,6 @@ AssetFn = Callable[[Path, int, bool], str]
 """`asset(path, frames, video=...)` do `render_plan_fcpxml`: devolve o `id` do recurso."""
 
 
-def _t(frames: int) -> str:
-    return f"{frames}/{FPS}s"
-
-
 def _inside(cut: EditItem, item: FinishItem) -> bool:
     return cut.timeline_start <= item.start < cut.timeline_end
 
@@ -84,7 +80,7 @@ def add_finish_clips(
     """
 
     def offset_of(frame: int) -> str:
-        return _t(parent_start + frame - cut.timeline_start)
+        return fcpxml_time(parent_start + frame - cut.timeline_start)
 
     live = cut.track == Track.V1 and cut.mode in LIVE_MODES and cut.speed == 1
     ordered = sorted(layers.plan.items, key=lambda i: (i.start, i.id))
@@ -130,7 +126,7 @@ def _video_effect(
             name=label,
             offset=offset,
             start="0s",
-            duration=_t(frames),
+            duration=fcpxml_time(frames),
             format="r1",
         )
         return
@@ -142,8 +138,8 @@ def _video_effect(
         lane=str(LANE_V2),
         name=label,
         offset=offset,
-        start=_t(start),
-        duration=_t(frames),
+        start=fcpxml_time(start),
+        duration=fcpxml_time(frames),
         format="r1",
     )
     _keyframes(clip, item, start, frames)
@@ -159,18 +155,18 @@ def _keyframes(clip: ET.Element, item: FinishItem, start: int, frames: int) -> N
         ks = sorted({*range(0, frames, ZOOM_KEY_STEP), frames - 1})
         for k in ks:
             s = 1.0 + (peak - 1.0) * zoom_curve(k / (frames - 1), easing)
-            ET.SubElement(scale_anim, "keyframe", time=_t(start + k), value=f"{s:.5f} {s:.5f}")
+            ET.SubElement(scale_anim, "keyframe", time=fcpxml_time(start + k), value=f"{s:.5f} {s:.5f}")
         return
     amplitude = float(item.params.get("amplitude_px", 8.0))
     position_anim = ET.SubElement(ET.SubElement(transform, "param", name="position"), "keyframeAnimation")
     for k in range(frames):
         s, dx, dy = shake_state(amplitude, k, frames)
-        ET.SubElement(scale_anim, "keyframe", time=_t(start + k), value=f"{s:.5f} {s:.5f}")
+        ET.SubElement(scale_anim, "keyframe", time=fcpxml_time(start + k), value=f"{s:.5f} {s:.5f}")
         # Posição em % da altura do quadro (unidade do FCPXML; a conferir no Resolve), y para cima.
         ET.SubElement(
             position_anim,
             "keyframe",
-            time=_t(start + k),
+            time=fcpxml_time(start + k),
             value=f"{dx * 100 / HEIGHT:.4f} {-dy * 100 / HEIGHT:.4f}",
         )
 
@@ -199,7 +195,7 @@ def _counter(
             name=f"contador|{item.id}",
             offset=offset,
             start="0s",
-            duration=_t(frames),
+            duration=fcpxml_time(frames),
             format="r1",
         )
         return
@@ -216,7 +212,7 @@ def _counter(
         name=f"contador|{item.id}",
         offset=offset,
         start="0s",
-        duration=_t(frames),
+        duration=fcpxml_time(frames),
     )
     ET.SubElement(ET.SubElement(title, "text"), "text-style", ref=style).text = text
     definition = ET.SubElement(title, "text-style-def", id=style)
@@ -246,7 +242,7 @@ def _sfx(
         name=f"{item.kind.value}|{item.asset_id}",
         offset=offset,
         start="0s",
-        duration=_t(frames),
+        duration=fcpxml_time(frames),
     )
     ET.SubElement(clip, "adjust-volume", amount=f"{float(item.params.get('ganho_db', -9.0)):g}dB")
 
@@ -271,7 +267,7 @@ def _music(
         lane=str(LANE_MUSIC),
         name=f"musica|{item.asset_id}",
         offset=offset_of(seg_start),
-        start=_t(seg_start - item.start),
-        duration=_t(min(seg_end - seg_start, audio.frames - (seg_start - item.start))),
+        start=fcpxml_time(seg_start - item.start),
+        duration=fcpxml_time(min(seg_end - seg_start, audio.frames - (seg_start - item.start))),
     )
     ET.SubElement(clip, "adjust-volume", amount=f"{MUSIC_BED_DB:g}dB")

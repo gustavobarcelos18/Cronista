@@ -27,9 +27,9 @@ from dataclasses import asdict, dataclass, field, is_dataclass, replace
 from enum import StrEnum
 from typing import Any, Protocol
 
+from cronista.domain.frames import FPS, seconds_to_frame
 from cronista.finishing.effects import EffectKind, EffectMode
 
-FPS = 60
 """Igual a `cronista.domain.frames.FPS` (conferido em teste); repetido para não importar pydantic."""
 
 PLAN_VERSION = 1
@@ -197,10 +197,6 @@ class _Candidate:
     reason: str
 
 
-def _frames(seconds: float) -> int:
-    return round(seconds * FPS)
-
-
 def intensity_of(score: float, min_score: float) -> float:
     """0 na nota mínima, 1 na nota máxima: morte boba ganha efeito leve, o chefe ganha o pacote completo."""
     if min_score >= 1:
@@ -295,7 +291,7 @@ def _moment_candidates(
         pool: tuple[str, ...] = (),
         centered: bool = True,
     ) -> None:
-        frames = _frames(dur_s)
+        frames = seconds_to_frame(dur_s)
         wanted = m.peak_frame - frames // 2 if centered else m.peak_frame
         start, size = _window(m, wanted, frames, total)
         if (size <= 0 and frames > 0) or start >= total:

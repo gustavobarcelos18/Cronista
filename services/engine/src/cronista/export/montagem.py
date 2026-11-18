@@ -30,7 +30,7 @@ from urllib.parse import urlparse
 from urllib.request import url2pathname
 
 from cronista.assembly.plan import Card, EditPlan, Mode, Track
-from cronista.domain.frames import FPS
+from cronista.domain.frames import FPS, fcpxml_time
 from cronista.export.fcpxml import _parse_time, check_fcpxml
 from cronista.export.finish_fcpxml import FinishLayers, add_finish_clips
 from cronista.mix.envelope import narration_cues
@@ -60,10 +60,6 @@ class ExportMedia:
     stem_frames: int = 0
 
 
-def _t(frames: int) -> str:
-    return f"{frames}/{FPS}s"
-
-
 def render_plan_fcpxml(
     plan: EditPlan, media: ExportMedia, name: str = "Cronista", layers: FinishLayers | None = None
 ) -> str:
@@ -89,7 +85,7 @@ def render_plan_fcpxml(
                 "name": path.name,
                 "src": path.resolve().as_uri(),
                 "start": "0s",
-                "duration": _t(frames),
+                "duration": fcpxml_time(frames),
             }
             if video:  # o áudio do master fica de fora: o som vem dos stems
                 attrs |= {"format": "r1", "hasVideo": "1", "hasAudio": "0"}
@@ -108,7 +104,7 @@ def render_plan_fcpxml(
         project,
         "sequence",
         format="r1",
-        duration=_t(plan.total_frames),
+        duration=fcpxml_time(plan.total_frames),
         tcStart="0s",
         tcFormat="NDF",
         audioLayout="stereo",
@@ -139,9 +135,9 @@ def render_plan_fcpxml(
             "asset-clip",
             ref=ref,
             name=f"{item.mode.value}|{item.segment_id}",
-            offset=_t(item.timeline_start),
-            start=_t(start),
-            duration=_t(item.timeline_frames),
+            offset=fcpxml_time(item.timeline_start),
+            start=fcpxml_time(start),
+            duration=fcpxml_time(item.timeline_frames),
             format="r1",
             tcFormat="NDF",
         )
@@ -156,9 +152,9 @@ def render_plan_fcpxml(
                 ref=asset(stem, media.stem_frames, video=False),
                 lane=str(lane),
                 name=label,
-                offset=_t(start),
-                start=_t(item.timeline_start),
-                duration=_t(item.timeline_frames),
+                offset=fcpxml_time(start),
+                start=fcpxml_time(item.timeline_start),
+                duration=fcpxml_time(item.timeline_frames),
             )
             if label in DISABLED_STEMS:
                 ET.SubElement(child, "audio-channel-source", srcCh="1, 2", enabled="0")
@@ -172,9 +168,9 @@ def render_plan_fcpxml(
                 ref=asset(info.path, info.duration_frames or last_out[b.file_id], video=True),
                 lane=str(LANE_B_ROLL),
                 name=f"B-roll|{b.segment_id}",
-                offset=_t(start),
-                start=_t(b.in_frame),
-                duration=_t(b.timeline_frames),
+                offset=fcpxml_time(start),
+                start=fcpxml_time(b.in_frame),
+                duration=fcpxml_time(b.timeline_frames),
                 format="r1",
             )
         if layers is not None:
@@ -195,9 +191,9 @@ def _add_title(parent: ET.Element, card: Card, parent_start: int, frames: int, n
         ref="r2",
         lane=str(LANE_CARD),
         name=card.text,
-        offset=_t(parent_start),
+        offset=fcpxml_time(parent_start),
         start="0s",
-        duration=_t(frames),
+        duration=fcpxml_time(frames),
     )
     style = f"ts{n}"
     text = ET.SubElement(title, "text")

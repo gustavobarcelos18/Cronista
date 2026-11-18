@@ -13,7 +13,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from cronista.domain.frames import seconds_to_frame
+from cronista.domain.frames import FPS, seconds_to_frame
 
 # Classes aceitas. Várias podem se sobrepor (ex.: `fala` durante um `farm`). Quem decide o que cada uma mede
 # é a fase que a consome; este conjunto é a proposta inicial (histórico §39) e cresce por decisão.
@@ -63,7 +63,7 @@ class GabaritoReport:
         acc: dict[str, list[float]] = defaultdict(lambda: [0, 0.0])
         for a in self.annotations:
             acc[a.cls][0] += 1
-            acc[a.cls][1] += (a.end_frame - a.start_frame) / 60
+            acc[a.cls][1] += (a.end_frame - a.start_frame) / FPS
         return {k: (int(v[0]), v[1]) for k, v in sorted(acc.items())}
 
 

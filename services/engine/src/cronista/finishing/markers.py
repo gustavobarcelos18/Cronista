@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from cronista.domain.frames import FPS
 from cronista.finishing.effects import EffectKind, EffectMode
-from cronista.finishing.plan import FPS, FinishItem, FinishPlan
+from cronista.finishing.plan import FinishItem, FinishPlan
 
 SUGGESTION_COLORS: dict[EffectKind, str] = {
     EffectKind.ZOOM: "Sky",

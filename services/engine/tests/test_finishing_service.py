@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from cronista.assembly.plan import Card, EditItem, EditPlan, Mode, Track
+from cronista.domain.frames import FPS
 from cronista.domain.frames import FPS as DOMAIN_FPS
 from cronista.finishing.brand import BrandKit, resolve_style
 from cronista.finishing.effects import EffectKind
 from cronista.finishing.library import Library, LibraryItem
-from cronista.finishing.plan import FPS
 from cronista.finishing.service import assets_from_library, finish_from_edit_plan, moments_from_plan
 
 VISUAL = {

@@ -19,6 +19,7 @@ from cronista.assembly.plan import EditPlan
 from cronista.assembly.service import assemble
 from cronista.config import Settings
 from cronista.db.models import Marker, RecordingSession
+from cronista.domain.frames import FPS, duration_frames
 from cronista.export.montagem import (
     ExportMedia,
     MarkerInput,
@@ -215,7 +216,7 @@ def export_montagem(
             stems["A4"] = artifacts.music_stem
     media = ExportMedia(
         masters={
-            fid: MediaFileInfo(s.master, round(s.duration_s * 60) if s.duration_s is not None else None)
+            fid: MediaFileInfo(s.master, duration_frames(s.duration_s) if s.duration_s is not None else None)
             for fid, s in sources.items()
         },
         timelapses=timelapses,
@@ -273,7 +274,7 @@ def export_montagem(
         "versao_do_plano": PLAN_VERSION,
         "sessao": session_id,
         "entrada_hash": digest,
-        "fps": 60,
+        "fps": FPS,
         "duracao_s": round(plan.total_s, 2),
         "cortes_v1": len(plan.v1),
         "marcadores": len(timeline_marks),

@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import pairwise
 
+from cronista.domain.frames import FPS
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import (
-    FPS,
     AssetRef,
     CardRef,
     FinishPlan,

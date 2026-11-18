@@ -20,8 +20,9 @@ from pathlib import Path
 
 from cronista.assembly.plan import LIVE_MODES, EditItem, EditPlan, Track
 from cronista.config import Settings
+from cronista.domain.frames import FPS
 from cronista.finishing.effects import EffectKind, EffectMode
-from cronista.finishing.plan import FPS, FinishItem, FinishPlan
+from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.atomic import render_to
 from cronista.ingest.ffmpeg import run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free

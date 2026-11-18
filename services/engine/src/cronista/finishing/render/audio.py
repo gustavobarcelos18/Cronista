@@ -15,8 +15,9 @@ from pathlib import Path
 import soundfile
 
 from cronista.config import Settings
+from cronista.domain.frames import FPS
 from cronista.finishing.effects import EffectKind, EffectMode
-from cronista.finishing.plan import FPS, FinishItem, FinishPlan
+from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.ingest.ffmpeg import run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 

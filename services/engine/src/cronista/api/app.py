@@ -41,7 +41,6 @@ from cronista.finishing.overrides import (
     source_of,
     with_overrides,
 )
-from cronista.finishing.plan import FPS as FINISH_FPS
 from cronista.finishing.plan import FinishPlan, apply_decisions, decision_key
 from cronista.finishing.service import assembly_fingerprint, build_finishing
 from cronista.montage import SessionPlanError, _load_source
@@ -388,8 +387,8 @@ def create_app(
                         kind=i.kind,
                         mode=i.mode,
                         track=i.track.value,
-                        start_s=round(i.start / FINISH_FPS, 2),
-                        duration_s=round(i.frames / FINISH_FPS, 2),
+                        start_s=round(i.start / FPS, 2),
+                        duration_s=round(i.frames / FPS, 2),
                         intensity=i.intensity,
                         reason=i.reason,
                         asset_id=i.asset_id,

@@ -9,6 +9,8 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from cronista.domain.frames import FPS
+
 DEFAULT_HOTKEYS: dict[str, str | None] = {
     "momento": "<f13>",
     "novo_dia": "<f14>",
@@ -74,6 +76,16 @@ class Settings(BaseModel):
     vlm_4bit: bool = False
     video_embedder: str = ""  # checkpoint de embeddings de quadro (3B); vazio = desligado, sem baixar nada
     log_level: str = "INFO"
+
+    @field_validator("expected_fps")
+    @classmethod
+    def _only_the_fixed_fps(cls, value: str) -> str:
+        """Toda a conta de tempo é a 60 fps exatos (`domain.frames.FPS`): outro valor não funciona."""
+        if value != f"{FPS}/1":
+            raise ValueError(
+                f"expected_fps só pode ser '{FPS}/1' (o Cronista é 60 fps exatos), veio '{value}'"
+            )
+        return value
 
     @field_validator("marker_hotkeys")
     @classmethod

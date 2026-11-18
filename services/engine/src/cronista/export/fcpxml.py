@@ -16,15 +16,11 @@ from fractions import Fraction
 
 import opentimelineio as otio
 
-from cronista.export.timeline import FPS
+from cronista.domain.frames import FPS, fcpxml_time
 
 WIDTH, HEIGHT = 1920, 1080
 _TIME_ATTRS = ("offset", "duration", "start")
 _XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n\n'
-
-
-def _t(frames: float) -> str:
-    return f"{round(frames)}/{FPS}s"
 
 
 def render_fcpxml(timeline: otio.schema.Timeline) -> str:
@@ -55,7 +51,7 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
                 "name": clip.media_reference.name or url.rsplit("/", 1)[-1],
                 "src": url,
                 "start": "0s",
-                "duration": _t(rng.duration.value),
+                "duration": fcpxml_time(rng.duration.value),
             }
             if is_video:  # o áudio do mestre fica de fora: o do jogo e o do microfone vêm dos WAVs
                 attrs |= {"format": "r1", "hasVideo": "1", "hasAudio": "0"}
@@ -82,9 +78,9 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
             "asset-clip",
             ref=asset_id(clip, True),
             name=clip.name,
-            offset=_t(cursor),
-            start=_t(start),
-            duration=_t(duration),
+            offset=fcpxml_time(cursor),
+            start=fcpxml_time(start),
+            duration=fcpxml_time(duration),
             format="r1",
             tcFormat="NDF",
         )
@@ -99,12 +95,12 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
                 ref=asset_id(child, False),
                 lane=str(-lane),
                 name=child.name,
-                offset=_t(start),
-                start=_t(start),
-                duration=_t(duration),
+                offset=fcpxml_time(start),
+                start=fcpxml_time(start),
+                duration=fcpxml_time(duration),
             )
         cursor += duration
-    sequence.set("duration", _t(cursor))
+    sequence.set("duration", fcpxml_time(cursor))
 
     ET.indent(root, space="  ")
     return _XML_HEAD + ET.tostring(root, encoding="unicode") + "\n"

@@ -16,11 +16,12 @@ from pathlib import Path
 
 from cronista.assembly.plan import EditPlan
 from cronista.config import Settings
+from cronista.domain.frames import FPS
 from cronista.export.finish_fcpxml import APPLIED, AudioFile, FinishLayers
 from cronista.finishing.brand import ResolvedStyle
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.library import Library
-from cronista.finishing.plan import FPS, FinishItem, FinishPlan
+from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.audio import audio_frames, render_music_stem
 from cronista.finishing.render.overlay import counter_text, render_overlays
 from cronista.finishing.render.video import render_video_effects, source_window

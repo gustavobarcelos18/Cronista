@@ -7,6 +7,8 @@ aviso), sempre convertidos por estas funções para o arredondamento ser um só.
 
 from __future__ import annotations
 
+import math
+
 FPS = 60
 
 
@@ -17,3 +19,13 @@ def seconds_to_frame(seconds: float) -> int:
 
 def frame_to_seconds(frame: int) -> float:
     return frame / FPS
+
+
+def duration_frames(duration_s: float) -> int:
+    """Duração em quadros, **para baixo**: nunca passa do último quadro real do arquivo."""
+    return max(0, math.floor(duration_s * FPS))
+
+
+def fcpxml_time(frames: float) -> str:
+    """Tempo racional do FCPXML (`<quadros>/60s`): sempre um número inteiro de quadros."""
+    return f"{round(frames)}/{FPS}s"

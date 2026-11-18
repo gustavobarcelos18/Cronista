@@ -13,7 +13,7 @@ from cronista.audio.events import load_active_events
 from cronista.config import Settings
 from cronista.db.models import Marker, RecordingSession
 from cronista.finishing.loader import load_style
-from cronista.montage import SessionPlanError, _load_source
+from cronista.montage import SessionPlanError, load_masters
 from cronista.pipeline.gpu import GpuGate
 from cronista.relevance.engine import EMOTION
 from cronista.review.decisions import load_effective_segments
@@ -110,7 +110,7 @@ def render_session_shorts(
     session = db.get(RecordingSession, session_id)
     assert session is not None  # build_shorts já validou
     try:
-        masters = {m.id: _load_source(db, m).master for m in session.media_files}
+        masters, notes = load_masters(db, session)
     except SessionPlanError as exc:
         raise StoryError(str(exc)) from exc
     base_style = replace(style or ShortStyle(), loudness_lufs=resolved.brand.sonic.loudness_lufs)
@@ -126,4 +126,4 @@ def render_session_shorts(
         gate=gate,
     )
     write_shorts(candidates, directory, session_id)
-    return ShortsPackage(candidates, result.clips, result.warnings)
+    return ShortsPackage(candidates, result.clips, [*notes, *result.warnings])

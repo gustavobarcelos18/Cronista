@@ -32,7 +32,7 @@ título para o vídeo da série.
   esquerda 60 px; ⚠️ valores de memória da interface de YouTube Shorts/TikTok/Reels, conferir na prática e ajustar `SafeZone`).
 - **Áudio:** a faixa 1 (o mix de entrega; nunca para análise) com `loudnorm` no alvo do canal (`sonic.loudness_lufs`) e corte
   suave de 0,15 s no fim (ajuda o loop e evita estalo).
-- CLI: `cronista shorts-render <sessão> [--top N] [--serie S] [--reframe desfoque|recorte] [--focus-x X]`, que também grava o
+- CLI: `cronista shorts-render <sessão> [--top N, padrão 5] [--serie S] [--reframe desfoque|recorte] [--focus-x X]`, que também grava o
   `shorts-<sessão>.json` com os candidatos.
 - Aceite: testes das partes puras (legenda, layout, filtros, nome com hash, cancelamento sem arquivo parcial); em `prod`,
   `pytest -m media tests/test_shorts_render.py` e olhar 3 Shorts reais (legenda legível, nada sob a interface, loudness).
@@ -147,10 +147,15 @@ próprios, `ruff`, `mypy src tests` e `pytest` verdes antes do push.
    ajustar se a fonte do canal for mais larga ou estreita.
 4. Se a heurística escolher frames ruins (HUD cheio, tela de carregamento), ajustar os pesos em `thumbnails/frames.py`.
 
+### Conferir em `prod` (aspa no `drawtext`)
+
+Rodar `cronista thumbnails <sessão> --texto "Caí no d'água"` e ver a aspa no JPEG. O escape novo (`'\''`) veio do
+`/code-review` e não foi conferido com FFmpeg real; se falhar, o contador da Fase 8 usa o mesmo `drawtext_escape`.
+
 ### Conferir em `prod` (9A)
 
 1. `uv run pytest -m media tests/test_shorts_render.py` (FFmpeg precisa do filtro `ass`, ou seja, libass; o build do Gyan tem).
-2. `cronista shorts-render <sessão> --top 3` e assistir: legenda legível e dentro das margens, fonte do brand kit aplicada
+2. `cronista shorts-render <sessão>` e assistir: legenda legível e dentro das margens, fonte do brand kit aplicada
    (declare `fonts.files` no `brand.yaml`; sem arquivo a legenda usa a fonte padrão do sistema), gameplay nítida, áudio no
    alvo (-14 LUFS), corte final sem estalo, 60 fps exatos.
 3. Ver o Short no celular dentro do app de cada plataforma e ajustar `SafeZone`, `font_size` e `blur`.

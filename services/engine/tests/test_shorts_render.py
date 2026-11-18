@@ -224,7 +224,9 @@ def test_render_avisa_e_pula_sem_mestre_sem_tamanho_e_sem_palavras(
     assert sem_tamanho.clips == {} and "não consegui ler o tamanho" in "\n".join(sem_tamanho.warnings)
 
 
-def test_render_cancelado_nao_deixa_short_parcial(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_render_com_falha_vira_aviso_e_nao_deixa_short_parcial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     def boom(_settings: Settings, args: list[str]) -> None:
         Path(args[-1]).write_bytes(b"pela metade")
         raise StageError("ffmpeg falhou")
@@ -232,8 +234,8 @@ def test_render_cancelado_nao_deixa_short_parcial(tmp_path: Path, monkeypatch: p
     monkeypatch.setattr("cronista.shorts.render.run_ffmpeg", boom)
     monkeypatch.setattr("cronista.shorts.render.probe_media", _fake_probe)
     settings = Settings(env="test", data_dir=tmp_path)
-    with pytest.raises(StageError):
-        render_shorts([cand()], {}, {1: tmp_path / "m.mp4"}, VISUAL, tmp_path / "out", settings)
+    result = render_shorts([cand()], {}, {1: tmp_path / "m.mp4"}, VISUAL, tmp_path / "out", settings)
+    assert result.clips == {} and any("ffmpeg falhou" in w for w in result.warnings)
     assert not list((tmp_path / "out").glob("*.mp4")) and not list((tmp_path / "out").glob("part-*"))
 
 

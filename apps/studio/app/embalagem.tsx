@@ -186,6 +186,7 @@ export default function Embalagem({ sessionId }: { sessionId: number }) {
   async function mutate(path: string, body: unknown, failure: string) {
     const out = await post(path, body, failure);
     if (out) show({ data: out as PackagingOut });
+    return out !== null;
   }
 
   async function pickTitle(n: number, edited: string) {
@@ -269,9 +270,9 @@ export default function Embalagem({ sessionId }: { sessionId: number }) {
         <button
           disabled={custom.trim() === ""}
           onClick={() => {
-            void mutate("/title", { text: custom.trim() }, "Não registrou o título").then(() =>
-              setCustom(""),
-            );
+            void mutate("/title", { text: custom.trim() }, "Não registrou o título").then((ok) => {
+              if (ok) setCustom("");
+            });
           }}
         >
           Usar o meu
@@ -292,7 +293,9 @@ export default function Embalagem({ sessionId }: { sessionId: number }) {
               key={t.file_name}
               sessionId={sessionId}
               item={t}
-              onPick={(variation) => mutate("/thumbnail", { variation }, "Não registrou a thumbnail")}
+              onPick={async (variation) => {
+                await mutate("/thumbnail", { variation }, "Não registrou a thumbnail");
+              }}
             />
           ))}
         </div>
@@ -312,9 +315,9 @@ export default function Embalagem({ sessionId }: { sessionId: number }) {
               key={s.key}
               sessionId={sessionId}
               short={s}
-              onDecide={(key, decision) =>
-                mutate(`/shorts/${encodeURIComponent(key)}/decision`, { decision }, "Não registrou")
-              }
+              onDecide={async (key, decision) => {
+                await mutate(`/shorts/${encodeURIComponent(key)}/decision`, { decision }, "Não registrou");
+              }}
             />
           ))}
         </ul>

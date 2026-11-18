@@ -25,6 +25,7 @@ from cronista.config import Settings
 from cronista.finishing.brand import Visual
 from cronista.finishing.render.atomic import render_to
 from cronista.finishing.render.overlay import SYSTEM_FONTS, drawtext_escape, ffmpeg_color, find_font
+from cronista.finishing.render.overlay import fmt_num as _num
 from cronista.finishing.render.video import filter_path
 from cronista.ingest.ffmpeg import run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free
@@ -107,10 +108,6 @@ def line_positions(
 
 
 # --- filtro ----------------------------------------------------------------------------------------------
-
-
-def _num(value: float) -> str:
-    return f"{value:.4f}".rstrip("0").rstrip(".")
 
 
 def _drawtext(font: Path, text: str, size: int, x: str, y: str, color: str, extra: str = "") -> str:
@@ -340,6 +337,10 @@ def render_thumbnails(
             (p for q in JPEG_QUALITIES if (p := out_dir / thumb_name(v, chain, digest, q)).is_file()), None
         )
         if found is not None and found.stat().st_size > 0:
+            if found.stat().st_size > MAX_BYTES:
+                result.warnings.append(
+                    f"variação {v.n}: {found.stat().st_size} bytes, acima de 2 MB do YouTube"
+                )
             result.items.append(ThumbnailItem(v, found))
             continue
         if gate is not None:  # a GPU é a mesma do OBS e do jogo

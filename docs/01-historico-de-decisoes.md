@@ -1441,6 +1441,16 @@ pelo app: não há envio ao YouTube (sem rede, sem credenciais); o criador sobe 
 
 ⚠️ O painel passou em `tsc` e `eslint`, mas não foi visto no navegador (sem engine com mídia neste PC).
 
+**Correções do `/code-review` da fase (2026-11-18):** (23) falha do FFmpeg em um Short vira aviso e os outros seguem (o
+`shorts-<id>.json` sempre é gravado); (24) `--top` padrão sobe para 5, porque o pacote pede 3 aprovados e o criador pode
+rejeitar; (25) gravação sem ingestão não derruba Shorts nem thumbnails: vira aviso, e só falha se nenhuma gravação estiver
+pronta (`montage.load_masters`); (26) a thumbnail escolhida só vale se ainda consta no manifesto atual, no painel **e** no pacote
+(o mesmo critério nos dois); (27) sem `--video`, o pacote usa o MP4 mais recente da pasta, e `--out` recusa pasta com arquivos
+que não são de um pacote (sem `LEIA-ME.md`), para não apagar `short-*.mp4` alheios; (28) aspa simples no texto do `drawtext`
+fecha a citação e entra escapada (`'\''`), não `'`, que o FFmpeg não aceita dentro de aspas (**não conferido com FFmpeg real**;
+também vale para o contador da Fase 8); (29) `titulos.json` quebrado vira `TitleError` e o painel segue sem sugestões; (30) JPEG
+reaproveitado acima de 2 MB avisa de novo.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

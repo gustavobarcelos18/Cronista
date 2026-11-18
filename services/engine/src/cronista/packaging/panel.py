@@ -83,12 +83,16 @@ def packaging_panel(
     title = TitleOut()
     titles_path = packaging_folder / TITLES_NAME
     if titles_path.is_file():
-        saved = load_titles(titles_path)
-        title.suggestions = [
-            TitleOptionOut(n=n, text=o.text, reason=o.reason) for n, o in enumerate(saved.titles, start=1)
-        ]
-        title.thumbnail_texts = list(saved.thumbnail_texts)
-        title.provider = saved.provider
+        try:
+            saved = load_titles(titles_path)
+        except ValueError:  # arquivo editado à mão e quebrado: o painel segue sem sugestões
+            saved = None
+        if saved is not None:
+            title.suggestions = [
+                TitleOptionOut(n=n, text=o.text, reason=o.reason) for n, o in enumerate(saved.titles, start=1)
+            ]
+            title.thumbnail_texts = list(saved.thumbnail_texts)
+            title.provider = saved.provider
     chosen_title = current_title(db, session_id)
     if chosen_title is not None:
         title.chosen = chosen_title.text

@@ -74,7 +74,7 @@ def item(
 
 
 def test_drawtext_escape_and_colors() -> None:
-    assert drawtext_escape("a:b'c%d\\e") == "a\\:b\\'c\\%d\\\\e"
+    assert drawtext_escape("a:b'c%d\\e") == "a\\:b'\\\\\\''c\\%d\\\\e"
     assert ffmpeg_color("#ff0080") == "0xFF0080"
     assert ffmpeg_color("#000000", 0.65) == "0x000000@0.65"
     with pytest.raises(ValueError):

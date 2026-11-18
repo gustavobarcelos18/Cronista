@@ -350,3 +350,17 @@ def test_texto_da_thumbnail_do_criador_so_esbarra_no_que_nao_cabe() -> None:
     with pytest.raises(ValueError, match="palavras"):
         check_creator_thumbnail_text("um dois três quatro cinco")
     assert check_creator_thumbnail_text("um dois três quatro cinco", 6)
+
+
+def test_titulos_corrompidos_viram_erro_claro_e_nao_excecao(db: Session, tmp_path: Path) -> None:
+    from cronista.packaging.panel import packaging_panel
+    from cronista.packaging.service import TITLES_NAME, TitleError, record_title_choice
+
+    project = Project(name="serie")
+    session = RecordingSession(project=project, folder="pasta")
+    db.add_all([project, session])
+    db.commit()
+    (tmp_path / TITLES_NAME).write_text("{não é json", encoding="utf-8")
+    with pytest.raises(TitleError, match="titulos-import"):
+        record_title_choice(db, session.id, tmp_path, suggestion=1)
+    assert packaging_panel(db, session.id, tmp_path, tmp_path).title.suggestions == []

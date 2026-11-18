@@ -94,7 +94,10 @@ def record_title_choice(
         path = folder / TITLES_NAME
         if not path.is_file():
             raise TitleError("sem sugestões salvas; rode `cronista titulos-import` antes")
-        saved = load_titles(path)
+        try:
+            saved = load_titles(path)
+        except ValueError as exc:
+            raise TitleError(f"{exc}; rode `cronista titulos-import` de novo") from exc
         if not 1 <= suggestion <= len(saved.titles):
             raise TitleError(f"sugestão {suggestion} não existe (há {len(saved.titles)})")
         suggested, provider = saved.titles[suggestion - 1].text, saved.provider

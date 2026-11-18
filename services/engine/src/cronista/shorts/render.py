@@ -28,9 +28,11 @@ from cronista.domain.frames import FPS
 from cronista.finishing.brand import Visual
 from cronista.finishing.render.atomic import render_to
 from cronista.finishing.render.overlay import find_font
+from cronista.finishing.render.overlay import fmt_num as _num
 from cronista.finishing.render.video import filter_path
 from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free
+from cronista.pipeline.stage import StageError
 from cronista.shorts.candidates import ShortCandidate
 
 WIDTH, HEIGHT = 1080, 1920
@@ -191,10 +193,6 @@ def build_ass(captions: Sequence[Caption], visual: Visual, style: ShortStyle, la
 # --- filtros ---------------------------------------------------------------------------------------------
 
 
-def _num(value: float) -> str:
-    return f"{value:.4f}".rstrip("0").rstrip(".")
-
-
 def video_chain(style: ShortStyle, lay: Layout, ass_path: Path, fonts_dir: Path | None) -> str:
     """Grafo de filtros do vídeo, da entrada `[0:v]` à saída `[v]`: reenquadra, desenha a legenda, 60 fps."""
     ass = f"ass=filename='{filter_path(ass_path)}'"
@@ -332,6 +330,10 @@ def render_shorts(
         if not target.is_file() or target.stat().st_size == 0:
             if gate is not None:  # a GPU é a mesma do OBS e do jogo
                 wait_until_free(gate, settings.gpu_poll_seconds, etapa="short", arquivo=target.name)
-            render_to(target, partial(_encode, settings, c, master, filters, audio))
+            try:
+                render_to(target, partial(_encode, settings, c, master, filters, audio))
+            except StageError as exc:  # um Short com problema não derruba os outros
+                result.warnings.append(f"{candidate_key(c)}: ffmpeg falhou ({exc}); Short não renderizado")
+                continue
         result.clips[candidate_key(c)] = target
     return result

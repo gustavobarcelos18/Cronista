@@ -14,7 +14,7 @@ from cronista.config import Settings
 from cronista.db.models import RecordingSession, ThumbnailChoice
 from cronista.finishing.brand import brand_dir
 from cronista.finishing.loader import load_style
-from cronista.montage import SessionPlanError, _load_source
+from cronista.montage import SessionPlanError, load_masters
 from cronista.packaging.service import TITLES_NAME
 from cronista.packaging.titles import check_creator_thumbnail_text, load_titles
 from cronista.pipeline.gpu import GpuGate
@@ -80,7 +80,7 @@ def render_session_thumbnails(
     if problems:
         raise ThumbnailError("; ".join(problems))
     try:
-        masters = {m.id: _load_source(db, m).master for m in session.media_files}
+        masters, notes = load_masters(db, session)
     except SessionPlanError as exc:
         raise ThumbnailError(str(exc)) from exc
     if texts:
@@ -106,7 +106,7 @@ def render_session_thumbnails(
         json.dumps([_manifest_entry(i) for i in rendered.items], ensure_ascii=False, indent=1),
         encoding="utf-8",
     )
-    return ThumbnailPackage(rendered.items, manifest, rendered.warnings)
+    return ThumbnailPackage(rendered.items, manifest, [*notes, *rendered.warnings])
 
 
 def load_manifest(folder: Path) -> list[dict[str, Any]]:

@@ -57,7 +57,7 @@ def make_shorts(folder: Path, session_id: int, n: int = 4, *, render: bool = Tru
 
 
 def make_thumbnails(folder: Path, names: list[str]) -> None:
-    (folder / "thumbnails").mkdir(parents=True)
+    (folder / "thumbnails").mkdir(parents=True, exist_ok=True)
     entries = []
     for n, name in enumerate(names, start=1):
         (folder / "thumbnails" / name).write_bytes(b"jpg")
@@ -200,6 +200,38 @@ def test_refazer_troca_os_arquivos_e_mantem_o_video(db: Session, session_id: int
     assert (folder / "titulo.txt").read_text(encoding="utf-8") == "Outro título\n"
     assert "serie-final.mp4" in report.files and (folder / "serie-final.mp4").is_file()
     assert not list(folder.glob("part-*"))
+
+
+def test_sem_video_o_pacote_usa_o_corte_mais_recente(db: Session, session_id: int, tmp_path: Path) -> None:
+    shorts, pack, _ = complete_setup(db, session_id, tmp_path)
+    old, new = tmp_path / "serie-v1.mp4", tmp_path / "serie-v2.mp4"
+    old.write_bytes(b"1")
+    build_publish_package(db, session_id, shorts, pack, video=old)
+    new.write_bytes(b"2")
+    build_publish_package(db, session_id, shorts, pack, video=new)
+    os.utime(pack / "publicacao" / "serie-v1.mp4", (1, 1))
+    report = build_publish_package(db, session_id, shorts, pack)  # sem --video, como o botão do Studio
+    assert "serie-v2.mp4" in report.files and "serie-v1.mp4" not in report.files
+
+
+def test_pacote_recusa_pasta_com_arquivos_de_fora(db: Session, session_id: int, tmp_path: Path) -> None:
+    shorts, pack, _ = complete_setup(db, session_id, tmp_path)
+    other = tmp_path / "meus-arquivos"
+    other.mkdir()
+    (other / "short-01.mp4").write_bytes(b"meu")
+    with pytest.raises(PublishError, match="não são de um pacote"):
+        build_publish_package(db, session_id, shorts, pack, out=other)
+    assert (other / "short-01.mp4").read_bytes() == b"meu"
+
+
+def test_thumbnail_escolhida_que_saiu_do_manifesto_vira_falta(
+    db: Session, session_id: int, tmp_path: Path
+) -> None:
+    shorts, pack, _ = complete_setup(db, session_id, tmp_path)
+    make_thumbnails(pack, ["c.jpg", "d.jpg"])  # nova geração: o manifesto não lista mais a escolha (b.jpg)
+    report = build_publish_package(db, session_id, shorts, pack)
+    assert any(m.startswith("thumbnail:") for m in report.missing)
+    assert not (pack / "publicacao" / "thumbnail.jpg").exists()
 
 
 def test_pacote_recusa_sessao_e_video_inexistentes(db: Session, session_id: int, tmp_path: Path) -> None:

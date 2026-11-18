@@ -1138,7 +1138,9 @@ def shorts(
 @app.command("shorts-render")
 def shorts_render(
     session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
-    top: Annotated[int, typer.Option(help="Quantos Shorts renderizar")] = 3,
+    top: Annotated[
+        int, typer.Option(help="Quantos Shorts renderizar (o pacote pede 3 aprovados; sobra para rejeitar)")
+    ] = 5,
     serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
     reframe: Annotated[
         str, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
@@ -1171,7 +1173,7 @@ def shorts_render(
                 serie=serie,
                 gate=build_gate(settings),
             )
-        except (StoryError, FileNotFoundError, ValueError, ValidationError) as exc:
+        except (StoryError, FileNotFoundError, ValueError, ValidationError, StageError) as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
     for warning in package.warnings:

@@ -1,0 +1,18 @@
+# Exemplo do inventário da biblioteca pessoal. Copie para <library_dir>/inventario.yaml (a pasta fica
+# fora do git; `library_dir` em config/*.local.yaml) e registre cada arquivo, com origem e licença.
+items:
+  - id: som-morte
+    file: sfx/morte.wav
+    kind: sfx
+    tags: [morte, impacto]
+    origin: propria
+    license: propria
+
+  - id: trilha-tensa-01
+    file: musica/tensa-01.mp3
+    kind: musica
+    tags: [tensao]
+    mood: tenso
+    bpm: 96
+    origin: Biblioteca de Áudio do YouTube
+    license: Biblioteca de Áudio do YouTube (uso livre em vídeos)

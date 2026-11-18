@@ -11,7 +11,7 @@ from cronista.audio.events import load_active_events
 from cronista.config import Settings
 from cronista.db.models import RecordingSession
 from cronista.montage import SessionPlanError, _load_source
-from cronista.story.service import DEFAULT_TARGET_S, build_story
+from cronista.story.service import DEFAULT_TARGET_S, StoryResult, build_story
 
 
 def build_assembly(
@@ -22,6 +22,18 @@ def build_assembly(
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     params: AssemblyParams | None = None,
 ) -> EditPlan:
+    return assemble(db, session_id, settings, target_s, profile_objectives, params)[0]
+
+
+def assemble(
+    db: Session,
+    session_id: int,
+    settings: Settings,
+    target_s: float = DEFAULT_TARGET_S,
+    profile_objectives: tuple[list[str], list[str]] = ([], []),
+    params: AssemblyParams | None = None,
+) -> tuple[EditPlan, StoryResult]:
+    """Plano de montagem e a história de onde ele saiu (o acabamento lê os marcadores dos segmentos)."""
     story = build_story(db, session_id, target_s, profile_objectives)
     session = db.get(RecordingSession, session_id)
     assert session is not None  # build_story já validou
@@ -47,7 +59,8 @@ def build_assembly(
             duration_s = None
         if duration_s is not None:
             durations[media.id] = round(duration_s * 60)
-    return build_edit_plan(story.chapters, words=words, durations=durations, broll=broll, params=params)
+    plan = build_edit_plan(story.chapters, words=words, durations=durations, broll=broll, params=params)
+    return plan, story
 
 
 def write_plan(plan: EditPlan, directory: Path, session_id: int) -> Path:

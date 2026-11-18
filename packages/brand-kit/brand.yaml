@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=./brand.schema.json
+# Brand kit do canal (Fase 8A). VALORES ILUSTRATIVOS: troque pela identidade real do canal.
+# Os ids de `sonic` apontam para itens do inventário da biblioteca pessoal (fora do git); ids ausentes são
+# avisados por `cronista brand-check --biblioteca`.
+version: 1
+name: Cronista (exemplo)
+
+visual:
+  palette:
+    primary: "#F2B134"
+    secondary: "#2D3A4B"
+    accent: "#E4572E"
+    background: "#12161C"
+    text: "#F5F5F0"
+  fonts:
+    title: Bebas Neue
+    body: Inter
+  day_card:
+    style: titulo_editavel   # `remotion` = imagem regenerada pelo app a partir dos dias do Studio
+    template: "Dia {n}"
+    duration_s: 3
+  death_counter:
+    template: "Mortes: {n}"
+    position: topo_direita
+
+sonic:
+  loudness_lufs: -14
+  # intro: vinheta-abertura
+  # day_transition: transicao-dia
+  # death_sound: som-morte
+  mood_themes: {}

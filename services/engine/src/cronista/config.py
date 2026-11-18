@@ -54,6 +54,11 @@ class Settings(BaseModel):
     )
     profiles_dir: Path | None = None  # padrão: `profiles/` na raiz do repositório
     models_dir: Path | None = None  # padrão: data/models (fora do git)
+    brand_dir: Path | None = None  # brand kit versionado; padrão: `packages/brand-kit/` na raiz do repo
+    library_dir: Path | None = None  # biblioteca pessoal de SFX/música (fora do git; só em *.local.yaml)
+    finishing_series: str = (
+        ""  # estilo de série (`brand-kit/series/<nome>.yaml`) que o Studio usa no acabamento
+    )
     audio_language: str = "pt"
     whisper_model: str = "large-v3-turbo"
     whisper_compute_type: str = "int8_float16"
@@ -126,7 +131,7 @@ def load_settings(env: str | None = None, config_dir: Path | None = None) -> Set
     if password:
         settings = settings.model_copy(update={"obs_password": password})
     # Caminhos relativos valem a partir da raiz do repositório (pai da pasta config), não do cwd.
-    for field in ("data_dir", "models_dir", "watch_dir", "profiles_dir"):
+    for field in ("data_dir", "models_dir", "watch_dir", "profiles_dir", "brand_dir", "library_dir"):
         value = getattr(settings, field)
         if value is not None and not value.is_absolute():
             settings = settings.model_copy(update={field: (config_dir.parent / value).resolve()})

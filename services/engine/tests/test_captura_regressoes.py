@@ -74,3 +74,20 @@ def test_partial_failure_never_ingests_markers(
     report = service.ingest_files(db, "origem", [good, bad], settings, AlwaysFreeGate())
     assert not report.ok and calls == []
     assert any("marcadores não atualizados" in w for w in report.markers.warnings)
+
+
+def test_a15_truncated_ffprobe_json_is_a_failure_not_a_crash(
+    tmp_path: Path, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    from cronista.ingest import ffmpeg
+
+    def fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(cmd, 0, stdout='{"streams": [', stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    video = tmp_path / "a.mp4"
+    video.write_bytes(b"x")
+    assert ffmpeg.probe_media(settings, video).interrupted is True
+    assert ffmpeg.probe_chapters(settings, video) == []

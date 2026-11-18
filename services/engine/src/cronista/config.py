@@ -52,6 +52,9 @@ class Settings(BaseModel):
     audio_models: bool = (
         False  # liga os modelos reais de áudio (grupo `ml`, só prod); dev usa só os sinais de CPU
     )
+    studio_origins: list[
+        str
+    ] = []  # origens do Studio aceitas pelo engine; vazio = localhost/127.0.0.1 na :3000
     scream_enabled: bool = (
         False  # detector de grito por energia: reprovado (0/8, histórico §46), só experimento
     )

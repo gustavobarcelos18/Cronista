@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource
 from cronista.domain.frames import FPS
 from cronista.story.models import Script, ScriptLine
@@ -104,3 +106,27 @@ def test_b6_failure_is_not_read_as_conclusion() -> None:
     assert [c.state.value for c in out] == ["falhou"]
     won = extractor.extract([fala(0, 4, "finalmente consegui construir a casa")])
     assert [c.state.value for c in won] == ["concluido"]
+
+
+def test_b2_chapter_floor_does_not_push_the_sum_past_the_target() -> None:
+    from cronista.story.arc import MIN_CHAPTER_S, allocate_time, build_chapters
+    from tests.test_story import seg
+
+    big = [seg(i * 100, i * 100 + 45, "momento", 0.8) for i in range(10)]  # 450 s de material
+    big += [seg(2000 + i * 100, 2045 + i * 100, "momento", 0.8, ["d1"] if i == 0 else []) for i in range(10)]
+    small = [seg(5000 + i * 100, 5000 + i * 100 + 40, "momento", 0.8, [f"s{i}"]) for i in range(5)]
+    kinds = {"d1": "novo_dia", **{f"s{i}": "novo_dia" for i in range(5)}}
+    chapters = build_chapters([(1, [*big, *small])], kinds)
+    assert len(chapters) == 7
+    allocate_time(chapters, 400)  # os 5 pequenos recebem 20 s pela proporção, mas o piso é 30 s
+    assert [c.allocated_s for c in chapters[2:]] == [MIN_CHAPTER_S] * 5
+    assert sum(c.allocated_s for c in chapters) == pytest.approx(400, abs=0.5)
+
+
+def test_b2_chapter_never_gets_more_than_its_material() -> None:
+    from cronista.story.arc import allocate_time, build_chapters
+    from tests.test_story import seg
+
+    chapters = build_chapters([(1, [seg(0, 60, "momento", 0.8)])], {})
+    allocate_time(chapters, 2400)
+    assert chapters[0].allocated_s == chapters[0].product_s

@@ -219,6 +219,9 @@ def build_publish_package(
     video_name: str | None = None
     if video is not None:
         video_name = video.name
+        for stale in target.glob("*.mp4"):  # o vídeo anterior (outro nome) não pode ficar ao lado do novo
+            if not stale.name.startswith(("short-", "part-")) and stale.name != video_name:
+                stale.unlink(missing_ok=True)
         _copy(video, target / video_name)
         report.files.append(video_name)
     else:

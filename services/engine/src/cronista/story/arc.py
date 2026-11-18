@@ -95,10 +95,31 @@ def assign_beats(chapter: Chapter) -> None:
 
 
 def allocate_time(chapters: Sequence[Chapter], target_s: float) -> None:
-    """Reparte o tempo-alvo do vídeo entre os capítulos, proporcional ao material relevante de cada um."""
-    total = sum(c.product_s for c in chapters)
+    """Reparte o tempo-alvo do vídeo entre os capítulos, proporcional ao material relevante de cada um.
+
+    O piso `MIN_CHAPTER_S` e o teto (o material real do capítulo, histórico §40: não "preencher tempo") entram
+    na conta e o resto é redistribuído, então a soma não passa do alvo por causa do piso. Se não há material
+    para o alvo, a soma fica abaixo dele.
+    """
     if not chapters:
         return
-    for c in chapters:
-        share = c.product_s / total if total else 1 / len(chapters)
-        c.allocated_s = round(max(MIN_CHAPTER_S, share * target_s), 1)
+    fixed: dict[int, float] = {}
+    while True:
+        free = [n for n in range(len(chapters)) if n not in fixed]
+        if not free:
+            break
+        remaining = target_s - sum(fixed.values())
+        weight = sum(chapters[n].product_s for n in free)
+        share = {n: remaining * (chapters[n].product_s / weight if weight else 1 / len(free)) for n in free}
+        below = [n for n in free if share[n] < min(MIN_CHAPTER_S, chapters[n].product_s)]
+        if below:
+            fixed.update({n: min(MIN_CHAPTER_S, chapters[n].product_s) for n in below})
+            continue
+        above = [n for n in free if share[n] > chapters[n].product_s]
+        if above:
+            fixed.update({n: chapters[n].product_s for n in above})
+            continue
+        fixed.update(share)
+        break
+    for n, c in enumerate(chapters):
+        c.allocated_s = round(fixed[n], 1)

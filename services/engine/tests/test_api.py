@@ -138,8 +138,14 @@ def test_segmentos_efetivos_aplicam_decisoes(db: Session) -> None:
     assert [s.start_s for s in load_effective_segments(db, 1)] == [10, 32, 50]
 
 
-def test_api_roteiro_edita_e_guarda_historico(settings: Settings) -> None:
+def test_api_roteiro_edita_e_guarda_historico(settings: Settings, db: Session) -> None:
     import json
+
+    _seed(db)
+    unknown = TestClient(create_app(settings))
+    assert unknown.get("/sessions/99/script").status_code == 404  # D13a
+    assert unknown.put("/sessions/99/script", json={"lines": []}).status_code == 404
+    assert not (settings.data_dir / "story" / "99").exists()
 
     folder = settings.data_dir / "story" / "1"
     folder.mkdir(parents=True)
@@ -400,3 +406,12 @@ def test_salvar_roteiro_falha_sem_perder_o_atual(settings: Settings, monkeypatch
         service.save_script(folder, Script(lines=[ScriptLine(segment_id="s-1", text="Segunda versão.")]))
     assert "Primeira" in (folder / "roteiro.json").read_text(encoding="utf-8")  # o atual ficou intacto
     assert not (folder / "roteiro.v1.json").exists()
+
+
+def test_e7_studio_origin_comes_from_the_settings(settings: Settings) -> None:
+    custom = settings.model_copy(update={"studio_origins": ["http://localhost:3001"]})
+    client = TestClient(create_app(custom))
+    ok = client.post("/projects/1/learning/accept", headers={"Origin": "http://localhost:3001"})
+    assert ok.status_code != 403
+    other = client.post("/projects/1/learning/accept", headers={"Origin": "http://localhost:3000"})
+    assert other.status_code == 403

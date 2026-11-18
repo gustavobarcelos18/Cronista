@@ -281,7 +281,7 @@ def create_app(
     finishing_loader: StyleLoader | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Cronista Engine", version="0.1.0")
-    allowed = origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
+    allowed = origins or settings.studio_origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
     app.add_middleware(
         CORSMiddleware, allow_origins=allowed, allow_methods=["GET", "POST", "PUT"], allow_headers=["*"]
     )
@@ -709,6 +709,8 @@ def create_app(
 
     @app.get("/sessions/{session_id}/script", response_model=ScriptOut)
     def get_script(session_id: int) -> ScriptOut:
+        with _connect() as db:
+            _require_session(db, session_id)
         path = settings.data_dir / "story" / str(session_id) / "roteiro.json"
         if not path.is_file():
             raise HTTPException(404, "roteiro ainda não importado (`cronista roteiro-import`)")
@@ -717,6 +719,8 @@ def create_app(
     @app.put("/sessions/{session_id}/script", response_model=ScriptOut)
     def put_script(session_id: int, script: Script) -> ScriptOut:
         """Valida e grava o roteiro editado; a versão anterior vira `roteiro.v<N>.json`."""
+        with _connect() as db:
+            _require_session(db, session_id)
         try:
             report = save_script(settings.data_dir / "story" / str(session_id), script)
         except ScriptSaveError as e:

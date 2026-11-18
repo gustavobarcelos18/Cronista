@@ -249,3 +249,28 @@ def test_timelapse_interrompido_nao_deixa_arquivo_parcial(
     with pytest.raises(RuntimeError):
         render_timelapses(plan, {1: tmp_path / "m.mp4"}, tmp_path / "tl", settings)
     assert list((tmp_path / "tl").iterdir()) == []
+
+
+def test_marcadores_no_mesmo_quadro_ganham_o_proximo_quadro_livre() -> None:
+    """C9: o AddMarker do Resolve recusa o segundo marcador no mesmo quadro."""
+    plan = _plan()
+    first = plan.v1[0]
+    marks = [
+        MarkerInput(1, first.in_frame + 90, "conquista", "a"),
+        MarkerInput(1, first.in_frame + 90, "momento", "b"),
+        MarkerInput(1, first.in_frame + 91, "momento", "c"),
+    ]
+    result, _ = timeline_markers(plan, marks)
+    frames = [t.frame for t in result]
+    assert len(set(frames)) == 3 and min(frames) == first.timeline_start + 90
+
+
+def test_asset_sem_duracao_do_master_cobre_o_maior_corte_do_arquivo(tmp_path: Path) -> None:
+    """C3: o asset assumia o `out_frame` do primeiro corte e os seguintes viravam "problema" falso."""
+    plan = _plan()
+    media = _media(tmp_path, plan)
+    media = ExportMedia(
+        {1: MediaFileInfo(media.masters[1].path, None)}, media.timelapses, media.stems, media.stem_frames
+    )
+    xml = render_plan_fcpxml(plan, media)
+    assert check_plan_fcpxml(xml, plan) == []

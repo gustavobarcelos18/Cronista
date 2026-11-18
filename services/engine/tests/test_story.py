@@ -164,7 +164,8 @@ def test_chapters_split_on_new_day_and_beats() -> None:
     assert beats.index(Beat.VIRADA) > beats.index(Beat.FALHA)
     assert all(i.segment.classe != "descartavel" for c in chapters for i in c.items)
     allocate_time(chapters, 600)
-    assert sum(c.allocated_s for c in chapters) == pytest.approx(600, abs=1)
+    # só há material para 270 s: o alvo de 600 s não é preenchido (histórico §40)
+    assert sum(c.allocated_s for c in chapters) == pytest.approx(sum(c.product_s for c in chapters), abs=1)
 
 
 def test_free_gaps_exclude_live_speech() -> None:

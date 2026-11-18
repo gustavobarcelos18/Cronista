@@ -209,7 +209,7 @@ def test_sem_video_o_pacote_usa_o_corte_mais_recente(db: Session, session_id: in
     build_publish_package(db, session_id, shorts, pack, video=old)
     new.write_bytes(b"2")
     build_publish_package(db, session_id, shorts, pack, video=new)
-    os.utime(pack / "publicacao" / "serie-v1.mp4", (1, 1))
+    assert not (pack / "publicacao" / "serie-v1.mp4").exists()  # D5: o vídeo anterior sai da pasta
     report = build_publish_package(db, session_id, shorts, pack)  # sem --video, como o botão do Studio
     assert "serie-v2.mp4" in report.files and "serie-v1.mp4" not in report.files
 

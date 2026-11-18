@@ -8,9 +8,10 @@ tarefas, aceite e testes.
 **Status:** as 7 decisões foram tomadas pelo criador em 2026-11-18 e registradas no histórico §60 e no plano mestre §9.
 As marcas de "substituída" nas seções temáticas do plano mestre ficam para a etapa 10D.
 
-**Andamento da 10A (2026-11-18):** feitos A1, A3, A5, A17, B3, B4, B5, B6, C1, C2, C5, C6, C7, D1, D2, D3, E1, E2, E3,
-E5, E6 (`apps/studio/lib/api.ts`) e E16, cada um com teste de regressão (`test_*_regressoes.py`). Ficam para fechar a
-10A: A4, A6, A12, A15, A16, B2, B7, B11, C3, C9, C10, C16, D4, D5, D6, D13a, E4, E7.
+**Andamento da 10A (2026-11-18):** feitos A1, A3, A4, A5, A15, A16, A17, B2, B3, B4, B5, B6, C1, C2, C3, C5, C6, C7, C9, C10,
+C16, D1, D2, D3, D5, D6, D13a, E1, E2, E3, E4, E5, E6 (`apps/studio/lib/api.ts`), E7 (`studio_origins`) e E16, cada um com teste de
+regressão. Ficam da 10A: A6, A12, B7, B11 (muda o contrato do painel; junto com B10/B12 na 10C) e D4. O C10 só registra o erro no log;
+expor o motivo na API fica para depois.
 
 ## Divisão lógica do projeto
 

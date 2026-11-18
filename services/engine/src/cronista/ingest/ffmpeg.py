@@ -71,7 +71,10 @@ def probe_media(settings: Settings, path: Path) -> MediaProbe:
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         return MediaProbe(path=str(path), interrupted=True)
-    info: dict[str, Any] = json.loads(proc.stdout)
+    try:
+        info: dict[str, Any] = json.loads(proc.stdout)
+    except json.JSONDecodeError:  # ffprobe saiu com 0 mas o JSON veio truncado
+        return MediaProbe(path=str(path), interrupted=True)
     streams: list[dict[str, Any]] = info.get("streams", [])
     video = next((s for s in streams if s.get("codec_type") == "video"), None)
     audio_count = sum(1 for s in streams if s.get("codec_type") == "audio")
@@ -104,7 +107,10 @@ def probe_chapters(settings: Settings, path: Path) -> list[FileChapter]:
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         return []
-    info: dict[str, Any] = json.loads(proc.stdout)
+    try:
+        info: dict[str, Any] = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return []
     chapters: list[FileChapter] = []
     for raw in info.get("chapters", []):
         title = str(raw.get("tags", {}).get("title", ""))

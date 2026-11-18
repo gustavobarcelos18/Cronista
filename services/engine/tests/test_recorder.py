@@ -405,7 +405,8 @@ def test_real_adapter_talks_the_protocol_and_receives_ordered_events(tmp_path: P
                 assert await link.create_chapter("momento|x1") is True
                 assert obs.chapters == ["momento|x1"]
                 obs.fail_chapters = True
-                assert await link.create_chapter("momento|x2") is False
+                with pytest.raises(ObsError):  # A4: o motivo do OBS chega ao gravador
+                    await link.create_chapter("momento|x2")
             finally:
                 await link.close()
 
@@ -539,6 +540,7 @@ def test_partial_hotkey_config_keeps_the_other_defaults(tmp_path: Path) -> None:
         ({"momento": None}, "obrigatória"),
         ({"novo_dia": None}, "obrigatória"),
         ({"conquista": "<f13>"}, "mesma tecla"),
+        ({"conquista": "<F13>"}, "mesma tecla"),  # A16: maiúsculas não escapam da checagem
     ],
 )
 def test_hotkey_config_errors_are_clear(override: dict[str, str | None], message: str) -> None:

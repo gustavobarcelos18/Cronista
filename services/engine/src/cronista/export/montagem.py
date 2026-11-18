@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from fractions import Fraction
 from pathlib import Path
 from urllib.parse import urlparse
@@ -121,12 +121,19 @@ def render_plan_fcpxml(
     cards = {c.timeline_start: c for c in plan.cards}
     title_count = 0
     fx_titles = [0]
+    # Sem a duração do master, o asset vai até o maior corte do arquivo (não só o do primeiro).
+    last_out: dict[int, int] = {}
+    for i in plan.items:
+        last_out[i.file_id] = max(last_out.get(i.file_id, 0), i.out_frame)
     for n, item in v1:
         if item.mode == Mode.TIMELAPSE:
             ref, start = asset(media.timelapses[n], item.timeline_frames, video=True), 0
         else:
             info = media.masters[item.file_id]
-            ref, start = asset(info.path, info.duration_frames or item.out_frame, video=True), item.in_frame
+            ref, start = (
+                asset(info.path, info.duration_frames or last_out[item.file_id], video=True),
+                item.in_frame,
+            )
         parent = ET.SubElement(
             spine,
             "asset-clip",
@@ -162,7 +169,7 @@ def render_plan_fcpxml(
             ET.SubElement(
                 parent,
                 "asset-clip",
-                ref=asset(info.path, info.duration_frames or b.out_frame, video=True),
+                ref=asset(info.path, info.duration_frames or last_out[b.file_id], video=True),
                 lane=str(LANE_B_ROLL),
                 name=f"B-roll|{b.segment_id}",
                 offset=_t(start),
@@ -285,7 +292,18 @@ def timeline_markers(
                 custom=f"{m.kind}|{m.marker_id}",
             )
         )
-    return sorted(out, key=lambda t: t.frame), skipped
+    out.sort(key=lambda t: t.frame)
+    # Dois marcadores no mesmo quadro: o `AddMarker` do Resolve recusa o segundo (de memória, a verificar em
+    # `prod`), então cada um ganha o próximo quadro livre.
+    taken: set[int] = set()
+    shifted: list[TimelineMarker] = []
+    for t in out:
+        frame = t.frame
+        while frame in taken:
+            frame += 1
+        taken.add(frame)
+        shifted.append(replace(t, frame=frame) if frame != t.frame else t)
+    return shifted, skipped
 
 
 def _lua_string(text: str) -> str:
@@ -331,7 +349,7 @@ def check_plan_fcpxml(xml: str, plan: EditPlan) -> list[str]:
         return problems
     resources = root.find("resources")
     assets: dict[str, ET.Element] = (
-        {a.get("id", ""): a for a in resources.findall("asset")} if resources else {}
+        {a.get("id", ""): a for a in resources.findall("asset")} if resources is not None else {}
     )
     for a in assets.values():
         parsed = urlparse(a.get("src", ""))

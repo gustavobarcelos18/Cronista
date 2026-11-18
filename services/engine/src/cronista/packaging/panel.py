@@ -101,32 +101,38 @@ def packaging_panel(
     chosen_thumb = current_thumbnail(db, session_id)
     thumbnails: list[ThumbnailOut] = []
     if (packaging_folder / MANIFEST_NAME).is_file():
-        thumbnails = [
-            ThumbnailOut(
-                variation=int(e["variacao"]),
-                file_name=str(e["arquivo"]),
-                text=e.get("texto"),
-                position=e.get("posicao"),
-                chosen=chosen_thumb is not None and chosen_thumb.file_name == e["arquivo"],
-            )
-            for e in load_manifest(packaging_folder)
-            if (packaging_folder / "thumbnails" / str(e["arquivo"])).is_file()
-        ]
+        try:
+            thumbnails = [
+                ThumbnailOut(
+                    variation=int(e["variacao"]),
+                    file_name=str(e["arquivo"]),
+                    text=e.get("texto"),
+                    position=e.get("posicao"),
+                    chosen=chosen_thumb is not None and chosen_thumb.file_name == e["arquivo"],
+                )
+                for e in load_manifest(packaging_folder)
+                if (packaging_folder / "thumbnails" / str(e["arquivo"])).is_file()
+            ]
+        except (ValueError, KeyError, TypeError, AttributeError):  # manifesto quebrado: segue sem ele
+            thumbnails = []
 
     decisions = current_short_decisions(db, session_id)
     shorts: list[ShortOut] = []
     if (shorts_folder / f"shorts-{session_id}.json").is_file():
-        shorts = [
-            ShortOut(
-                key=e.key,
-                duration_s=e.duration_s,
-                score=e.score,
-                reason=e.reason,
-                has_clip=e.clip is not None,
-                decision=cast(Decision, decisions.get(e.key, "pendente")),
-            )
-            for e in list_shorts(shorts_folder, session_id)
-        ]
+        try:
+            shorts = [
+                ShortOut(
+                    key=e.key,
+                    duration_s=e.duration_s,
+                    score=e.score,
+                    reason=e.reason,
+                    has_clip=e.clip is not None,
+                    decision=cast(Decision, decisions.get(e.key, "pendente")),
+                )
+                for e in list_shorts(shorts_folder, session_id)
+            ]
+        except (ValueError, KeyError, TypeError, AttributeError):  # manifesto quebrado: segue sem ele
+            shorts = []
     approved = sum(1 for s in shorts if s.decision == APPROVED and s.has_clip)
 
     missing: list[str] = []

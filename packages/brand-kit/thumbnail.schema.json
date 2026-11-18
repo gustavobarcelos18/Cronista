@@ -1,0 +1,247 @@
+{
+  "$defs": {
+    "ColorGrade": {
+      "additionalProperties": false,
+      "description": "Correção de cor leve que destaca a imagem na lista de recomendados (FFmpeg `eq` e `vignette`).",
+      "properties": {
+        "brightness": {
+          "default": 0.0,
+          "maximum": 0.5,
+          "minimum": -0.5,
+          "title": "Brightness",
+          "type": "number"
+        },
+        "contrast": {
+          "default": 1.08,
+          "maximum": 2,
+          "minimum": 0.5,
+          "title": "Contrast",
+          "type": "number"
+        },
+        "saturation": {
+          "default": 1.15,
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Saturation",
+          "type": "number"
+        },
+        "vignette": {
+          "default": true,
+          "title": "Vignette",
+          "type": "boolean"
+        }
+      },
+      "title": "ColorGrade",
+      "type": "object"
+    },
+    "DayBadge": {
+      "additionalProperties": false,
+      "description": "Selo \"Dia N\". O número nunca é fixo em arquivo: vem de `--dia` na hora de gerar (o dia é decidido na edição).",
+      "properties": {
+        "color": {
+          "default": "background",
+          "title": "Color",
+          "type": "string"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "fill": {
+          "default": "primary",
+          "title": "Fill",
+          "type": "string"
+        },
+        "position": {
+          "default": "topo_esquerda",
+          "enum": [
+            "topo_esquerda",
+            "topo_centro",
+            "topo_direita",
+            "centro",
+            "base_esquerda",
+            "base_centro",
+            "base_direita"
+          ],
+          "title": "Position",
+          "type": "string"
+        },
+        "size_pct": {
+          "default": 0.09,
+          "exclusiveMinimum": 0.02,
+          "maximum": 0.3,
+          "title": "Size Pct",
+          "type": "number"
+        },
+        "template": {
+          "default": "Dia {n}",
+          "pattern": ".*\\{n\\}.*",
+          "title": "Template",
+          "type": "string"
+        }
+      },
+      "title": "DayBadge",
+      "type": "object"
+    },
+    "TextStyle": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "default": "text",
+          "title": "Color",
+          "type": "string"
+        },
+        "font": {
+          "default": "title",
+          "enum": [
+            "title",
+            "body"
+          ],
+          "title": "Font",
+          "type": "string"
+        },
+        "margin_pct": {
+          "default": 0.05,
+          "maximum": 0.2,
+          "minimum": 0,
+          "title": "Margin Pct",
+          "type": "number"
+        },
+        "max_line_chars": {
+          "default": 14,
+          "maximum": 40,
+          "minimum": 4,
+          "title": "Max Line Chars",
+          "type": "integer"
+        },
+        "max_words": {
+          "default": 4,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Max Words",
+          "type": "integer"
+        },
+        "positions": {
+          "items": {
+            "enum": [
+              "topo_esquerda",
+              "topo_centro",
+              "topo_direita",
+              "centro",
+              "base_esquerda",
+              "base_centro",
+              "base_direita"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Positions",
+          "type": "array"
+        },
+        "size_pct": {
+          "default": 0.2,
+          "exclusiveMinimum": 0.03,
+          "maximum": 0.5,
+          "title": "Size Pct",
+          "type": "number"
+        },
+        "stroke_color": {
+          "default": "background",
+          "title": "Stroke Color",
+          "type": "string"
+        },
+        "stroke_pct": {
+          "default": 0.012,
+          "maximum": 0.05,
+          "minimum": 0,
+          "title": "Stroke Pct",
+          "type": "number"
+        },
+        "uppercase": {
+          "default": true,
+          "title": "Uppercase",
+          "type": "boolean"
+        }
+      },
+      "title": "TextStyle",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "color": {
+      "$ref": "#/$defs/ColorGrade",
+      "default": {
+        "brightness": 0.0,
+        "contrast": 1.08,
+        "saturation": 1.15,
+        "vignette": true
+      }
+    },
+    "day_badge": {
+      "$ref": "#/$defs/DayBadge",
+      "default": {
+        "color": "background",
+        "enabled": false,
+        "fill": "primary",
+        "position": "topo_esquerda",
+        "size_pct": 0.09,
+        "template": "Dia {n}"
+      }
+    },
+    "frame": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Frame"
+    },
+    "height": {
+      "default": 720,
+      "maximum": 2160,
+      "minimum": 360,
+      "title": "Height",
+      "type": "integer"
+    },
+    "text": {
+      "$ref": "#/$defs/TextStyle",
+      "default": {
+        "color": "text",
+        "font": "title",
+        "margin_pct": 0.05,
+        "max_line_chars": 14,
+        "max_words": 4,
+        "positions": [
+          "base_esquerda",
+          "topo_direita",
+          "base_centro"
+        ],
+        "size_pct": 0.2,
+        "stroke_color": "background",
+        "stroke_pct": 0.012,
+        "uppercase": true
+      }
+    },
+    "version": {
+      "const": 1,
+      "default": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "width": {
+      "default": 1280,
+      "maximum": 3840,
+      "minimum": 640,
+      "title": "Width",
+      "type": "integer"
+    }
+  },
+  "title": "ThumbnailModel",
+  "type": "object"
+}

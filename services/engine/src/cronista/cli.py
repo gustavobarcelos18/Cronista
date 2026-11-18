@@ -1135,6 +1135,278 @@ def shorts(
     typer.echo(str(path))
 
 
+@app.command("shorts-render")
+def shorts_render(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    top: Annotated[int, typer.Option(help="Quantos Shorts renderizar")] = 3,
+    serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
+    reframe: Annotated[
+        str, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
+    ] = "desfoque",
+    focus_x: Annotated[float, typer.Option(help="Só no `recorte`: 0 = esquerda, 1 = direita")] = 0.5,
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/shorts/<sessão>)")] = None,
+) -> None:
+    """Renderiza os Shorts 9:16 com legenda gravada e margens seguras (Fase 9A)."""
+    from pydantic import ValidationError
+
+    from cronista.shorts.candidates import ShortsParams
+    from cronista.shorts.render import ShortStyle
+    from cronista.shorts.service import render_session_shorts
+    from cronista.story.service import StoryError
+
+    if reframe not in ("desfoque", "recorte"):
+        typer.echo("erro: --reframe aceita `desfoque` ou `recorte`", err=True)
+        raise typer.Exit(1)
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            package = render_session_shorts(
+                db,
+                session,
+                settings,
+                out or settings.data_dir / "shorts" / str(session),
+                params=ShortsParams(max_candidates=top),
+                style=ShortStyle(reframe=reframe, focus_x=focus_x),  # type: ignore[arg-type]
+                serie=serie,
+                gate=build_gate(settings),
+            )
+        except (StoryError, FileNotFoundError, ValueError, ValidationError) as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    for warning in package.warnings:
+        typer.echo(f"aviso: {warning}")
+    for c in package.candidates:
+        clip = package.clips.get(f"{c.file_id}-{c.start_frame}")
+        typer.echo(f"{c.duration_s:.1f} s, nota {c.score:.2f}: {clip if clip else 'não renderizado'}")
+    if not package.candidates:
+        typer.echo("nenhum candidato a Short")
+
+
+@app.command("titulos")
+def titulos(
+    session: Annotated[int, typer.Argument(help="Sessão com `story-pack.json` (`cronista story`)")],
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/packaging/<sessão>)")] = None,
+) -> None:
+    """Gera o `titulo-pack.json` compacto para o /titular escrever sugestões de título (Fase 9C)."""
+    from cronista.packaging.service import TitleError, write_title_pack
+
+    settings = load_settings()
+    try:
+        path = write_title_pack(
+            settings.data_dir / "story" / str(session), out or settings.data_dir / "packaging" / str(session)
+        )
+    except TitleError as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"{path}\nAgora rode /titular no Claude Code com este pacote.")
+
+
+@app.command("titulos-import")
+def titulos_import(
+    session: Annotated[int, typer.Argument(help="Sessão do pacote de títulos usado")],
+    titles: Annotated[Path, typer.Argument(help="titulos.json escrito pelo /titular")],
+) -> None:
+    """Valida as sugestões (limite de 70 caracteres, repetição, clichê) e guarda `titulos.json`."""
+    from cronista.packaging.service import TitleError, save_titles
+    from cronista.packaging.titles import load_titles
+
+    settings = load_settings()
+    folder = settings.data_dir / "packaging" / str(session)
+    try:
+        report = save_titles(folder, load_titles(titles))
+    except (ValueError, TitleError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        for err in getattr(exc, "errors", []):
+            typer.echo(f"erro: {err}", err=True)
+        raise typer.Exit(1) from exc
+    for warn in report.warnings:
+        typer.echo(f"aviso: {warn}")
+    for n, option in enumerate(report.titles, start=1):
+        typer.echo(f"{n}. {option.text} ({len(option.text)})")
+
+
+@app.command("titulo-escolher")
+def titulo_escolher(
+    session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
+    sugestao: Annotated[int | None, typer.Option(help="Número da sugestão escolhida (1, 2, …)")] = None,
+    texto: Annotated[
+        str | None, typer.Option(help="Título do próprio criador (ou a sugestão editada)")
+    ] = None,
+) -> None:
+    """Registra o título escolhido (só inserção); o texto do criador sempre vale mais que o sugerido."""
+    from cronista.packaging.service import TitleError, record_title_choice
+
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        try:
+            row = record_title_choice(
+                db, session, settings.data_dir / "packaging" / str(session), suggestion=sugestao, text=texto
+            )
+        except TitleError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    typer.echo(f"{row.origin}: {row.text}")
+
+
+@app.command("thumbnails")
+def thumbnails(
+    session: Annotated[int, typer.Argument(help="Sessão com `story-pack.json` (`cronista story`)")],
+    texto: Annotated[
+        list[str] | None,
+        typer.Option(
+            help="Texto da thumbnail (repita para várias variações); ganha do sugerido pelo /titular"
+        ),
+    ] = None,
+    dia: Annotated[int | None, typer.Option(help="Número do dia para o selo (decidido na edição)")] = None,
+    variacoes: Annotated[int, typer.Option(help="Quantas variações gerar (2 ou 3)", min=1, max=3)] = 3,
+    serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
+    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/packaging/<sessão>)")] = None,
+) -> None:
+    """Gera 2 a 3 variações de thumbnail a partir dos picos do vídeo e do modelo do brand kit (Fase 9B)."""
+    from pydantic import ValidationError
+
+    from cronista.story.service import StoryError
+    from cronista.thumbnails.render import ThumbnailError
+    from cronista.thumbnails.service import render_session_thumbnails
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    with open_db(settings.db_path) as db:
+        try:
+            package = render_session_thumbnails(
+                db,
+                session,
+                settings,
+                settings.data_dir / "story" / str(session),
+                out or settings.data_dir / "packaging" / str(session),
+                texts=texto,
+                day=dia,
+                count=variacoes,
+                serie=serie,
+                gate=build_gate(settings),
+            )
+        except (ThumbnailError, StoryError, FileNotFoundError, ValueError, ValidationError) as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    for warning in package.warnings:
+        typer.echo(f"aviso: {warning}")
+    for item in package.items:
+        v = item.variation
+        typer.echo(
+            f"{v.n}. arquivo {v.frame.file_id} em {v.frame.t_s:.1f}s ({v.frame.beat}), "
+            f"nota {v.frame.score:.2f}, "
+            f"texto {v.text!r} ({v.position}): {item.path}"
+        )
+    if package.items:
+        typer.echo("Escolha com `cronista thumbnail-escolher <sessão> --variacao N`.")
+
+
+@app.command("thumbnail-escolher")
+def thumbnail_escolher(
+    session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
+    variacao: Annotated[int, typer.Option(help="Número da variação escolhida (1, 2, 3)")],
+) -> None:
+    """Registra a thumbnail escolhida (só inserção; a última vale)."""
+    from cronista.thumbnails.render import ThumbnailError
+    from cronista.thumbnails.service import record_thumbnail_choice
+
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        try:
+            row = record_thumbnail_choice(
+                db, session, settings.data_dir / "packaging" / str(session), variacao
+            )
+        except ThumbnailError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    typer.echo(f"variação {row.variation}: {row.file_name}")
+
+
+@app.command("shorts-status")
+def shorts_status(
+    session: Annotated[int, typer.Argument(help="Sessão com Shorts renderizados (`cronista shorts-render`)")],
+) -> None:
+    """Lista os Shorts da sessão com a chave, o MP4 e a decisão do criador (Fase 9D)."""
+    from cronista.packaging.publish import PublishError, current_short_decisions, list_shorts
+
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        try:
+            entries = list_shorts(settings.data_dir / "shorts" / str(session), session)
+        except PublishError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+        decisions = current_short_decisions(db, session)
+    for e in entries:
+        state = decisions.get(e.key, "pendente")
+        typer.echo(
+            f"{e.key}  {state:9}  {e.duration_s:.1f} s, nota {e.score:.2f}  "
+            f"{e.clip.name if e.clip else 'sem MP4'}"
+        )
+    if not entries:
+        typer.echo("nenhum Short")
+
+
+@app.command("short-decidir")
+def short_decidir(
+    session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
+    short: Annotated[str, typer.Argument(help="Chave do Short (`cronista shorts-status`)")],
+    decisao: Annotated[
+        str, typer.Option(help="`aprovado`, `rejeitado` ou `padrao` (volta a pendente)")
+    ] = "aprovado",
+) -> None:
+    """Aprova ou rejeita um Short (só inserção; a última decisão vale)."""
+    from cronista.packaging.publish import PublishError, record_short_decision
+
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        try:
+            row = record_short_decision(
+                db, session, settings.data_dir / "shorts" / str(session), short, decisao
+            )
+        except PublishError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    typer.echo(f"{row.short_key}: {row.decision}")
+
+
+@app.command("pacote-publicacao")
+def pacote_publicacao(
+    session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
+    video: Annotated[
+        Path | None, typer.Option(help="Vídeo da série renderizado no Resolve (copiado para a pasta)")
+    ] = None,
+    out: Annotated[
+        Path | None, typer.Option(help="Pasta de saída (padrão: data/packaging/<sessão>/publicacao)")
+    ] = None,
+) -> None:
+    """Reúne vídeo, Shorts aprovados, thumbnail e título numa pasta, com um LEIA-ME.md (Fase 9D)."""
+    from cronista.packaging.publish import PublishError, build_publish_package
+
+    settings = load_settings()
+    with open_db(settings.db_path) as db:
+        try:
+            report = build_publish_package(
+                db,
+                session,
+                settings.data_dir / "shorts" / str(session),
+                settings.data_dir / "packaging" / str(session),
+                video=video,
+                out=out,
+            )
+        except PublishError as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    for name in report.files:
+        typer.echo(f"  {name}")
+    for item in report.missing:
+        typer.echo(f"falta: {item}")
+    typer.echo(str(report.directory))
+    if not report.ready:
+        raise typer.Exit(2)
+
+
 @app.command("brand-check")
 def brand_check(
     serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",

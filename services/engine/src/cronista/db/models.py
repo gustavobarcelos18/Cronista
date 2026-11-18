@@ -292,3 +292,48 @@ class FinishingDecision(Base):
         String(12)
     )  # aceito | removido | padrao (volta ao que o plano decidiu)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class TitleChoice(Base):
+    """Título que o criador escolheu para o vídeo da sessão (9C). Só inserção: vale a última linha."""
+
+    __tablename__ = "title_choice"
+    __table_args__ = (Index("ix_title_choice_session", "session_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("session.id"))
+    text: Mapped[str] = mapped_column(String(200))
+    origin: Mapped[str] = mapped_column(String(10))  # sugerido | editado | proprio
+    suggested: Mapped[str | None] = mapped_column(
+        String(200), default=None
+    )  # a sugestão que ele editou/escolheu
+    provider: Mapped[str | None] = mapped_column(String(30), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ThumbnailChoice(Base):
+    """Thumbnail que o criador escolheu para o vídeo da sessão (9B). Só inserção: vale a última linha."""
+
+    __tablename__ = "thumbnail_choice"
+    __table_args__ = (Index("ix_thumbnail_choice_session", "session_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("session.id"))
+    file_name: Mapped[str] = mapped_column(String(200))  # JPEG da pasta de embalagem (nome com hash)
+    variation: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str | None] = mapped_column(String(80), default=None)
+    position: Mapped[str | None] = mapped_column(String(20), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ShortDecision(Base):
+    """Decisão do criador sobre um Short renderizado (9D). Só inserção: vale a última linha por Short."""
+
+    __tablename__ = "short_decision"
+    __table_args__ = (Index("ix_short_decision_session_key", "session_id", "short_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("session.id"))
+    short_key: Mapped[str] = mapped_column(String(40))  # "<arquivo>-<quadro inicial>" (`candidate_key`)
+    decision: Mapped[str] = mapped_column(String(10))  # aprovado | rejeitado | padrao (volta a pendente)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

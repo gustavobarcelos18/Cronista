@@ -1107,11 +1107,11 @@ def montagem(
 def shorts(
     session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
     top: Annotated[int, typer.Option(help="Quantos candidatos listar")] = 10,
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/shorts/<sessão>)")] = None,
 ) -> None:
-    """Candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D; a finalização é da Fase 9)."""
+    """Lista os candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D). Não grava nada:
+    o manifesto é do `shorts-render`."""
     from cronista.shorts.candidates import ShortsParams
-    from cronista.shorts.service import build_shorts, write_shorts
+    from cronista.shorts.service import build_shorts
     from cronista.story.service import StoryError
 
     settings = load_settings()
@@ -1122,7 +1122,6 @@ def shorts(
         except StoryError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    path = write_shorts(found, out or settings.data_dir / "shorts" / str(session), session)
     for n, c in enumerate(found, start=1):
         typer.echo(
             f"{n}. arquivo {c.file_id} {c.start_frame / 60:.1f}s: {c.duration_s:.1f} s, nota {c.score:.2f}, "
@@ -1132,7 +1131,6 @@ def shorts(
         typer.echo(
             "nenhum candidato: faltam momentos com pico (marcador ou emoção) e gancho nos 3 s iniciais"
         )
-    typer.echo(str(path))
 
 
 @app.command("shorts-render")
@@ -1146,7 +1144,6 @@ def shorts_render(
         str, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
     ] = "desfoque",
     focus_x: Annotated[float, typer.Option(help="Só no `recorte`: 0 = esquerda, 1 = direita")] = 0.5,
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/shorts/<sessão>)")] = None,
 ) -> None:
     """Renderiza os Shorts 9:16 com legenda gravada e margens seguras (Fase 9A)."""
     from pydantic import ValidationError
@@ -1167,7 +1164,7 @@ def shorts_render(
                 db,
                 session,
                 settings,
-                out or settings.data_dir / "shorts" / str(session),
+                settings.data_dir / "shorts" / str(session),
                 params=ShortsParams(max_candidates=top),
                 style=ShortStyle(reframe=reframe, focus_x=focus_x),  # type: ignore[arg-type]
                 serie=serie,
@@ -1188,7 +1185,6 @@ def shorts_render(
 @app.command("titulos")
 def titulos(
     session: Annotated[int, typer.Argument(help="Sessão com `story-pack.json` (`cronista story`)")],
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/packaging/<sessão>)")] = None,
 ) -> None:
     """Gera o `titulo-pack.json` compacto para o /titular escrever sugestões de título (Fase 9C)."""
     from cronista.packaging.service import TitleError, write_title_pack
@@ -1196,7 +1192,7 @@ def titulos(
     settings = load_settings()
     try:
         path = write_title_pack(
-            settings.data_dir / "story" / str(session), out or settings.data_dir / "packaging" / str(session)
+            settings.data_dir / "story" / str(session), settings.data_dir / "packaging" / str(session)
         )
     except TitleError as exc:
         typer.echo(f"erro: {exc}", err=True)
@@ -1263,7 +1259,6 @@ def thumbnails(
     dia: Annotated[int | None, typer.Option(help="Número do dia para o selo (decidido na edição)")] = None,
     variacoes: Annotated[int, typer.Option(help="Quantas variações gerar (2 ou 3)", min=1, max=3)] = 3,
     serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/packaging/<sessão>)")] = None,
 ) -> None:
     """Gera 2 a 3 variações de thumbnail a partir dos picos do vídeo e do modelo do brand kit (Fase 9B)."""
     from pydantic import ValidationError
@@ -1281,7 +1276,7 @@ def thumbnails(
                 session,
                 settings,
                 settings.data_dir / "story" / str(session),
-                out or settings.data_dir / "packaging" / str(session),
+                settings.data_dir / "packaging" / str(session),
                 texts=texto,
                 day=dia,
                 count=variacoes,

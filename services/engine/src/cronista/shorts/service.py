@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -60,10 +61,17 @@ def build_shorts(db: Session, session_id: int, params: ShortsParams | None = Non
     return pick_candidates(materials, params)
 
 
-def write_shorts(candidates: list[ShortCandidate], directory: Path, session_id: int) -> Path:
+def write_shorts(
+    candidates: list[ShortCandidate],
+    directory: Path,
+    session_id: int,
+    clips: Mapping[str, Path] | None = None,
+) -> Path:
+    """Manifesto da sessão: só o `shorts-render` o grava (com o clipe de cada candidato)."""
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"shorts-{session_id}.json"
-    path.write_text(to_json(candidates), encoding="utf-8")
+    named = {key: clip.name for key, clip in clips.items()} if clips is not None else None
+    path.write_text(to_json(candidates, named), encoding="utf-8")
     return path
 
 
@@ -125,5 +133,5 @@ def render_session_shorts(
         brand_dir=brand_dir(settings.brand_dir),
         gate=gate,
     )
-    write_shorts(candidates, directory, session_id)
+    write_shorts(candidates, directory, session_id, result.clips)
     return ShortsPackage(candidates, result.clips, [*notes, *result.warnings])

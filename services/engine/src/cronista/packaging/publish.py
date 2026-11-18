@@ -54,15 +54,29 @@ def _manifest(shorts_folder: Path, session_id: int) -> dict[str, Any]:
     return data
 
 
+def _clip_of(shorts_folder: Path, row: dict[str, Any]) -> Path | None:
+    """MP4 que o `shorts-render` gravou no manifesto (campo `clip`); `None` se não foi renderizado ou sumiu.
+
+    Manifesto antigo, sem o campo: cai no MP4 mais recente daquele trecho (comportamento anterior).
+    """
+    if "clip" in row:
+        path = shorts_folder / row["clip"] if row["clip"] else None
+        return path if path is not None and path.is_file() else None
+    found = sorted(
+        shorts_folder.glob(
+            f"short-{int(row['file_id'])}-{int(row['start_frame'])}-{int(row['end_frame'])}-*.mp4"
+        ),
+        key=lambda p: (p.stat().st_mtime, p.name),
+    )
+    return found[-1] if found else None
+
+
 def list_shorts(shorts_folder: Path, session_id: int) -> list[ShortEntry]:
     """Candidatos do `shorts-<sessão>.json` com o MP4 pronto de cada um, na ordem do manifesto (por nota)."""
     out: list[ShortEntry] = []
     for row in _manifest(shorts_folder, session_id).get("candidatos", []):
         file_id, start = int(row["file_id"]), int(row["start_frame"])
-        clips = sorted(
-            shorts_folder.glob(f"short-{file_id}-{start}-{int(row['end_frame'])}-*.mp4"),
-            key=lambda p: (p.stat().st_mtime, p.name),
-        )
+        clip = _clip_of(shorts_folder, row)
         out.append(
             ShortEntry(
                 f"{file_id}-{start}",
@@ -71,7 +85,7 @@ def list_shorts(shorts_folder: Path, session_id: int) -> list[ShortEntry]:
                 float(row["duracao_s"]),
                 float(row["score"]),
                 str(row["reason"]),
-                clips[-1] if clips else None,
+                clip,
             )
         )
     return out

@@ -8,8 +8,7 @@ import type {
   ThumbnailOut,
 } from "@cronista/contracts";
 import { useCallback, useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+import { API, errorOf } from "../lib/api";
 
 const ORIGINS: Record<string, string> = {
   sugerido: "sugestão",
@@ -18,11 +17,6 @@ const ORIGINS: Record<string, string> = {
 };
 
 type Result = { data?: PackagingOut; error?: string };
-
-async function errorOf(res: Response, fallback: string): Promise<string> {
-  const body = (await res.json().catch(() => ({}))) as { detail?: string };
-  return typeof body.detail === "string" ? body.detail : `${fallback} (${res.status}).`;
-}
 
 function TitleRow({
   n,

@@ -2,8 +2,8 @@
 
 import type { SeriesPanelOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
+import { API } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
 const SEGUNDOS = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 
 const SITUACAO: Record<SeriesPanelOut["situacao"], string> = {

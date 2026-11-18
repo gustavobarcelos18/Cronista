@@ -7,8 +7,7 @@ import type {
   FinishItemOut,
 } from "@cronista/contracts";
 import { useCallback, useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+import { API } from "../lib/api";
 
 const MODES = [
   ["sugerir", "Só sugerir (marcador)"],

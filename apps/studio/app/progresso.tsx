@@ -2,8 +2,7 @@
 
 import type { ProgressOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+import { API } from "../lib/api";
 
 /** Progresso dos jobs da sessão por SSE; a conexão fecha sozinha quando não resta job ativo. */
 export default function Progresso({ sessionId }: { sessionId: number }) {

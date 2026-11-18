@@ -261,3 +261,34 @@ class Feedback(Base):
     text: Mapped[str] = mapped_column(Text)
     interpretation: Mapped[str | None] = mapped_column(Text, default=None)  # JSON validado, quando houver
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class FinishingSetting(Base):
+    """Ajuste de um efeito do acabamento feito no Studio (8E). Só inserção: vale a última por tipo."""
+
+    __tablename__ = "finishing_setting"
+    __table_args__ = (Index("ix_finishing_setting_project_kind", "project_id", "kind"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id"))
+    kind: Mapped[str] = mapped_column(String(30))
+    mode: Mapped[str] = mapped_column(String(12))  # sugerir | editavel | renderizado
+    max_per_minute: Mapped[float] = mapped_column(Float)
+    min_score: Mapped[float] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class FinishingDecision(Base):
+    """Decisão do criador sobre um item do plano de acabamento (8E). Só inserção: vale a última por item."""
+
+    __tablename__ = "finishing_decision"
+    __table_args__ = (Index("ix_finishing_decision_session_item", "session_id", "item_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("session.id"))
+    item_key: Mapped[str] = mapped_column(String(160))  # `decision_key` do item: "<id>@<momento>"
+    kind: Mapped[str] = mapped_column(String(30))
+    decision: Mapped[str] = mapped_column(
+        String(12)
+    )  # aceito | removido | padrao (volta ao que o plano decidiu)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

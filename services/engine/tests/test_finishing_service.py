@@ -78,3 +78,13 @@ def test_finish_from_edit_plan_uses_style_budget_and_cards() -> None:
     again = finish_from_edit_plan(plan, {"a-1": frozenset({"morte_falha"})}, style)
     assert finish.input_hash == again.input_hash
     assert all(i.start >= 0 and i.end <= plan.total_frames for i in finish.items)
+
+
+def test_pico_do_momento_e_o_marcador_do_criador() -> None:
+    """C8: o zoom centra onde o criador apertou a tecla, e não no meio do corte; sem marcador, o meio vale."""
+    plan = EditPlan(items=[edit_item("a-1", 1000)])
+    peaks = {1: [(100, "momento"), (450, "morte_falha"), (700, "conquista")]}  # 700 está fora do corte
+    moment = moments_from_plan(plan, {}, peaks)[0]
+    assert moment.peak == 1000 + 450  # `morte_falha` manda sobre `momento`
+    assert moments_from_plan(plan, {})[0].peak is None  # sem marcador: o meio (`peak_frame`)
+    assert moments_from_plan(plan, {}, {2: [(100, "momento")]})[0].peak is None  # marcador de outro arquivo

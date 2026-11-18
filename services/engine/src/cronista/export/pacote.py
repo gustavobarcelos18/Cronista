@@ -37,7 +37,7 @@ from cronista.finishing.brand import ResolvedStyle, brand_dir
 from cronista.finishing.library import Library
 from cronista.finishing.markers import suggestion_markers
 from cronista.finishing.plan import FinishPlan, apply_decisions
-from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_segment
+from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_segment, marker_peaks
 from cronista.logging_setup import log_event
 from cronista.mix.service import MixReport, mix_session
 from cronista.montage import load_source
@@ -156,7 +156,9 @@ def export_montagem(
     base = out_base or SessionPaths.of(settings, session_id).package_base
     plan, story = assemble(db, session_id, settings, target_s, profile_objectives)
     finish = (
-        finish_from_edit_plan(plan, marker_kinds_by_segment(story.chapters), style, library)
+        finish_from_edit_plan(
+            plan, marker_kinds_by_segment(story.chapters), style, library, marker_peaks(db, session_id)
+        )
         if style is not None
         else None
     )

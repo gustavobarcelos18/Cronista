@@ -33,12 +33,11 @@ from cronista.assembly.plan import Card, EditPlan, Mode
 from cronista.domain.frames import FPS, fcpxml_time
 from cronista.domain.tracks import Track
 from cronista.export.fcpxml import _parse_time, check_fcpxml
+from cronista.export.fcpxml_base import add_asset, new_skeleton, serialize
 from cronista.export.finish_fcpxml import FinishLayers, add_finish_clips
 from cronista.mix.envelope import narration_cues
 from cronista.story.models import ScriptLine
 
-WIDTH, HEIGHT = 1920, 1080
-_XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n\n'
 TITLE_UID = ".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"
 LANE_B_ROLL, LANE_CARD = Track.V3.lane, Track.V5.lane
 STEM_LANES = {t.value: t.lane for t in (Track.A1, Track.A2, Track.A4, Track.A6, Track.A7)}
@@ -64,54 +63,18 @@ class ExportMedia:
 def render_plan_fcpxml(
     plan: EditPlan, media: ExportMedia, name: str = "Cronista", layers: FinishLayers | None = None
 ) -> str:
-    root = ET.Element("fcpxml", version="1.9")
-    resources = ET.SubElement(root, "resources")
-    ET.SubElement(
-        resources,
-        "format",
-        id="r1",
-        name=f"FFVideoFormat{HEIGHT}p{FPS}",
-        frameDuration=f"1/{FPS}s",
-        width=str(WIDTH),
-        height=str(HEIGHT),
-    )
+    skeleton = new_skeleton(name, duration=fcpxml_time(plan.total_frames))
+    root, resources, spine = skeleton.root, skeleton.resources, skeleton.spine
     ids: dict[str, str] = {}
 
     def asset(path: Path, frames: int, *, video: bool) -> str:
         key = f"{'v' if video else 'a'}:{path}"
         if key not in ids:
             ids[key] = f"r{len(ids) + 3}"  # r1 = format, r2 = título
-            attrs = {
-                "id": ids[key],
-                "name": path.name,
-                "src": path.resolve().as_uri(),
-                "start": "0s",
-                "duration": fcpxml_time(frames),
-            }
-            if video:  # o áudio do master fica de fora: o som vem dos stems
-                attrs |= {"format": "r1", "hasVideo": "1", "hasAudio": "0"}
-            else:
-                attrs |= {"hasVideo": "0", "hasAudio": "1", "audioSources": "1", "audioChannels": "2"}
-                attrs["audioRate"] = "48000"
-            ET.SubElement(resources, "asset", attrs)
+            add_asset(resources, ids[key], path.name, path.resolve().as_uri(), frames, video=video)
         return ids[key]
 
     ET.SubElement(resources, "effect", id="r2", name="Basic Title", uid=TITLE_UID)
-
-    library = ET.SubElement(root, "library")
-    event = ET.SubElement(library, "event", name="Cronista")
-    project = ET.SubElement(event, "project", name=name)
-    sequence = ET.SubElement(
-        project,
-        "sequence",
-        format="r1",
-        duration=fcpxml_time(plan.total_frames),
-        tcStart="0s",
-        tcFormat="NDF",
-        audioLayout="stereo",
-        audioRate="48k",
-    )
-    spine = ET.SubElement(sequence, "spine")
 
     v1 = [(n, i) for n, i in enumerate(plan.items) if i.track == Track.V1]
     broll = [i for i in plan.items if i.track == Track.V3]
@@ -181,8 +144,7 @@ def render_plan_fcpxml(
             title_count += 1
             _add_title(parent, card, start, min(card.frames, item.timeline_frames), title_count)
 
-    ET.indent(root, space="  ")
-    return _XML_HEAD + ET.tostring(root, encoding="unicode") + "\n"
+    return serialize(root)
 
 
 def _add_title(parent: ET.Element, card: Card, parent_start: int, frames: int, n: int) -> None:

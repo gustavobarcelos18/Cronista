@@ -1163,6 +1163,20 @@ histórico §58).
 - Marcador que existe só no arquivo (e não no diário): tratado como `Momento`, com aviso no relatório da sessão.
 - Primeira sessão do projeto sem `Novo dia`: abre um dia implícito no início, sem número.
 - Marcadores na ingestão: passo idempotente da sessão (não etapa com cache por arquivo); `Construção ▶/■` pareada pela ordem dos toques, com `■` sintético se ficar aberta; dia implícito como marcador sintético (histórico §28).
+- **Auditoria de 2026-11-18 e Fase 10 de correções (histórico §60; planos em `docs/auditoria/`):**
+  - **Lacuna registrada:** narrativa, montagem, acabamento e títulos ainda trabalham **por sessão** (alvo inteiro em
+    cada sessão). Isso contradiz a seção 4.1 até a sub-etapa 10F, que implementa a história por série (`build_series_story`,
+    alvo único, dias contínuos entre sessões).
+  - **LUT:** padrão `sugerir` até a conferência em `prod` mostrar que o `SetLUT` funciona no Resolve gratuito. Volta a
+    `editavel` só depois disso.
+  - **Detector de grito** (`ScreamHeuristic`, reprovado no §46): atrás da flag `audio.scream_enabled`, desligada por padrão.
+  - **`cronista export` (Fase 1):** deprecado, com aviso apontando para `cronista montagem`. O código comum de FCPXML é
+    unificado. Substitui, como caminho vigente, o "FCPXML mínimo (1B)" acima.
+  - **`--out`** sai de `shorts`, `shorts-render`, `titulos` e `thumbnails`: todos os passos usam só as pastas padrão.
+  - **Painel da série:** abaixo de 30 min, `curto_ok` se o arco estiver completo (começo, meio, fim e clímax, §40) e
+    `abaixo_da_referencia` se não estiver. Substitui `faltando`.
+  - **Lookback da relevância:** os 25/20/30 s por tipo de marcador (histórico §51) são o valor vigente e passam a ser
+    ajustáveis por perfil de jogo. Os 60–90 s da seção 4 estão substituídos.
 
 **Decisões de 2026-11-16 (documento de visão narrativa v0.1; histórico §36):**
 - **Formatos narrativos:** a estrutura é geral (capítulo/unidade de progresso; objetivo; fase). O modo "100 dias" é um formato

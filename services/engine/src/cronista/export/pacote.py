@@ -41,6 +41,7 @@ from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_se
 from cronista.logging_setup import log_event
 from cronista.mix.service import MixReport, mix_session
 from cronista.montage import _load_source
+from cronista.paths import SessionPaths
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.story.models import Script
 from cronista.story.service import DEFAULT_TARGET_S
@@ -155,7 +156,7 @@ def export_montagem(
 
     `finish_decisions` são as decisões do criador no Studio por `id` de item (`aceito`/`removido`).
     """
-    base = out_base or settings.data_dir / "export" / "montagem" / str(session_id)
+    base = out_base or SessionPaths.of(settings, session_id).package_base
     plan, story = assemble(db, session_id, settings, target_s, profile_objectives)
     finish = (
         finish_from_edit_plan(plan, marker_kinds_by_segment(story.chapters), style, library)

@@ -33,6 +33,7 @@ from cronista.ingest.service import SessionConflictError, ingest_folder
 from cronista.logging_setup import setup_logging
 from cronista.media.ffmpeg import run_ffmpeg
 from cronista.montage import SessionPlanError
+from cronista.paths import SessionPaths, review_csv
 from cronista.pipeline import StageError, recover_orphans
 from cronista.preview import PreviewError, build_preview
 from cronista.profiles import build_models_with_profile
@@ -742,7 +743,7 @@ def story(
         except StoryError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    target = out or settings.data_dir / "story" / str(session)
+    target = out or SessionPaths.of(settings, session).story_dir
     pack_path, voice_path = write_pack(target, result)
     for c in result.chapters:
         beats = ", ".join(f"{i.beat.value}" for i in c.items[:8])
@@ -765,7 +766,7 @@ def revisao(
     settings = load_settings()
     with open_db(settings.db_path) as db:
         items = review_queue(db, project)
-        target = export_review_csv(items, out or settings.data_dir / "story" / f"revisao-{project}.csv")
+        target = export_review_csv(items, out or review_csv(settings, project))
     typer.echo(f"{len(items)} itens para revisar: {target}")
 
 
@@ -779,7 +780,7 @@ def roteiro_import(
     from cronista.story.service import ScriptSaveError, save_script
 
     settings = load_settings()
-    folder = settings.data_dir / "story" / str(session)
+    folder = SessionPaths.of(settings, session).story_dir
     try:
         loaded = load_script(script)
         report = save_script(folder, loaded)
@@ -987,7 +988,7 @@ def montar(
         except StoryError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    path = write_plan(plan, out or settings.data_dir / "montagem" / str(session), session)
+    path = write_plan(plan, out or SessionPaths.of(settings, session).assembly_dir, session)
     for number, budget in plan.chapter_budget_s.items():
         typer.echo(f"capítulo {number}: {plan.chapter_s(number):.0f} s de {budget:.0f} s alocados")
     typer.echo(
@@ -1165,7 +1166,7 @@ def shorts_render(
                 db,
                 session,
                 settings,
-                settings.data_dir / "shorts" / str(session),
+                SessionPaths.of(settings, session).shorts_dir,
                 params=ShortsParams(max_candidates=top),
                 style=ShortStyle(reframe=reframe, focus_x=focus_x),  # type: ignore[arg-type]
                 serie=serie,
@@ -1193,7 +1194,7 @@ def titulos(
     settings = load_settings()
     try:
         path = write_title_pack(
-            settings.data_dir / "story" / str(session), settings.data_dir / "packaging" / str(session)
+            SessionPaths.of(settings, session).story_dir, SessionPaths.of(settings, session).packaging_dir
         )
     except TitleError as exc:
         typer.echo(f"erro: {exc}", err=True)
@@ -1211,7 +1212,7 @@ def titulos_import(
     from cronista.packaging.titles import load_titles
 
     settings = load_settings()
-    folder = settings.data_dir / "packaging" / str(session)
+    folder = SessionPaths.of(settings, session).packaging_dir
     try:
         report = save_titles(folder, load_titles(titles))
     except (ValueError, TitleError) as exc:
@@ -1240,7 +1241,7 @@ def titulo_escolher(
     with open_db(settings.db_path) as db:
         try:
             row = record_title_choice(
-                db, session, settings.data_dir / "packaging" / str(session), suggestion=sugestao, text=texto
+                db, session, SessionPaths.of(settings, session).packaging_dir, suggestion=sugestao, text=texto
             )
         except TitleError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -1276,8 +1277,8 @@ def thumbnails(
                 db,
                 session,
                 settings,
-                settings.data_dir / "story" / str(session),
-                settings.data_dir / "packaging" / str(session),
+                SessionPaths.of(settings, session).story_dir,
+                SessionPaths.of(settings, session).packaging_dir,
                 texts=texto,
                 day=dia,
                 count=variacoes,
@@ -1313,7 +1314,7 @@ def thumbnail_escolher(
     with open_db(settings.db_path) as db:
         try:
             row = record_thumbnail_choice(
-                db, session, settings.data_dir / "packaging" / str(session), variacao
+                db, session, SessionPaths.of(settings, session).packaging_dir, variacao
             )
         except ThumbnailError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -1331,7 +1332,7 @@ def shorts_status(
     settings = load_settings()
     with open_db(settings.db_path) as db:
         try:
-            entries = list_shorts(settings.data_dir / "shorts" / str(session), session)
+            entries = list_shorts(SessionPaths.of(settings, session).shorts_dir, session)
         except PublishError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
@@ -1361,7 +1362,7 @@ def short_decidir(
     with open_db(settings.db_path) as db:
         try:
             row = record_short_decision(
-                db, session, settings.data_dir / "shorts" / str(session), short, decisao
+                db, session, SessionPaths.of(settings, session).shorts_dir, short, decisao
             )
         except PublishError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -1388,8 +1389,8 @@ def pacote_publicacao(
             report = build_publish_package(
                 db,
                 session,
-                settings.data_dir / "shorts" / str(session),
-                settings.data_dir / "packaging" / str(session),
+                SessionPaths.of(settings, session).shorts_dir,
+                SessionPaths.of(settings, session).packaging_dir,
                 video=video,
                 out=out,
             )
@@ -1497,7 +1498,7 @@ def acabamento(
         except (StoryError, SessionPlanError) as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    path = write_finish_plan(plan, out or settings.data_dir / "acabamento" / str(session), session)
+    path = write_finish_plan(plan, out or SessionPaths.of(settings, session).finishing_dir, session)
     for kind, modes in sorted(plan.summary().items()):
         typer.echo(f"{kind:<16} " + ", ".join(f"{n} {mode}" for mode, n in sorted(modes.items())))
     for warning in plan.warnings:

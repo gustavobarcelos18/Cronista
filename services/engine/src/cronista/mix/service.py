@@ -26,6 +26,7 @@ from cronista.mix.envelope import (
 from cronista.mix.loudness import Loudness, measure
 from cronista.mix.stems import render_stem
 from cronista.montage import SessionPlanError, _load_source
+from cronista.paths import SessionPaths
 from cronista.pipeline.stage import StageError
 from cronista.story.models import Script
 
@@ -167,5 +168,5 @@ def mix_session(
             for e in load_active_events(db, media.id)
             if e.kind == "fala"
         ]
-    target = out_dir or settings.data_dir / "export" / "stems" / str(session_id)
+    target = out_dir or SessionPaths.of(settings, session_id).stems_dir
     return mix_plan(plan, game, mic, speech, script, settings, target)

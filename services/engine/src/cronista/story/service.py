@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from cronista.audio.events import load_active_events
 from cronista.db.models import Marker, Objective, RecordingSession
 from cronista.domain.evidence import AnalysisEvent
+from cronista.paths import SCRIPT, STORY_PACK, VOICE_PROFILE
 from cronista.relevance.engine import Segment
 from cronista.review.decisions import load_effective_segments
 from cronista.story.arc import Chapter, allocate_time, build_chapters
@@ -119,9 +120,9 @@ def segment_index(pack: dict[str, Any]) -> dict[str, tuple[float, float, list[tu
 
 def write_pack(directory: Path, result: StoryResult) -> tuple[Path, Path]:
     directory.mkdir(parents=True, exist_ok=True)
-    pack_path = directory / "story-pack.json"
+    pack_path = directory / STORY_PACK
     pack_path.write_text(json.dumps(result.pack, ensure_ascii=False, indent=1), encoding="utf-8")
-    voice_path = directory / "voice-profile.json"
+    voice_path = directory / VOICE_PROFILE
     voice_path.write_text(json.dumps(result.voice, ensure_ascii=False, indent=1), encoding="utf-8")
     return pack_path, voice_path
 
@@ -140,19 +141,19 @@ def save_script(folder: Path, script: Script) -> ValidationReport:
     A versão anterior nunca se perde: vira `roteiro.v<N>.json` (histórico só de inserção). Com erros de
     validação nada é gravado.
     """
-    pack_path = folder / "story-pack.json"
+    pack_path = folder / STORY_PACK
     if not pack_path.is_file():
         raise ScriptSaveError("rode `cronista story` antes")
     index = segment_index(json.loads(pack_path.read_text(encoding="utf-8")))
     report = validate_script(script, index)
     if not report.ok:
         raise ScriptSaveError("roteiro inválido", report.errors)
-    current = folder / "roteiro.json"
+    current = folder / SCRIPT
     saved = script.model_copy(update={"lines": report.lines})
     starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
     # Grava o novo em arquivos temporários ANTES de mexer no atual: se a escrita falhar, o roteiro vigente
     # continua no lugar e o histórico não fica com buraco.
-    tmp_json, tmp_srt = folder / "roteiro.json.tmp", folder / "roteiro.srt.tmp"
+    tmp_json, tmp_srt = folder / f"{SCRIPT}.tmp", folder / "roteiro.srt.tmp"
     tmp_json.write_text(saved.model_dump_json(indent=1), encoding="utf-8")
     tmp_srt.write_text(to_srt(report.lines, starts), encoding="utf-8")
     if current.is_file():

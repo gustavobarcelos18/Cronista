@@ -18,6 +18,7 @@ from cronista.packaging.titles import (
     load_titles,
     validate_titles,
 )
+from cronista.paths import STORY_PACK
 
 Origin = Literal["sugerido", "editado", "proprio"]
 PACK_NAME = "titulo-pack.json"
@@ -34,7 +35,7 @@ class TitleError(Exception):
 
 def write_title_pack(story_folder: Path, folder: Path) -> Path:
     """Lê o `story-pack.json` da sessão e grava o `titulo-pack.json` compacto na pasta de embalagem."""
-    story_pack = story_folder / "story-pack.json"
+    story_pack = story_folder / STORY_PACK
     if not story_pack.is_file():
         raise TitleError("rode `cronista story` antes")
     pack = build_title_pack(json.loads(story_pack.read_text(encoding="utf-8")))

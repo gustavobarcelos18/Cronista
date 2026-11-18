@@ -20,6 +20,7 @@ from cronista.packaging.publish import (
 )
 from cronista.packaging.service import TITLES_NAME, Origin, current_title
 from cronista.packaging.titles import load_titles
+from cronista.paths import shorts_manifest_in, thumbnails_in
 from cronista.thumbnails.service import MANIFEST_NAME, current_thumbnail, load_manifest
 
 
@@ -111,14 +112,14 @@ def packaging_panel(
                     chosen=chosen_thumb is not None and chosen_thumb.file_name == e["arquivo"],
                 )
                 for e in load_manifest(packaging_folder)
-                if (packaging_folder / "thumbnails" / str(e["arquivo"])).is_file()
+                if (thumbnails_in(packaging_folder) / str(e["arquivo"])).is_file()
             ]
         except (ValueError, KeyError, TypeError, AttributeError):  # manifesto quebrado: segue sem ele
             thumbnails = []
 
     decisions = current_short_decisions(db, session_id)
     shorts: list[ShortOut] = []
-    if (shorts_folder / f"shorts-{session_id}.json").is_file():
+    if (shorts_manifest_in(shorts_folder, session_id)).is_file():
         try:
             shorts = [
                 ShortOut(

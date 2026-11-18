@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from cronista.db.models import RecordingSession, ShortDecision
 from cronista.packaging.service import current_title
+from cronista.paths import PUBLISH_DIR_NAME, shorts_manifest_in, thumbnails_in
 from cronista.shorts.candidates import short_key
 from cronista.thumbnails.service import MANIFEST_NAME, current_thumbnail, load_manifest
 
@@ -28,7 +29,6 @@ DEFAULT = "padrao"
 DECISIONS = (APPROVED, REJECTED)
 MIN_SHORTS = 3
 """Critério de aceite da Fase 9: pelo menos 3 Shorts aprovados."""
-PUBLISH_DIR = "publicacao"
 
 
 class PublishError(Exception):
@@ -48,7 +48,7 @@ class ShortEntry:
 
 
 def _manifest(shorts_folder: Path, session_id: int) -> dict[str, Any]:
-    path = shorts_folder / f"shorts-{session_id}.json"
+    path = shorts_manifest_in(shorts_folder, session_id)
     if not path.is_file():
         raise PublishError("sem Shorts; rode `cronista shorts-render` antes")
     data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
@@ -207,7 +207,7 @@ def build_publish_package(
         raise PublishError(f"sessão {session_id} não existe (veja `cronista status`)")
     if video is not None and not video.is_file():
         raise PublishError(f"vídeo {video} não existe")
-    target = out or packaging_folder / PUBLISH_DIR
+    target = out or packaging_folder / PUBLISH_DIR_NAME
     if target.is_dir() and any(target.iterdir()) and not (target / "LEIA-ME.md").is_file():
         raise PublishError(
             f"{target} já tem arquivos que não são de um pacote; escolha uma pasta vazia ou nova"
@@ -250,7 +250,7 @@ def build_publish_package(
     ):
         thumb = None  # variações geradas de novo: a escolha antiga não vale mais (o painel pensa igual)
     thumb_name: str | None = None
-    source = packaging_folder / "thumbnails" / thumb.file_name if thumb else None
+    source = thumbnails_in(packaging_folder) / thumb.file_name if thumb else None
     if source is not None and source.is_file():
         _copy(source, target / "thumbnail.jpg")
         thumb_name = "thumbnail.jpg"
@@ -265,7 +265,7 @@ def build_publish_package(
     decisions = current_short_decisions(db, session_id)
     entries = (
         list_shorts(shorts_folder, session_id)
-        if (shorts_folder / f"shorts-{session_id}.json").is_file()
+        if (shorts_manifest_in(shorts_folder, session_id)).is_file()
         else []
     )
     approved: list[tuple[str, ShortEntry]] = []

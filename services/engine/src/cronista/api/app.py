@@ -52,6 +52,7 @@ from cronista.packaging.publish import (
     record_short_decision,
 )
 from cronista.packaging.service import TitleError, record_title_choice
+from cronista.paths import SessionPaths, thumbnails_in
 from cronista.relevance.service import STAGE as RELEVANCE_STAGE
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, decision_for, record_decision
@@ -448,9 +449,8 @@ def create_app(
         return body
 
     def _packaging_folders(session_id: int) -> tuple[Path, Path]:
-        return settings.data_dir / "packaging" / str(session_id), settings.data_dir / "shorts" / str(
-            session_id
-        )
+        paths = SessionPaths.of(settings, session_id)
+        return paths.packaging_dir, paths.shorts_dir
 
     def _packaging(db: Session, session_id: int) -> PackagingOut:
         packaging, shorts = _packaging_folders(session_id)
@@ -528,7 +528,7 @@ def create_app(
             allowed = {str(e["arquivo"]) for e in load_manifest(folder)}
         except ThumbnailError as exc:
             raise HTTPException(404, str(exc)) from exc
-        path = folder / "thumbnails" / name
+        path = thumbnails_in(folder) / name
         if name not in allowed or not path.is_file():
             raise HTTPException(404, "thumbnail não encontrada")
         return FileResponse(path, media_type="image/jpeg")
@@ -710,7 +710,7 @@ def create_app(
     def get_script(session_id: int) -> ScriptOut:
         with _connect() as db:
             _require_session(db, session_id)
-        path = settings.data_dir / "story" / str(session_id) / "roteiro.json"
+        path = SessionPaths.of(settings, session_id).script
         if not path.is_file():
             raise HTTPException(404, "roteiro ainda não importado (`cronista roteiro-import`)")
         return ScriptOut(script=load_script(path))
@@ -721,7 +721,7 @@ def create_app(
         with _connect() as db:
             _require_session(db, session_id)
         try:
-            report = save_script(settings.data_dir / "story" / str(session_id), script)
+            report = save_script(SessionPaths.of(settings, session_id).story_dir, script)
         except ScriptSaveError as e:
             raise HTTPException(422, {"message": str(e), "errors": e.errors}) from e
         return ScriptOut(script=script.model_copy(update={"lines": report.lines}), warnings=report.warnings)

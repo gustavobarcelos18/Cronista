@@ -19,6 +19,7 @@ from cronista.export.pacote import export_montagem
 from cronista.finishing.loader import StyleLoader
 from cronista.finishing.overrides import current_item_decisions, current_settings, with_overrides
 from cronista.gates import build_gate
+from cronista.paths import SessionPaths
 from cronista.story.script import load_script
 
 ProfileLoader = Callable[[], tuple[list[str], list[str]]]
@@ -70,7 +71,7 @@ class ReexportJobs:
         s = self._settings
         try:
             objetivos, regras = self._profile()
-            script_path = s.data_dir / "story" / str(session_id) / "roteiro.json"
+            script_path = SessionPaths.of(s, session_id).script
             script = load_script(script_path) if script_path.is_file() else None
             loaded = self._finishing() if self._finishing else None
             with open_db(s.db_path) as db:

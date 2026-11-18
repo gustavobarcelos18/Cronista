@@ -15,6 +15,7 @@ from cronista.config import Settings
 from cronista.db.models import Marker, RecordingSession
 from cronista.finishing.loader import load_style
 from cronista.montage import SessionPlanError, load_masters
+from cronista.paths import shorts_manifest_in
 from cronista.pipeline.gpu import GpuGate
 from cronista.relevance.engine import EMOTION
 from cronista.review.decisions import load_effective_segments
@@ -69,7 +70,7 @@ def write_shorts(
 ) -> Path:
     """Manifesto da sessão: só o `shorts-render` o grava (com o clipe de cada candidato)."""
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"shorts-{session_id}.json"
+    path = shorts_manifest_in(directory, session_id)
     named = {key: clip.name for key, clip in clips.items()} if clips is not None else None
     path.write_text(to_json(candidates, named), encoding="utf-8")
     return path

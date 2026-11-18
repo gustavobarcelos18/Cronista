@@ -75,6 +75,21 @@ def _load_source(db: Session, media: MediaFile) -> SourceFile:
     )
 
 
+def load_masters(db: Session, session: RecordingSession) -> tuple[dict[int, Path], list[str]]:
+    """Master de cada gravação da sessão. Gravação sem ingestão vira aviso (quem precisar dela a ignora);
+    só falha se nenhuma gravação estiver pronta."""
+    masters: dict[int, Path] = {}
+    notes: list[str] = []
+    for media in session.media_files:
+        try:
+            masters[media.id] = _load_source(db, media).master
+        except SessionPlanError as exc:
+            notes.append(str(exc))
+    if not masters:
+        raise SessionPlanError(notes[0] if notes else f"sessão {session.id} não tem gravações")
+    return masters, notes
+
+
 def plan_session(db: Session, session_id: int, settings: Settings) -> SessionPlan:
     session = db.get(RecordingSession, session_id)
     if session is None:

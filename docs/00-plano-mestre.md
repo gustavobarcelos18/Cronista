@@ -1022,6 +1022,8 @@ Plano de execução em [fase-8-acabamento.md](fase-8-acabamento.md) (8A brand ki
 - ✅ Aceite: vídeo exportado precisando só de narração gravada e ajustes finos; efeitos reversíveis no Resolve.
 
 ### Fase 9 — Embalagem e distribuição
+Plano de execução em [fase-9-embalagem.md](fase-9-embalagem.md) (9A Shorts → 9C títulos → 9B thumbnails → 9D Studio e pacote;
+histórico §58).
 - Shorts finalizados: reenquadramento 9:16, legenda gravada, margens seguras, gancho em 3 s, máximo 13 s (seção 6.6).
 - Thumbnails a partir do modelo do canal, com 2–3 variações (seção 6.7).
 - Sugestões de título humanizadas.
@@ -1074,6 +1076,16 @@ Plano de execução em [fase-8-acabamento.md](fase-8-acabamento.md) (8A brand ki
   licença obrigatória por item e bloqueio de uso comercial. Render e exportação (8C/8D): zoom/shake por `zoompan` do FFmpeg
   com enquadramento original nas pontas; overlay do contador por `drawtext` (sem Remotion); música com `sidechaincompress`;
   Studio (8E) com ajustes por projeto e decisões por item, só inserção (histórico §57).
+- Embalagem (Fase 9, histórico §58): Shorts 1080x1920 a 60 fps com legenda ASS queimada (palavras do Whisper, cor de destaque e
+  fonte do brand kit), margens seguras e áudio da faixa 1 normalizado ao loudness do canal; reenquadramento `desfoque`
+  (padrão) ou `recorte`; modelo de thumbnail declarativo em YAML, layout ainda a definir com o criador. Títulos (9C): pacote
+  compacto → `/titular` + `/humanizar` → validação (70 caracteres, sem clichê de isca de clique); escolha do criador só por
+  inserção (`title_choice`); sem LLM local para títulos. Thumbnails (9B): mecanismo pronto, sem Pillow nem IA de imagem (FFmpeg
+  corta o frame, corrige a cor, aplica moldura e desenha texto e selo); modelo em `packages/brand-kit/thumbnail.yaml` (valores
+  ilustrativos até o criador definir o layout); frames dos picos do story-pack escolhidos por nota do momento (60%) e
+  qualidade medida por heurística em numpy (40%); 2–3 variações determinísticas, JPEG de até 2 MB; o número do selo "Dia N" vem
+  de `--dia`, nunca de arquivo (histórico §58). Pacote de publicação (9D): aprovação de Shorts por inserção (`short_decision`),
+  pasta final com título, thumbnail, Shorts aprovados e `LEIA-ME.md` do que falta, e painel "Embalagem" no Studio.
 - Contêiner Hybrid MP4; marcadores do OBS dentro do arquivo + diário de eventos, com reconciliação (seções 2 e 4).
 - Sem facecam (seções 6.6 e 6.7).
 - Produto: **um único vídeo de 30–50 min** por série, montado a partir de sessões de duração variável (3 h, 6 h, 10 h…) (seções 0.1, 1 e 2).

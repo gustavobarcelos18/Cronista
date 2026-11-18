@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from sqlalchemy import select
@@ -9,7 +10,11 @@ from sqlalchemy.orm import Session
 
 from cronista.assembly.plan import WordSpan
 from cronista.audio.events import load_active_events
+from cronista.config import Settings
 from cronista.db.models import Marker, RecordingSession
+from cronista.finishing.loader import load_style
+from cronista.montage import SessionPlanError, load_masters
+from cronista.pipeline.gpu import GpuGate
 from cronista.relevance.engine import EMOTION
 from cronista.review.decisions import load_effective_segments
 from cronista.shorts.candidates import (
@@ -21,6 +26,7 @@ from cronista.shorts.candidates import (
     pick_candidates,
     to_json,
 )
+from cronista.shorts.render import CaptionWord, ShortStyle, render_shorts
 from cronista.story.service import StoryError
 
 
@@ -59,3 +65,65 @@ def write_shorts(candidates: list[ShortCandidate], directory: Path, session_id: 
     path = directory / f"shorts-{session_id}.json"
     path.write_text(to_json(candidates), encoding="utf-8")
     return path
+
+
+def load_caption_words(db: Session, session_id: int) -> dict[int, list[CaptionWord]]:
+    """Palavras do Whisper (com texto) de cada arquivo da sessão, para a legenda gravada."""
+    session = db.get(RecordingSession, session_id)
+    if session is None:
+        raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
+    out: dict[int, list[CaptionWord]] = {}
+    for media in session.media_files:
+        words = [
+            CaptionWord(int(w["start_frame"]), int(w["end_frame"]), str(w.get("text", "")))
+            for e in load_active_events(db, media.id)
+            if e.kind == "fala"
+            for w in e.payload.get("words", [])
+        ]
+        out[media.id] = sorted(words, key=lambda w: w.start_frame)
+    return out
+
+
+@dataclass
+class ShortsPackage:
+    candidates: list[ShortCandidate]
+    clips: dict[str, Path]
+    warnings: list[str] = field(default_factory=list)
+
+
+def render_session_shorts(
+    db: Session,
+    session_id: int,
+    settings: Settings,
+    directory: Path,
+    *,
+    params: ShortsParams | None = None,
+    style: ShortStyle | None = None,
+    serie: str = "",
+    gate: GpuGate | None = None,
+) -> ShortsPackage:
+    """Escolhe os candidatos e renderiza cada um em 9:16 com a identidade do brand kit (Fase 9A)."""
+    from cronista.finishing.brand import brand_dir
+
+    candidates = build_shorts(db, session_id, params)
+    resolved, _ = load_style(settings, serie)
+    session = db.get(RecordingSession, session_id)
+    assert session is not None  # build_shorts já validou
+    try:
+        masters, notes = load_masters(db, session)
+    except SessionPlanError as exc:
+        raise StoryError(str(exc)) from exc
+    base_style = replace(style or ShortStyle(), loudness_lufs=resolved.brand.sonic.loudness_lufs)
+    result = render_shorts(
+        candidates,
+        load_caption_words(db, session_id),
+        masters,
+        resolved.brand.visual,
+        directory,
+        settings,
+        style=base_style,
+        brand_dir=brand_dir(settings.brand_dir),
+        gate=gate,
+    )
+    write_shorts(candidates, directory, session_id)
+    return ShortsPackage(candidates, result.clips, [*notes, *result.warnings])

@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=./thumbnail.schema.json
+# Modelo de thumbnail do canal (Fase 9B). VALORES ILUSTRATIVOS: o layout real é definido junto com o criador na hora de testar.
+# Cores: papel da paleta do brand kit (primary, secondary, accent, background, text) ou #RRGGBB.
+# O número do dia NÃO fica aqui: o selo lê `--dia` na hora de gerar (o dia é decidido na edição).
+version: 1
+width: 1280
+height: 720
+text:
+  font: title            # title = 1ª fonte de `fonts.files`; body = 2ª (ou a 1ª, se só houver uma)
+  size_pct: 0.2          # altura da fonte em fração da altura da imagem
+  color: text
+  stroke_color: background
+  stroke_pct: 0.012
+  uppercase: true
+  max_words: 4
+  max_line_chars: 14
+  margin_pct: 0.05
+  positions: [base_esquerda, topo_direita, base_centro]   # uma por variação
+# frame: frames/thumbnail.png   # moldura PNG com alfa, relativa a esta pasta (opcional)
+day_badge:
+  enabled: false
+  template: "Dia {n}"
+  position: topo_esquerda
+  size_pct: 0.09
+  color: background
+  fill: primary
+color:
+  saturation: 1.15
+  contrast: 1.08
+  brightness: 0.0
+  vignette: true

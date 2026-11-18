@@ -1391,6 +1391,66 @@ alimentam, e só refaz o plano de acabamento a cada clique.
 ⚠️ Sem conferência no Resolve (plano 6.5): se ele respeita as lanes 1, 3, -4 e -5, os keyframes de `adjust-transform`, `SetLUT` e
 o alfa do MOV. Se algo falhar, o modo `renderizado` (MP4/MOV prontos) é o caminho mais seguro.
 
+## 58. Fase 9: plano da embalagem e 9A, Shorts finalizados (2026-11-18)
+
+Branch `fase/9-embalagem`, a partir da `main` (Fase 8 mergeada, PR #22). Escrito [fase-9-embalagem.md](fase-9-embalagem.md) com
+9A (Shorts), 9C (títulos), 9B (thumbnails) e 9D (Studio e pacote). Decisões: (1) ordem 9A → 9C → 9B → 9D, porque os Shorts já têm
+entrada pronta (candidatos da 6D) e o modelo de thumbnail depende do criador; (2) **modelo de thumbnail segue "a decidir
+depois"** (resposta do criador): a fase entrega o mecanismo e um modelo declarativo em YAML no brand kit, e o layout se define na
+hora de testar; (3) reenquadramento 9:16 em dois modos, `desfoque` (padrão, gameplay inteira sobre fundo desfocado) e `recorte`
+(janela vertical em torno de `focus_x`); o seguidor de saliência da seção 6.6 fica fora porque não há dado de região de ação no
+banco; (4) legenda gravada em ASS pelo filtro `ass` do FFmpeg, palavras do Whisper em grupos de 3, palavra falada em destaque,
+cor e fonte do brand kit; (5) margens seguras (topo 250, base 450, direita 140, esquerda 60 px) são valores de memória, a
+conferir no celular; gameplay e legenda formam um bloco centrado entre elas; (6) áudio é a faixa 1 (o mix de entrega, nunca para
+análise) com `loudnorm` no alvo do canal e corte suave de 0,15 s; (7) mesmo padrão da Fase 8: render atômico, nome com hash do
+filtro, da legenda e do encoder, espera do `GpuGate`.
+
+⚠️ Sem conferência com FFmpeg real (este PC não o tem): grafo de filtros, `ass` (libass) e `loudnorm` só se confirmam em `prod`.
+
+**9C, sugestões de título (2026-11-18).** Decisões: (8) mesmo caminho do roteiro: `cronista titulos` gera um `titulo-pack.json`
+compacto e determinístico (objetivo confirmado, arco, abertura, desfecho, 6 momentos de maior nota, sem número de dia), a skill
+`/titular` (com `/humanizar`) escreve `titulos.json` e `cronista titulos-import` valida; o `NullTitleProvider` é o padrão e **não
+há título por LLM local** (a exceção do §40 vale só para o roteiro); (9) são **erros** (nada gravado) título vazio, repetido, acima
+de 70 caracteres ou com clichê de isca de clique, e **avisos** os sinais de texto de IA e a falta de `reason`; (10) a escolha do
+criador fica na tabela `title_choice` (migração 0012), só inserção, com origem `sugerido`, `editado` ou `proprio`, para o app
+aprender o gosto depois; o texto do criador só esbarra no limite duro do YouTube (100 caracteres), nunca no validador de clichê.
+
+**9B, thumbnails (2026-11-18).** Decisões: (11) **mecanismo sem Pillow e sem IA de imagem**: o FFmpeg corta o frame da gravação em
+16:9, corrige a cor (`eq`, `vignette`), aplica a moldura e desenha texto e selo (`drawtext`); a heurística de frame usa só
+numpy; nenhuma dependência nova; (12) modelo declarativo em `packages/brand-kit/thumbnail.yaml` (campo desconhecido, cor
+inválida, proporção diferente de 16:9, moldura ausente e fonte ausente são recusados), valores ilustrativos até o criador
+definir o layout, o que mantém a decisão "decidir depois" do §58; (13) frame candidato = pico do story-pack; nota final 60% a
+nota do momento e 40% a qualidade medida (nitidez, contraste, exposição, composição), um por segmento e nunca dois a menos de
+20 s no mesmo arquivo; (14) 2–3 variações determinísticas, JPEG de até 2 MB (tenta qualidades menores e avisa se não couber);
+(15) o texto da thumbnail (2 a 4 palavras, até 28 caracteres) vem do `/titular` (`thumbnail_texts`) ou de `--texto` do criador,
+que ganha; (16) a escolha vai para `thumbnail_choice` (migração 0013), só inserção; (17) **contradição com o plano apontada**: o
+selo "Dia N" não pode ler "os dias ajustados no Studio" porque o app não guarda número de dia (decidido na edição); o número
+vem de `--dia` e o selo nasce desligado.
+
+⚠️ Sem FFmpeg real neste PC: filtro e `drawtext` só se confirmam em `prod`; os pesos da heurística de frame são de memória e
+precisam de olho humano em jogos reais.
+
+**9D, pacote de publicação e Studio (2026-11-18).** Decisões: (18) a aprovação do Short é inserção em `short_decision` (migração
+0014), com `aprovado`, `rejeitado` e `padrao` (volta a pendente), no mesmo padrão da 7C, da 8E e dos títulos; aprovar exige o MP4
+renderizado; (19) a pasta de publicação (`pacote-publicacao`) copia só os Shorts aprovados, na ordem da nota, e **o que falta é
+item do `LEIA-ME.md` e código de saída 2, nunca erro**: dá para montar a pasta parcial e ver o que resta; (20) o vídeo da série é
+renderizado pelo criador no Resolve e entra por `--video` (o app não o produz), e o painel do Studio não pede caminho de arquivo;
+(21) o painel "Embalagem" lê tudo de um único `GET .../packaging` e cada escolha devolve o painel atualizado; as mídias
+(thumbnail e Short) só são servidas se constam no manifesto, para a rota não abrir arquivos arbitrários; (22) nada é publicado
+pelo app: não há envio ao YouTube (sem rede, sem credenciais); o criador sobe a pasta.
+
+⚠️ O painel passou em `tsc` e `eslint`, mas não foi visto no navegador (sem engine com mídia neste PC).
+
+**Correções do `/code-review` da fase (2026-11-18):** (23) falha do FFmpeg em um Short vira aviso e os outros seguem (o
+`shorts-<id>.json` sempre é gravado); (24) `--top` padrão sobe para 5, porque o pacote pede 3 aprovados e o criador pode
+rejeitar; (25) gravação sem ingestão não derruba Shorts nem thumbnails: vira aviso, e só falha se nenhuma gravação estiver
+pronta (`montage.load_masters`); (26) a thumbnail escolhida só vale se ainda consta no manifesto atual, no painel **e** no pacote
+(o mesmo critério nos dois); (27) sem `--video`, o pacote usa o MP4 mais recente da pasta, e `--out` recusa pasta com arquivos
+que não são de um pacote (sem `LEIA-ME.md`), para não apagar `short-*.mp4` alheios; (28) aspa simples no texto do `drawtext`
+fecha a citação e entra escapada (`'\''`), não `'`, que o FFmpeg não aceita dentro de aspas (**não conferido com FFmpeg real**;
+também vale para o contador da Fase 8); (29) `titulos.json` quebrado vira `TitleError` e o painel segue sem sugestões; (30) JPEG
+reaproveitado acima de 2 MB avisa de novo.
+
 ## 59. Aviso de capítulos com pouco material no Studio (2026-11-17)
 
 O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos revisados, em ordem de sessão e arquivo

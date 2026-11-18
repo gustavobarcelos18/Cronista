@@ -49,12 +49,21 @@ def _system_fonts() -> tuple[str, ...]:
 
 SYSTEM_FONTS = _system_fonts()
 
-_DRAWTEXT_SPECIAL = re.compile(r"([\\:'%])")
+_DRAWTEXT_SPECIAL = re.compile(r"([\\:%])")
+
+
+def fmt_num(value: float) -> str:
+    """Número para a sintaxe de filtro do FFmpeg: até 4 casas, sem zeros sobrando."""
+    return f"{value:.4f}".rstrip("0").rstrip(".")
 
 
 def drawtext_escape(text: str) -> str:
-    """Texto dentro de `text='...'` do drawtext: `\\`, `:`, `'` e `%` escapados."""
-    return _DRAWTEXT_SPECIAL.sub(r"\\\1", text)
+    """Texto dentro de `text='...'` do drawtext: barra, dois-pontos e `%` ganham barra na frente.
+
+    Dentro de aspas simples o FFmpeg não aceita aspa escapada: a aspa do texto fecha a citação, entra escapada
+    nos dois níveis do parser (três barras e a aspa) e reabre a citação.
+    """
+    return _DRAWTEXT_SPECIAL.sub(r"\\\1", text).replace("'", "'\\\\\\''")
 
 
 def ffmpeg_color(hex_color: str, alpha: float = 1.0) -> str:

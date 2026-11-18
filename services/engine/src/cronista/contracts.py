@@ -25,9 +25,13 @@ from cronista.api.app import (
     ScriptOut,
     SegmentOut,
     SessionOut,
+    ShortDecisionIn,
+    ThumbnailChoiceIn,
+    TitleChoiceIn,
     WaveformOut,
 )
 from cronista.domain.models import MarkerKind, MediaProbe, StageResult
+from cronista.packaging.panel import PackagingOut, PublishOut
 from cronista.review.panel import SeriesPanelOut, SeriesRowOut
 
 
@@ -57,6 +61,11 @@ def build_schema() -> dict[str, object]:
         FinishItemOut,
         FinishingOut,
         FinishDecisionIn,
+        PackagingOut,
+        PublishOut,
+        TitleChoiceIn,
+        ThumbnailChoiceIn,
+        ShortDecisionIn,
     ):
         schema = model.model_json_schema(ref_template="#/$defs/{model}")
         defs.update(schema.pop("$defs", {}))

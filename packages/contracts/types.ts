@@ -112,6 +112,31 @@ export type Path = string;
 export type PixFmt = string | null;
 export type VideoCodec = string | null;
 export type Width = number | null;
+export type ApprovedShorts = number;
+export type MinShorts = number;
+export type Missing = string[];
+export type Ready = boolean;
+export type Decision3 = "pendente" | "aprovado" | "rejeitado";
+export type DurationS2 = number;
+export type HasClip = boolean;
+export type Key = string;
+export type Reason1 = string;
+export type Score = number;
+export type Shorts = ShortOut[];
+export type Chosen = boolean;
+export type FileName = string;
+export type Position = string | null;
+export type Text1 = string | null;
+export type Variation = number;
+export type Thumbnails = ThumbnailOut[];
+export type Chosen1 = string | null;
+export type Origin = ("sugerido" | "editado" | "proprio") | null;
+export type Provider = string | null;
+export type N = number;
+export type Reason2 = string | null;
+export type Text2 = string;
+export type Suggestions = TitleOptionOut[];
+export type ThumbnailTexts = string[];
 export type Active = boolean;
 export type Current = string | null;
 export type Done = number;
@@ -119,24 +144,28 @@ export type Failed = number;
 export type Pending = number;
 export type Running = number;
 export type Total = number;
+export type Directory1 = string;
+export type Files = string[];
+export type Missing1 = string[];
+export type Ready1 = boolean;
 export type EstS = number | null;
 export type Justification = string | null;
 export type Kind2 = "narracao" | "antecipacao";
 export type SegmentId = string;
 export type StartS3 = number | null;
-export type Text1 = string;
+export type Text3 = string;
 export type Lines = ScriptLine[];
-export type Provider = string;
+export type Provider1 = string;
 export type Version1 = number;
 export type Warnings2 = string[];
 export type AdjEndS = number | null;
 export type AdjStartS = number | null;
 export type Classe = string;
-export type Decision3 = string | null;
+export type Decision4 = string | null;
 export type EndS2 = number;
 export type Markers = string[];
 export type Razoes = string[];
-export type Score = number;
+export type Score1 = number;
 export type StartS4 = number;
 export type Capitulo = number;
 export type ProdutoS = number;
@@ -155,14 +184,18 @@ export type Sessao = number;
 export type Sessoes = SeriesRowOut[];
 export type Situacao = "faltando" | "no_alvo" | "acima";
 export type TotalMin = number;
-export type Files = MediaFileOut[];
+export type Files1 = MediaFileOut[];
 export type Folder = string;
 export type Id5 = number;
 export type Project = string;
 export type ProjectId = number;
-export type Files1 = string[];
+export type Decision5 = "aprovado" | "rejeitado" | "padrao";
+export type Files2 = string[];
 export type Warnings3 = string[];
-export type DurationS2 = number;
+export type Variation1 = number;
+export type Suggestion = number | null;
+export type Text4 = string | null;
+export type DurationS3 = number;
 export type Game = number[];
 export type Mic = number[];
 export type Points = number;
@@ -359,6 +392,62 @@ export interface MediaProbe {
   width?: Width;
 }
 /**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "PackagingOut".
+ */
+export interface PackagingOut {
+  approved_shorts?: ApprovedShorts;
+  min_shorts?: MinShorts;
+  missing?: Missing;
+  ready?: Ready;
+  shorts?: Shorts;
+  thumbnails?: Thumbnails;
+  title: TitleOut;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ShortOut".
+ */
+export interface ShortOut {
+  decision?: Decision3;
+  duration_s: DurationS2;
+  has_clip: HasClip;
+  key: Key;
+  reason: Reason1;
+  score: Score;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ThumbnailOut".
+ */
+export interface ThumbnailOut {
+  chosen?: Chosen;
+  file_name: FileName;
+  position?: Position;
+  text?: Text1;
+  variation: Variation;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "TitleOut".
+ */
+export interface TitleOut {
+  chosen?: Chosen1;
+  origin?: Origin;
+  provider?: Provider;
+  suggestions?: Suggestions;
+  thumbnail_texts?: ThumbnailTexts;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "TitleOptionOut".
+ */
+export interface TitleOptionOut {
+  n: N;
+  reason?: Reason2;
+  text: Text2;
+}
+/**
  * Jobs da sessão por estado; `active` vale enquanto houver job pendente ou rodando.
  *
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
@@ -375,11 +464,21 @@ export interface ProgressOut {
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "PublishOut".
+ */
+export interface PublishOut {
+  directory: Directory1;
+  files: Files;
+  missing: Missing1;
+  ready: Ready1;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "Script".
  */
 export interface Script {
   lines?: Lines;
-  provider?: Provider;
+  provider?: Provider1;
   version?: Version1;
 }
 /**
@@ -394,7 +493,7 @@ export interface ScriptLine {
   kind?: Kind2;
   segment_id: SegmentId;
   start_s?: StartS3;
-  text: Text1;
+  text: Text3;
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
@@ -412,12 +511,12 @@ export interface SegmentOut {
   adj_end_s?: AdjEndS;
   adj_start_s?: AdjStartS;
   classe: Classe;
-  decision?: Decision3;
+  decision?: Decision4;
   end_s: EndS2;
   features: Features;
   markers: Markers;
   razoes: Razoes;
-  score: Score;
+  score: Score1;
   start_s: StartS4;
 }
 export interface Features {
@@ -471,11 +570,18 @@ export interface PorClasseMin1 {
  * via the `definition` "SessionOut".
  */
 export interface SessionOut {
-  files: Files;
+  files: Files1;
   folder: Folder;
   id: Id5;
   project: Project;
   project_id: ProjectId;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ShortDecisionIn".
+ */
+export interface ShortDecisionIn {
+  decision: Decision5;
 }
 /**
  * Saída de uma etapa do pipeline, persistida como `result.json` no cache.
@@ -485,11 +591,28 @@ export interface SessionOut {
  */
 export interface StageResult {
   data?: Data;
-  files?: Files1;
+  files?: Files2;
   warnings?: Warnings3;
 }
 export interface Data {
   [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "ThumbnailChoiceIn".
+ */
+export interface ThumbnailChoiceIn {
+  variation: Variation1;
+}
+/**
+ * `suggestion` = a sugestão como está; `text` = título do criador; os dois = sugestão editada.
+ *
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "TitleChoiceIn".
+ */
+export interface TitleChoiceIn {
+  suggestion?: Suggestion;
+  text?: Text4;
 }
 /**
  * Envelope de energia (dBFS) por faixa, em até `points` buckets uniformes (máximo de cada bucket).
@@ -498,7 +621,7 @@ export interface Data {
  * via the `definition` "WaveformOut".
  */
 export interface WaveformOut {
-  duration_s: DurationS2;
+  duration_s: DurationS3;
   game: Game;
   mic: Mic;
   points: Points;

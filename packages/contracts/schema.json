@@ -776,6 +776,57 @@
       "title": "MediaProbe",
       "type": "object"
     },
+    "PackagingOut": {
+      "properties": {
+        "approved_shorts": {
+          "default": 0,
+          "title": "Approved Shorts",
+          "type": "integer"
+        },
+        "min_shorts": {
+          "default": 3,
+          "title": "Min Shorts",
+          "type": "integer"
+        },
+        "missing": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "ready": {
+          "default": false,
+          "title": "Ready",
+          "type": "boolean"
+        },
+        "shorts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ShortOut"
+          },
+          "title": "Shorts",
+          "type": "array"
+        },
+        "thumbnails": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ThumbnailOut"
+          },
+          "title": "Thumbnails",
+          "type": "array"
+        },
+        "title": {
+          "$ref": "#/$defs/TitleOut"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "PackagingOut",
+      "type": "object"
+    },
     "ProgressOut": {
       "description": "Jobs da sessão por estado; `active` vale enquanto houver job pendente ou rodando.",
       "properties": {
@@ -825,6 +876,40 @@
         "active"
       ],
       "title": "ProgressOut",
+      "type": "object"
+    },
+    "PublishOut": {
+      "properties": {
+        "directory": {
+          "title": "Directory",
+          "type": "string"
+        },
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Files",
+          "type": "array"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "ready": {
+          "title": "Ready",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "directory",
+        "files",
+        "missing",
+        "ready"
+      ],
+      "title": "PublishOut",
       "type": "object"
     },
     "Script": {
@@ -1168,6 +1253,67 @@
       "title": "SessionOut",
       "type": "object"
     },
+    "ShortDecisionIn": {
+      "properties": {
+        "decision": {
+          "enum": [
+            "aprovado",
+            "rejeitado",
+            "padrao"
+          ],
+          "title": "Decision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "title": "ShortDecisionIn",
+      "type": "object"
+    },
+    "ShortOut": {
+      "properties": {
+        "decision": {
+          "default": "pendente",
+          "enum": [
+            "pendente",
+            "aprovado",
+            "rejeitado"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "duration_s": {
+          "title": "Duration S",
+          "type": "number"
+        },
+        "has_clip": {
+          "title": "Has Clip",
+          "type": "boolean"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "duration_s",
+        "score",
+        "reason",
+        "has_clip"
+      ],
+      "title": "ShortOut",
+      "type": "object"
+    },
     "StageResult": {
       "description": "Saída de uma etapa do pipeline, persistida como `result.json` no cache.",
       "properties": {
@@ -1220,6 +1366,194 @@
         "produto_s"
       ],
       "title": "ThinChapterOut",
+      "type": "object"
+    },
+    "ThumbnailChoiceIn": {
+      "properties": {
+        "variation": {
+          "maximum": 9,
+          "minimum": 1,
+          "title": "Variation",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "variation"
+      ],
+      "title": "ThumbnailChoiceIn",
+      "type": "object"
+    },
+    "ThumbnailOut": {
+      "properties": {
+        "chosen": {
+          "default": false,
+          "title": "Chosen",
+          "type": "boolean"
+        },
+        "file_name": {
+          "title": "File Name",
+          "type": "string"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "variation": {
+          "title": "Variation",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "variation",
+        "file_name"
+      ],
+      "title": "ThumbnailOut",
+      "type": "object"
+    },
+    "TitleChoiceIn": {
+      "description": "`suggestion` = a sugestão como está; `text` = título do criador; os dois = sugestão editada.",
+      "properties": {
+        "suggestion": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        }
+      },
+      "title": "TitleChoiceIn",
+      "type": "object"
+    },
+    "TitleOptionOut": {
+      "properties": {
+        "n": {
+          "title": "N",
+          "type": "integer"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "n",
+        "text"
+      ],
+      "title": "TitleOptionOut",
+      "type": "object"
+    },
+    "TitleOut": {
+      "properties": {
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chosen"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "enum": [
+                "sugerido",
+                "editado",
+                "proprio"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origin"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "suggestions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TitleOptionOut"
+          },
+          "title": "Suggestions",
+          "type": "array"
+        },
+        "thumbnail_texts": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Thumbnail Texts",
+          "type": "array"
+        }
+      },
+      "title": "TitleOut",
       "type": "object"
     },
     "WaveformOut": {

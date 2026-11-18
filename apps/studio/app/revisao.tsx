@@ -11,6 +11,7 @@ import type {
 import { useEffect, useRef, useState } from "react";
 import Acabamento from "./acabamento";
 import Aprendizado from "./aprendizado";
+import Embalagem from "./embalagem";
 import Exportar from "./exportar";
 import Feedback from "./feedback";
 import Painel from "./painel";
@@ -176,6 +177,7 @@ export default function Revisao() {
             {sessionId !== null && projectId !== null && (
               <Acabamento key={sessionId} sessionId={sessionId} projectId={projectId} />
             )}
+            {sessionId !== null && <Embalagem key={sessionId} sessionId={sessionId} />}
             {sessionId !== null && <Exportar key={sessionId} sessionId={sessionId} />}
           </>
         ) : (

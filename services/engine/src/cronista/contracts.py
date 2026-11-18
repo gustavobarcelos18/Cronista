@@ -8,10 +8,15 @@ from pydantic import TypeAdapter
 
 from cronista.api.app import (
     DecisionIn,
+    EffectSettingIn,
+    EffectSettingOut,
     EventOut,
     ExportStatusOut,
     FeedbackIn,
     FeedbackOut,
+    FinishDecisionIn,
+    FinishingOut,
+    FinishItemOut,
     JobOut,
     LearningOut,
     MarkerOut,
@@ -47,6 +52,11 @@ def build_schema() -> dict[str, object]:
         ScriptOut,
         EventOut,
         WaveformOut,
+        EffectSettingIn,
+        EffectSettingOut,
+        FinishItemOut,
+        FinishingOut,
+        FinishDecisionIn,
     ):
         schema = model.model_json_schema(ref_template="#/$defs/{model}")
         defs.update(schema.pop("$defs", {}))

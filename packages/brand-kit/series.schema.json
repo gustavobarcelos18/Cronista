@@ -1,0 +1,203 @@
+{
+  "$defs": {
+    "EffectKind": {
+      "description": "Efeitos que o acabamento pode aplicar, cada um com modo e orçamento próprios.",
+      "enum": [
+        "zoom",
+        "shake",
+        "musica",
+        "sfx",
+        "sfx_meme",
+        "piada_visual",
+        "contador_mortes",
+        "freeze_texto",
+        "barra_progresso",
+        "legenda_pontual",
+        "cartela_dia",
+        "cor_lut"
+      ],
+      "title": "EffectKind",
+      "type": "string"
+    },
+    "EffectMode": {
+      "description": "Os três modos da seção 6.4: só marcador, aplicado e editável no Resolve, ou renderizado pelo app.",
+      "enum": [
+        "sugerir",
+        "editavel",
+        "renderizado"
+      ],
+      "title": "EffectMode",
+      "type": "string"
+    },
+    "EffectPolicy": {
+      "additionalProperties": false,
+      "description": "Modo e orçamento de um efeito: a defesa contra \"cara de template\" (plano 6.4).",
+      "properties": {
+        "max_per_minute": {
+          "default": 1.0,
+          "maximum": 60,
+          "minimum": 0,
+          "title": "Max Per Minute",
+          "type": "number"
+        },
+        "min_score": {
+          "default": 0.5,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Min Score",
+          "type": "number"
+        },
+        "mode": {
+          "$ref": "#/$defs/EffectMode",
+          "default": "editavel"
+        }
+      },
+      "title": "EffectPolicy",
+      "type": "object"
+    },
+    "PaletteOverride": {
+      "additionalProperties": false,
+      "description": "Cores que a série troca; o que não aparece fica como no brand kit.",
+      "properties": {
+        "accent": {
+          "anyOf": [
+            {
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accent"
+        },
+        "background": {
+          "anyOf": [
+            {
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background"
+        },
+        "primary": {
+          "anyOf": [
+            {
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary"
+        },
+        "secondary": {
+          "anyOf": [
+            {
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondary"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        }
+      },
+      "title": "PaletteOverride",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Estilo por série (Q18): YAML sobre o brand kit, separado do perfil de jogo.",
+  "properties": {
+    "effects": {
+      "additionalProperties": {
+        "$ref": "#/$defs/EffectPolicy"
+      },
+      "default": {},
+      "propertyNames": {
+        "$ref": "#/$defs/EffectKind"
+      },
+      "title": "Effects",
+      "type": "object"
+    },
+    "lut": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lut"
+    },
+    "max_effects_per_minute": {
+      "default": 6.0,
+      "exclusiveMinimum": 0,
+      "maximum": 60,
+      "title": "Max Effects Per Minute",
+      "type": "number"
+    },
+    "mood_themes": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "default": {},
+      "title": "Mood Themes",
+      "type": "object"
+    },
+    "name": {
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Name",
+      "type": "string"
+    },
+    "palette": {
+      "$ref": "#/$defs/PaletteOverride",
+      "default": {
+        "accent": null,
+        "background": null,
+        "primary": null,
+        "secondary": null,
+        "text": null
+      }
+    },
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "SeriesStyle",
+  "type": "object"
+}

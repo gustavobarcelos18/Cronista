@@ -37,7 +37,7 @@ class PreviewReport:
     warnings: list[str] = field(default_factory=list)
 
 
-def _video_args(settings: Settings) -> list[str]:
+def video_args(settings: Settings) -> list[str]:
     encoder = settings.preview_encoder
     if encoder.endswith("_nvenc"):
         return ["-c:v", encoder, "-preset", "p5", "-rc", "vbr", "-cq", str(settings.preview_crf), "-b:v", "0"]
@@ -56,7 +56,7 @@ def _cut(settings: Settings, source: Path, window: ClipWindow, out: Path) -> Non
         ["-ss", f"{window.start_s:.3f}", "-t", f"{window.duration_s:.3f}", "-i", str(source),
          "-map", "0:v:0", "-map", "0:a:0",
          "-vf", f"scale={PREVIEW_SIZE},fps={PREVIEW_FPS},format=yuv420p",
-         *_video_args(settings), "-c:a", "aac", "-b:a", "160k", "-ar", "48000", str(out)],
+         *video_args(settings), "-c:a", "aac", "-b:a", "160k", "-ar", "48000", str(out)],
     )  # fmt: skip
 
 

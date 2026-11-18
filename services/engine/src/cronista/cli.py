@@ -25,6 +25,7 @@ from cronista.devtools.resolve_kit import make_resolve_kit
 from cronista.domain.frames import frame_to_seconds
 from cronista.domain.models import StageResult
 from cronista.export.service import export_session
+from cronista.finishing.loader import default_loader, load_style
 from cronista.gabarito import validate_gabarito
 from cronista.gates import build_gate
 from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
@@ -1052,6 +1053,10 @@ def montagem(
     out: Annotated[
         Path | None, typer.Option(help="Base da exportação (padrão: data/export/montagem/<sessão>)")
     ] = None,
+    acabamento: Annotated[
+        bool, typer.Option("--acabamento", help="Inclui o plano de acabamento (sugestões viram marcadores)")
+    ] = False,
+    serie: Annotated[str, typer.Option(help="Estilo de série para o acabamento")] = "",
 ) -> None:
     """Pacote para o Resolve: FCPXML multi-trilha, stems, SRT, marcadores em Lua e manifesto (Fase 6C)."""
     from cronista.export.pacote import export_montagem
@@ -1066,6 +1071,7 @@ def montagem(
     try:
         profile = load_settings_profile(settings)
         loaded = load_script(script) if script else None
+        style, library = load_style(settings, serie) if (acabamento or serie) else (None, None)
         with open_db(settings.db_path) as db:
             report = export_montagem(
                 db,
@@ -1076,6 +1082,8 @@ def montagem(
                 (profile.objetivos, profile.regras),
                 out,
                 build_gate(settings),
+                style,
+                library,
             )
     except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
         typer.echo(f"erro: {exc}", err=True)
@@ -1127,6 +1135,106 @@ def shorts(
     typer.echo(str(path))
 
 
+@app.command("brand-check")
+def brand_check(
+    serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
+    biblioteca: Annotated[
+        bool, typer.Option("--biblioteca", help="Confere também o inventário da biblioteca pessoal")
+    ] = False,
+) -> None:
+    """Valida o brand kit, o estilo da série e (opcional) a biblioteca pessoal (Fase 8A)."""
+    from pydantic import ValidationError
+
+    from cronista.finishing.brand import (
+        brand_dir,
+        check_brand_files,
+        load_brand_kit,
+        load_series_style,
+        resolve_style,
+    )
+    from cronista.finishing.effects import EffectKind
+    from cronista.finishing.library import check_brand_references, check_library, load_library
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    directory = brand_dir(settings.brand_dir)
+    problems: list[str] = []
+    try:
+        brand = load_brand_kit(directory)
+        style = load_series_style(directory, serie) if serie else None
+    except (FileNotFoundError, ValueError, ValidationError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    problems += check_brand_files(brand, directory, style)
+    resolved = resolve_style(brand, style)
+    typer.echo(f"brand kit {brand.name!r}" + (f", série {serie!r}" if serie else ""))
+    for kind in EffectKind:
+        p = resolved.policy(kind)
+        typer.echo(
+            f"  {kind.value:<16} {p.mode.value:<12} até {p.max_per_minute:g}/min, nota ≥ {p.min_score:g}"
+        )
+    typer.echo(f"  teto somado: {resolved.max_effects_per_minute:g} efeitos/min")
+    if biblioteca:
+        if settings.library_dir is None:
+            problems.append("library_dir não configurado (defina em config/*.local.yaml)")
+        else:
+            try:
+                library = load_library(settings.library_dir)
+            except (FileNotFoundError, ValueError, ValidationError) as exc:
+                typer.echo(f"erro: {exc}", err=True)
+                raise typer.Exit(1) from exc
+            problems += check_library(library, settings.library_dir)
+            problems += check_brand_references(resolved.brand, library)
+            typer.echo(f"  biblioteca: {len(library.items)} itens")
+    for problem in problems:
+        typer.echo(f"problema: {problem}", err=True)
+    if problems:
+        raise typer.Exit(1)
+    typer.echo("ok")
+
+
+@app.command("acabamento")
+def acabamento(
+    session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+    serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
+    target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+    out: Annotated[
+        Path | None, typer.Option(help="Pasta de saída (padrão: data/acabamento/<sessão>)")
+    ] = None,
+) -> None:
+    """Plano de acabamento: zoom, SFX, música e overlays dentro do orçamento por minuto (Fase 8B)."""
+    from pydantic import ValidationError
+
+    from cronista.finishing.service import build_finishing, write_finish_plan
+    from cronista.profiles import load_settings_profile
+    from cronista.story.service import StoryError
+
+    settings = load_settings()
+    setup_logging(settings.log_level)
+    try:
+        style, library = load_style(settings, serie)
+        profile = load_settings_profile(settings)
+    except (FileNotFoundError, ValueError, ValidationError) as exc:
+        typer.echo(f"erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if library is None:
+        typer.echo("aviso: library_dir não configurado; sem SFX nem música (só efeitos de imagem)")
+    with open_db(settings.db_path) as db:
+        try:
+            plan = build_finishing(
+                db, session, settings, style, library, target_min * 60, (profile.objetivos, profile.regras)
+            )
+        except (StoryError, SessionPlanError) as exc:
+            typer.echo(f"erro: {exc}", err=True)
+            raise typer.Exit(1) from exc
+    path = write_finish_plan(plan, out or settings.data_dir / "acabamento" / str(session), session)
+    for kind, modes in sorted(plan.summary().items()):
+        typer.echo(f"{kind:<16} " + ", ".join(f"{n} {mode}" for mode, n in sorted(modes.items())))
+    for warning in plan.warnings:
+        typer.echo(f"aviso: {warning}")
+    typer.echo(str(path))
+
+
 @app.command("api")
 def api_cmd(
     port: Annotated[int, typer.Option(help="Porta da API local")] = 8000,
@@ -1143,4 +1251,8 @@ def api_cmd(
         profile = load_settings_profile(settings)
         return profile.objetivos, profile.regras
 
-    uvicorn.run(create_app(settings, profile_loader=profile_loader), host="127.0.0.1", port=port)
+    uvicorn.run(
+        create_app(settings, profile_loader=profile_loader, finishing_loader=default_loader(settings)),
+        host="127.0.0.1",
+        port=port,
+    )

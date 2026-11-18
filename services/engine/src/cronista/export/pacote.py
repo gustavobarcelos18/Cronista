@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,13 +16,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cronista.assembly.plan import EditPlan
-from cronista.assembly.service import build_assembly
+from cronista.assembly.service import assemble
 from cronista.config import Settings
 from cronista.db.models import Marker, RecordingSession
 from cronista.export.montagem import (
     ExportMedia,
     MarkerInput,
     MediaFileInfo,
+    TimelineMarker,
     check_plan_fcpxml,
     marker_lua,
     render_plan_fcpxml,
@@ -29,6 +31,12 @@ from cronista.export.montagem import (
     timeline_markers,
 )
 from cronista.export.timelapse import render_timelapses
+from cronista.finishing.apply import FinishArtifacts, apply_finishing, inputs_digest, leia_me_section
+from cronista.finishing.brand import ResolvedStyle, brand_dir
+from cronista.finishing.library import Library
+from cronista.finishing.markers import suggestion_markers
+from cronista.finishing.plan import FinishPlan, apply_decisions
+from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_segment
 from cronista.logging_setup import log_event
 from cronista.mix.service import MixReport, mix_session
 from cronista.montage import _load_source
@@ -49,6 +57,9 @@ Projeto novo: **1920x1080, 60 fps** (Master Settings → Timeline frame rate = 6
    (o SRT tem uma fala "." em 0 s de propósito, para não deslocar as demais).
 4. Cartelas "Capítulo N" estão na V5 como título editável: troque o texto por "Dia N" ao decidir os dias.
 5. A1 e A2 são os stems mixados; A6 e A7, os crus (inativos): para desfazer a mixagem, troque um pelo outro.
+6. Se o pacote tem `acabamento.json`, os efeitos em modo "sugerir" chegam como marcadores "Sugestão: ..."
+   (no mesmo Lua dos marcadores); aplicar é decisão sua. Os aplicados pelo app vêm nas trilhas V2, V4, A4 e A5
+   do FCPXML, descritos na seção "Acabamento" abaixo.
 
 Importação, trilhas e marcadores ainda dependem do spike do Resolve (plano, seção 6.5); anote o que falhar.
 """
@@ -73,12 +84,18 @@ def _version_numbers(base: Path) -> list[int]:
     )
 
 
-def input_hash(plan: EditPlan, script: Script | None) -> str:
+def input_hash(
+    plan: EditPlan, script: Script | None, finish: FinishPlan | None = None, finish_inputs: str = ""
+) -> str:
     """Identifica a entrada da exportação: o mesmo plano e roteiro geram o mesmo pacote."""
     h = hashlib.sha256()
     h.update(str(PLAN_VERSION).encode())
     h.update(plan.to_json().encode())
     h.update((script.model_dump_json() if script else "").encode())
+    if finish is not None:  # sem acabamento o hash continua igual ao das versões anteriores
+        h.update(b"acabamento")
+        h.update(finish.to_json().encode())
+        h.update(finish_inputs.encode())  # brand kit e arquivos que mudam o render sem mudar o plano
     return h.hexdigest()
 
 
@@ -129,10 +146,30 @@ def export_montagem(
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     out_base: Path | None = None,
     gate: GpuGate | None = None,
+    style: ResolvedStyle | None = None,
+    library: Library | None = None,
+    finish_decisions: Mapping[str, str] | None = None,
 ) -> PackageReport:
+    """Com `style` (brand kit + série), o pacote leva também o plano de acabamento (Fase 8).
+
+    `finish_decisions` são as decisões do criador no Studio por `id` de item (`aceito`/`removido`).
+    """
     base = out_base or settings.data_dir / "export" / "montagem" / str(session_id)
-    plan = build_assembly(db, session_id, settings, target_s, profile_objectives)
-    digest = input_hash(plan, script)
+    plan, story = assemble(db, session_id, settings, target_s, profile_objectives)
+    finish = (
+        finish_from_edit_plan(plan, marker_kinds_by_segment(story.chapters), style, library)
+        if style is not None
+        else None
+    )
+    if finish is not None and finish_decisions:
+        finish = apply_decisions(finish, finish_decisions)
+    brand_directory = brand_dir(settings.brand_dir)
+    inputs = (
+        inputs_digest(finish, style, brand_directory, library, settings.library_dir)
+        if finish is not None and style is not None
+        else ""
+    )
+    digest = input_hash(plan, script, finish, inputs)
     directory, version, done = _resume_target(base, digest)
     if done is not None:
         log_event("montagem_reaproveitada", session_id=session_id, version=version)
@@ -160,6 +197,22 @@ def export_montagem(
         "A6": directory / "stems" / "A6-jogo-cru.wav",
         "A7": directory / "stems" / "A7-microfone-cru.wav",
     }
+    artifacts: FinishArtifacts | None = None
+    if finish is not None and style is not None:
+        artifacts = apply_finishing(
+            finish,
+            plan,
+            masters,
+            style,
+            library,
+            settings,
+            base,
+            directory,
+            brand_directory,
+            gate,
+        )
+        if artifacts.music_stem is not None:
+            stems["A4"] = artifacts.music_stem
     media = ExportMedia(
         masters={
             fid: MediaFileInfo(s.master, round(s.duration_s * 60) if s.duration_s is not None else None)
@@ -170,7 +223,9 @@ def export_montagem(
         stem_frames=plan.total_frames,
     )
 
-    fcpxml = render_plan_fcpxml(plan, media, f"sessao-{session_id}-v{version}")
+    fcpxml = render_plan_fcpxml(
+        plan, media, f"sessao-{session_id}-v{version}", artifacts.layers if artifacts else None
+    )
     fcpxml_path = directory / "montagem.fcpxml"
     fcpxml_path.write_text(fcpxml, encoding="utf-8")
     problems = check_plan_fcpxml(fcpxml, plan)
@@ -184,6 +239,17 @@ def export_montagem(
         if m.media_file_id is not None
     ]
     timeline_marks, skipped = timeline_markers(plan, marks)
+    if finish is not None:
+        timeline_marks = sorted(
+            [
+                *timeline_marks,
+                *(
+                    TimelineMarker(s.frame, s.color, s.name, s.note, s.custom)
+                    for s in suggestion_markers(finish)
+                ),
+            ],
+            key=lambda t: (t.frame, t.custom),
+        )
     lua_files: list[Path] = []
     for n, line in enumerate(marker_lua(timeline_marks), start=1):
         path = directory / f"marcadores-{n}.lua"
@@ -191,8 +257,17 @@ def export_montagem(
         lua_files.append(path)
 
     (directory / "plano-montagem.json").write_text(plan.to_json(), encoding="utf-8")
-    (directory / "LEIA-ME.md").write_text(LEIA_ME, encoding="utf-8")
-    warnings = [*plan.warnings, *mix.warnings, *skipped]
+    guide = LEIA_ME + (leia_me_section(finish, artifacts) if finish is not None and artifacts else "")
+    (directory / "LEIA-ME.md").write_text(guide, encoding="utf-8")
+    if finish is not None:
+        (directory / "acabamento.json").write_text(finish.to_json(), encoding="utf-8")
+    warnings = [
+        *plan.warnings,
+        *mix.warnings,
+        *skipped,
+        *(finish.warnings if finish else []),
+        *(artifacts.warnings if artifacts else []),
+    ]
     manifest = {
         "versao": version,
         "versao_do_plano": PLAN_VERSION,
@@ -204,6 +279,8 @@ def export_montagem(
         "marcadores": len(timeline_marks),
         "arquivos": {p.name: _sha(p) for p in [fcpxml_path, srt_path, *lua_files]},
         "stems": {k: v.name for k, v in stems.items()},
+        "acabamento": finish.summary() if finish else None,
+        "efeitos": artifacts.effects if artifacts else [],
         "problemas": problems,
         "avisos": warnings,
     }

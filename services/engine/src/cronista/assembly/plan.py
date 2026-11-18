@@ -31,6 +31,10 @@ class Mode(StrEnum):
     BROLL = "broll"
 
 
+LIVE_MODES = frozenset({Mode.AO_VIVO, Mode.MONTAGEM})
+"""Cortes de gameplay ao vivo: os únicos que recebem zoom e shake (V2) e que o acabamento anima."""
+
+
 class Track(StrEnum):
     V1 = "V1"
     V3 = "V3"

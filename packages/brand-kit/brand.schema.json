@@ -1,0 +1,277 @@
+{
+  "$defs": {
+    "DayCard": {
+      "additionalProperties": false,
+      "description": "Cartela \"Dia N\". O número nunca é fixo: vem do ajuste dos dias no Studio (plano 4 e 6.3).",
+      "properties": {
+        "duration_s": {
+          "default": 3.0,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Duration S",
+          "type": "number"
+        },
+        "style": {
+          "default": "titulo_editavel",
+          "enum": [
+            "titulo_editavel",
+            "remotion"
+          ],
+          "title": "Style",
+          "type": "string"
+        },
+        "template": {
+          "default": "Dia {n}",
+          "pattern": ".*\\{n\\}.*",
+          "title": "Template",
+          "type": "string"
+        }
+      },
+      "title": "DayCard",
+      "type": "object"
+    },
+    "DeathCounter": {
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "default": "topo_direita",
+          "enum": [
+            "topo_esquerda",
+            "topo_direita",
+            "base_esquerda",
+            "base_direita"
+          ],
+          "title": "Position",
+          "type": "string"
+        },
+        "template": {
+          "default": "Mortes: {n}",
+          "pattern": ".*\\{n\\}.*",
+          "title": "Template",
+          "type": "string"
+        }
+      },
+      "title": "DeathCounter",
+      "type": "object"
+    },
+    "Fonts": {
+      "additionalProperties": false,
+      "description": "Nomes de fonte (instalada no sistema) ou arquivo relativo à pasta do brand kit.",
+      "properties": {
+        "body": {
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        },
+        "files": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Files",
+          "type": "array"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "title": "Fonts",
+      "type": "object"
+    },
+    "Palette": {
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Accent",
+          "type": "string"
+        },
+        "background": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Background",
+          "type": "string"
+        },
+        "primary": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Primary",
+          "type": "string"
+        },
+        "secondary": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Secondary",
+          "type": "string"
+        },
+        "text": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "primary",
+        "secondary",
+        "accent",
+        "background",
+        "text"
+      ],
+      "title": "Palette",
+      "type": "object"
+    },
+    "Sonic": {
+      "additionalProperties": false,
+      "description": "Identidade sonora: itens da biblioteca pessoal referenciados por `id` (plano 6.4).",
+      "properties": {
+        "day_transition": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Day Transition"
+        },
+        "death_sound": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Death Sound"
+        },
+        "intro": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intro"
+        },
+        "loudness_lufs": {
+          "default": -14.0,
+          "maximum": -8,
+          "minimum": -30,
+          "title": "Loudness Lufs",
+          "type": "number"
+        },
+        "mood_themes": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "default": {},
+          "title": "Mood Themes",
+          "type": "object"
+        }
+      },
+      "title": "Sonic",
+      "type": "object"
+    },
+    "Visual": {
+      "additionalProperties": false,
+      "properties": {
+        "day_card": {
+          "$ref": "#/$defs/DayCard",
+          "default": {
+            "duration_s": 3.0,
+            "style": "titulo_editavel",
+            "template": "Dia {n}"
+          }
+        },
+        "death_counter": {
+          "$ref": "#/$defs/DeathCounter",
+          "default": {
+            "position": "topo_direita",
+            "template": "Mortes: {n}"
+          }
+        },
+        "fonts": {
+          "$ref": "#/$defs/Fonts"
+        },
+        "frames": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Frames",
+          "type": "array"
+        },
+        "lut": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lut"
+        },
+        "palette": {
+          "$ref": "#/$defs/Palette"
+        }
+      },
+      "required": [
+        "palette",
+        "fonts"
+      ],
+      "title": "Visual",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "sonic": {
+      "$ref": "#/$defs/Sonic",
+      "default": {
+        "day_transition": null,
+        "death_sound": null,
+        "intro": null,
+        "loudness_lufs": -14.0,
+        "mood_themes": {}
+      }
+    },
+    "version": {
+      "const": 1,
+      "default": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "visual": {
+      "$ref": "#/$defs/Visual"
+    }
+  },
+  "required": [
+    "name",
+    "visual"
+  ],
+  "title": "BrandKit",
+  "type": "object"
+}

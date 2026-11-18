@@ -12,6 +12,7 @@ MOV no Resolve (a receita de ProRes 4444 com alfa é a do kit do spike, `devtool
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -32,12 +33,21 @@ BOX_PAD_PX = 24
 FONT_SIZE = 72
 FADE_S = 0.2
 
-SYSTEM_FONTS = (
-    "C:/Windows/Fonts/arialbd.ttf",
-    "C:/Windows/Fonts/segoeuib.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-)
+
+def _system_fonts() -> tuple[str, ...]:
+    """Fontes em negrito do sistema. No Windows a pasta vem de `WINDIR` (sem caminho fixo no código)."""
+    windir = os.environ.get("WINDIR") or os.environ.get("SYSTEMROOT")
+    windows = (
+        tuple(str(Path(windir) / "Fonts" / n) for n in ("arialbd.ttf", "segoeuib.ttf")) if windir else ()
+    )
+    return (
+        *windows,
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    )
+
+
+SYSTEM_FONTS = _system_fonts()
 
 _DRAWTEXT_SPECIAL = re.compile(r"([\\:'%])")
 

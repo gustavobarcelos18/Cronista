@@ -1457,6 +1457,38 @@ O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos r
 por projeto. Capítulos podem atravessar sessões e aparecem no aviso quando têm menos de 30 s de material estimado,
 a referência existente da alocação narrativa. O Studio consulta o painel novamente após salvar uma decisão.
 
+## 60. Auditoria do projeto e decisões da Fase 10 de correções (2026-11-18)
+
+O código e os documentos foram auditados (só leitura) em 6 blocos lógicos: captura e análise; relevância e narrativa;
+montagem e acabamento; embalagem e orquestração; Studio, contratos e CI; documentação. A auditoria gerou planos de
+correção por bloco, mais um transversal de redundância e ambiguidade, em `docs/auditoria/` (índice em `00-indice.md`).
+As correções formam a **Fase 10**, em sub-etapas:
+
+- 10A: bugs e regras;
+- 10B: pontos únicos de tempo, FFmpeg e pastas;
+- 10C: consolidação;
+- 10D: documentação;
+- 10E: testes e CI;
+- 10F: história por série.
+
+**Decisões do criador:**
+
+1. **Narrativa por série.** Registrar agora a lacuna "por sessão" e implementar na 10F.
+2. **LUT.** O padrão passa a `sugerir` até a conferência em `prod`.
+3. **Detector de grito.** Fica atrás de uma flag desligada por padrão.
+4. **`cronista export`.** Fica deprecado e marcado como substituído por `montagem`.
+5. **`--out` dos comandos de embalagem.** É removido.
+6. **Painel.** Ganha os estados `curto_ok` e `abaixo_da_referencia`, no lugar de `faltando`.
+7. **Lookback.** Valem os 25/20/30 s do §51, ajustáveis por perfil; os 60–90 s ficam substituídos.
+
+O que substitui o quê:
+
+- o item 4 substitui, como caminho vigente, o FCPXML via OTIO do §30;
+- o item 7 substitui a janela de 60–90 s citada na seção 4 do plano mestre;
+- os itens 2 e 6 refinam §57 e §40/§59.
+
+Detalhes, local de cada achado e critérios de aceite estão nos planos.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

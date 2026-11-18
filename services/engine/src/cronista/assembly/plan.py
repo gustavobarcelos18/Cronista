@@ -16,8 +16,9 @@ from dataclasses import asdict, dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
-from cronista.domain.frames import FPS
-from cronista.relevance.service import MAX_FARM_S, MAX_KEPT_S
+from cronista.domain.frames import FPS, seconds_to_frame
+from cronista.domain.tracks import Track
+from cronista.relevance.engine import MAX_FARM_S, MAX_KEPT_S
 from cronista.story.arc import BeatedSegment, Chapter
 from cronista.story.models import Beat
 
@@ -33,12 +34,6 @@ class Mode(StrEnum):
 
 LIVE_MODES = frozenset({Mode.AO_VIVO, Mode.MONTAGEM})
 """Cortes de gameplay ao vivo: os únicos que recebem zoom e shake (V2) e que o acabamento anima."""
-
-
-class Track(StrEnum):
-    V1 = "V1"
-    V3 = "V3"
-    V5 = "V5"
 
 
 @dataclass(frozen=True)
@@ -89,6 +84,13 @@ class EditItem:
     score: float
     protected: bool = False
     timeline_start: int = 0
+    merged_ids: tuple[str, ...] = ()
+    """Ids dos outros trechos fundidos neste corte (`segment_id` é o do primeiro)."""
+
+    @property
+    def segment_ids(self) -> tuple[str, ...]:
+        """Todos os trechos da história que este corte cobre (falas e marcadores de cada um valem aqui)."""
+        return (self.segment_id, *self.merged_ids)
 
     @property
     def source_frames(self) -> int:
@@ -149,10 +151,6 @@ class EditPlan:
         return json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True)
 
 
-def _frames(seconds: float) -> int:
-    return round(seconds * FPS)
-
-
 def snap_out_of_words(frame: int, words: Sequence[WordSpan], limit: int, *, move_to: str) -> int:
     """Tira o corte de dentro de uma palavra: `start` leva ao começo dela, `end` ao fim (até `limit` quadros).
 
@@ -177,7 +175,7 @@ def _draft(
     params: AssemblyParams,
 ) -> EditItem:
     s = seg.segment
-    start, end = _frames(seg.span.start_s), _frames(seg.span.end_s)
+    start, end = seconds_to_frame(seg.span.start_s), seconds_to_frame(seg.span.end_s)
     speed, mode = 1, Mode.AO_VIVO
     reason = ", ".join(s.razoes[:3]) or s.classe
     if s.classe == "farm":
@@ -188,13 +186,14 @@ def _draft(
         )
         reason = f"farm repetitivo em {speed}x"
     else:
-        pad = _frames(params.pad_s)
+        pad = seconds_to_frame(params.pad_s)
         start, end = start - pad, end + pad
         if (end - start) / FPS > params.max_kept_s:
             mode = Mode.MONTAGEM
-            start = end - _frames(params.max_kept_s)  # mantém o desfecho (o marcador fica no fim do trecho)
+            # mantém o desfecho (o marcador fica no fim do trecho)
+            start = end - seconds_to_frame(params.max_kept_s)
             reason = f"trecho longo resumido ao desfecho; {reason}"
-        limit = _frames(params.word_snap_s)
+        limit = seconds_to_frame(params.word_snap_s)
         start = snap_out_of_words(start, words, limit, move_to="start")
         end = snap_out_of_words(end, words, limit, move_to="end")
     start = max(0, start)
@@ -221,7 +220,7 @@ def fit_budget(items: list[EditItem], budget_s: float) -> tuple[list[EditItem], 
 
     Devolve os itens que ficaram (na ordem original) e quanto ainda passa do orçamento (0 se coube).
     """
-    budget_frames = _frames(budget_s)
+    budget_frames = seconds_to_frame(budget_s)
     kept = list(items)
 
     def total() -> int:
@@ -250,6 +249,11 @@ def _merge_and_clip(items: list[EditItem], min_frames: int) -> list[EditItem]:
                     score=max(prev.score, item.score),
                     protected=prev.protected or item.protected,
                     beat=item.beat if (item.protected and not prev.protected) else prev.beat,
+                    merged_ids=tuple(
+                        i
+                        for i in dict.fromkeys([*prev.merged_ids, *item.segment_ids])
+                        if i != prev.segment_id
+                    ),
                 )
                 continue
             item = replace(item, in_frame=prev.out_frame)
@@ -264,7 +268,7 @@ def _place_broll(
     """Um cutaway por capítulo (até `broll_per_chapter`), no começo do primeiro trecho de V1 que o comporta,
     sempre de outro momento do mesmo arquivo (nunca o que já está em V1 ali)."""
     placed: list[EditItem] = []
-    max_frames = _frames(params.broll_max_s)
+    max_frames = seconds_to_frame(params.broll_max_s)
     for chapter in sorted({i.chapter for i in plan.v1}):
         host = [i for i in plan.v1 if i.chapter == chapter and i.speed == 1]
         used = 0
@@ -275,7 +279,7 @@ def _place_broll(
                 c
                 for c in broll.get(h.file_id, ())
                 if (c.end_frame <= h.in_frame or c.start_frame >= h.out_frame)
-                and c.end_frame - c.start_frame >= _frames(params.min_clip_s)
+                and c.end_frame - c.start_frame >= seconds_to_frame(params.min_clip_s)
             ]
             if not options:
                 continue
@@ -328,12 +332,12 @@ def build_edit_plan(
                 f"capítulo {chapter.number}: {over:.0f} s acima do orçamento ({chapter.allocated_s:.0f} s),"
                 " só com trechos protegidos"
             )
-        merged = _merge_and_clip(kept, _frames(p.min_clip_s))
+        merged = _merge_and_clip(kept, seconds_to_frame(p.min_clip_s))
         if not merged:
             plan.warnings.append(f"capítulo {chapter.number}: nenhum trecho utilizável")
             continue
         plan.chapter_budget_s[chapter.number] = chapter.allocated_s
-        card_frames = _frames(p.card_s)
+        card_frames = seconds_to_frame(p.card_s)
         plan.cards.append(Card(chapter.number, cursor, card_frames, f"Capítulo {chapter.number}"))
         for item in merged:
             placed = replace(item, timeline_start=cursor)

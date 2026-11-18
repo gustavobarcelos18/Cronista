@@ -24,12 +24,12 @@ import math
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass, replace
-from enum import StrEnum
 from typing import Any, Protocol
 
+from cronista.domain.frames import FPS, seconds_to_frame
+from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 
-FPS = 60
 """Igual a `cronista.domain.frames.FPS` (conferido em teste); repetido para não importar pydantic."""
 
 PLAN_VERSION = 1
@@ -41,15 +41,6 @@ NEEDS_ASSET = frozenset({EffectKind.SFX, EffectKind.SFX_MEME, EffectKind.MUSICA}
 
 BEAT_MOOD = {"setup": "calmo", "conflito": "tenso", "falha": "tenso", "virada": "epico", "conquista": "epico"}
 """Clima sugerido pelo beat narrativo (Fase 5); o criador pode trocar as trilhas por clima no brand kit."""
-
-
-class Track(StrEnum):
-    V1 = "V1"
-    V2 = "V2"
-    V4 = "V4"
-    V5 = "V5"
-    A4 = "A4"
-    A5 = "A5"
 
 
 TRACK_OF: dict[EffectKind, Track] = {
@@ -197,10 +188,6 @@ class _Candidate:
     reason: str
 
 
-def _frames(seconds: float) -> int:
-    return round(seconds * FPS)
-
-
 def intensity_of(score: float, min_score: float) -> float:
     """0 na nota mínima, 1 na nota máxima: morte boba ganha efeito leve, o chefe ganha o pacote completo."""
     if min_score >= 1:
@@ -295,7 +282,7 @@ def _moment_candidates(
         pool: tuple[str, ...] = (),
         centered: bool = True,
     ) -> None:
-        frames = _frames(dur_s)
+        frames = seconds_to_frame(dur_s)
         wanted = m.peak_frame - frames // 2 if centered else m.peak_frame
         start, size = _window(m, wanted, frames, total)
         if (size <= 0 and frames > 0) or start >= total:
@@ -459,6 +446,30 @@ def _music_items(
     return out
 
 
+SUGGEST_ONLY = frozenset({EffectKind.PIADA_VISUAL, EffectKind.FREEZE_TEXTO})
+"""Efeitos que nada gera nem renderiza (só marcador): em `editavel`/`renderizado` ocupariam vaga do orçamento
+sem aparecer no vídeo, então a política é rebaixada para `sugerir`, com aviso."""
+
+
+@dataclass(frozen=True)
+class _Policy:
+    mode: EffectMode
+    max_per_minute: float
+    min_score: float
+
+
+def _only_what_can_be_applied(
+    policies: Mapping[EffectKind, PolicyLike], warnings: set[str]
+) -> dict[EffectKind, PolicyLike]:
+    out: dict[EffectKind, PolicyLike] = {}
+    for kind, p in policies.items():
+        if kind in SUGGEST_ONLY and p.mode != EffectMode.SUGERIR:
+            warnings.add(f"{kind.value}: não há forma {p.mode.value} (só marcador); rebaixado para sugerir")
+            p = _Policy(EffectMode.SUGERIR, p.max_per_minute, p.min_score)
+        out[kind] = p
+    return out
+
+
 def build_finish_plan(
     moments: Sequence[Moment],
     policies: Mapping[EffectKind, PolicyLike],
@@ -474,6 +485,7 @@ def build_finish_plan(
     params = params or FinishParams()
     preferred = preferred_music or {}
     warnings: set[str] = set()
+    policies = _only_what_can_be_applied(policies, warnings)
     plan = FinishPlan(
         input_hash=input_hash(
             PLAN_VERSION,

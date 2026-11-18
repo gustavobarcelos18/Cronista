@@ -1,12 +1,14 @@
-"""API HTTP local (FastAPI) que o Studio consome. 7A: só leitura de sessões, arquivos, jobs e marcadores."""
+"""API HTTP local (FastAPI) que o Studio consome: sessões, revisão, acabamento, embalagem e progresso.
+
+À origem do Studio é permitido escrever (decisões, exportação, escolhas); outras origens só leem."""
 
 from __future__ import annotations
 
 import asyncio
 import threading
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import AbstractContextManager
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
@@ -18,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from cronista.assembly.plan import EditPlan
 from cronista.assembly.service import assemble
@@ -26,7 +28,7 @@ from cronista.audio.events import load_stored_events
 from cronista.audio.signals import load_signal, signal_metas
 from cronista.config import Settings
 from cronista.db.models import Artifact, Feedback, Job, Marker, MediaFile, Project, RecordingSession
-from cronista.db.session import open_db
+from cronista.db.session import make_engine, upgrade_db
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.finishing.brand import EffectPolicy, ResolvedStyle
@@ -41,10 +43,9 @@ from cronista.finishing.overrides import (
     source_of,
     with_overrides,
 )
-from cronista.finishing.plan import FPS as FINISH_FPS
 from cronista.finishing.plan import FinishPlan, apply_decisions, decision_key
 from cronista.finishing.service import assembly_fingerprint, build_finishing
-from cronista.montage import SessionPlanError, _load_source
+from cronista.montage import SessionPlanError, load_source
 from cronista.packaging.panel import PackagingOut, PublishOut, packaging_panel
 from cronista.packaging.publish import (
     PublishError,
@@ -53,11 +54,12 @@ from cronista.packaging.publish import (
     record_short_decision,
 )
 from cronista.packaging.service import TitleError, record_title_choice
+from cronista.paths import SessionPaths, thumbnails_in
 from cronista.relevance.service import STAGE as RELEVANCE_STAGE
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, decision_for, record_decision
 from cronista.review.learning import MIN_DECISIONS, WEIGHT_NAMES, accept, params_for_project, propose
-from cronista.review.panel import SeriesPanelOut, series_panel_full
+from cronista.review.panel import TARGET_MIN, SeriesPanelOut, series_panel_full
 from cronista.review.reexport import ProfileLoader, ReexportJobs
 from cronista.story.models import Script
 from cronista.story.script import load_script
@@ -269,7 +271,7 @@ MAX_STREAM_S = 6 * 3600.0
 def _media_duration(db: Session, media_id: int) -> float | None:
     media = db.get(MediaFile, media_id)
     try:
-        return _load_source(db, media).duration_s if media else None
+        return load_source(db, media).duration_s if media else None
     except SessionPlanError:
         return None  # ainda não ingerido: sem duração para conferir
 
@@ -280,8 +282,18 @@ def create_app(
     profile_loader: ProfileLoader | None = None,
     finishing_loader: StyleLoader | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="Cronista Engine", version="0.1.0")
-    allowed = origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # Um engine só (migrado na partida) para todas as requisições; o `lifespan` o fecha ao desligar.
+    engine = make_engine(settings.db_path)
+    upgrade_db(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        yield
+        engine.dispose()
+
+    app = FastAPI(title="Cronista Engine", version="0.1.0", lifespan=lifespan)
+    allowed = origins or settings.studio_origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
     app.add_middleware(
         CORSMiddleware, allow_origins=allowed, allow_methods=["GET", "POST", "PUT"], allow_headers=["*"]
     )
@@ -297,11 +309,10 @@ def create_app(
             return JSONResponse({"detail": "origem não autorizada"}, status_code=403)
         return await call_next(request)
 
-    with open_db(settings.db_path):  # migra uma vez; as requisições reabrem o banco sem rodar o Alembic
-        pass
-
-    def _connect() -> AbstractContextManager[Session]:
-        return open_db(settings.db_path, migrate=False)
+    @contextmanager
+    def _connect() -> Iterator[Session]:
+        with factory() as session:
+            yield session
 
     jobs = ReexportJobs(settings, profile_loader, finishing_loader)
     app.state.reexport = jobs
@@ -311,7 +322,7 @@ def create_app(
         return ExportStatusOut(**asdict(jobs.status(session_id)))
 
     @app.post("/sessions/{session_id}/export", response_model=ExportStatusOut, status_code=202)
-    def start_export(session_id: int, target_min: float = Query(40.0, gt=0, le=240)) -> ExportStatusOut:
+    def start_export(session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)) -> ExportStatusOut:
         """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou."""
         with _connect() as db:
             if db.get(RecordingSession, session_id) is None:
@@ -358,7 +369,9 @@ def create_app(
         ]
 
     @app.get("/sessions/{session_id}/finishing", response_model=FinishingOut)
-    def finishing_preview(session_id: int, target_min: float = Query(40.0, gt=0, le=240)) -> FinishingOut:
+    def finishing_preview(
+        session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)
+    ) -> FinishingOut:
         """Prévia do acabamento: o que o plano aplicaria em cada momento, com seus ajustes e decisões."""
         loaded = finishing_loader() if finishing_loader else None
         if loaded is None:
@@ -388,8 +401,8 @@ def create_app(
                         kind=i.kind,
                         mode=i.mode,
                         track=i.track.value,
-                        start_s=round(i.start / FINISH_FPS, 2),
-                        duration_s=round(i.frames / FINISH_FPS, 2),
+                        start_s=round(i.start / FPS, 2),
+                        duration_s=round(i.frames / FPS, 2),
                         intensity=i.intensity,
                         reason=i.reason,
                         asset_id=i.asset_id,
@@ -423,7 +436,7 @@ def create_app(
         session_id: int,
         item_id: str,
         body: FinishDecisionIn,
-        target_min: float = Query(40.0, gt=0, le=240),
+        target_min: float = Query(TARGET_MIN, gt=0, le=240),
     ) -> FinishDecisionIn:
         """Aceita uma sugestão (vira editável), tira um efeito ou volta ao padrão. Só insere.
 
@@ -449,9 +462,8 @@ def create_app(
         return body
 
     def _packaging_folders(session_id: int) -> tuple[Path, Path]:
-        return settings.data_dir / "packaging" / str(session_id), settings.data_dir / "shorts" / str(
-            session_id
-        )
+        paths = SessionPaths.of(settings, session_id)
+        return paths.packaging_dir, paths.shorts_dir
 
     def _packaging(db: Session, session_id: int) -> PackagingOut:
         packaging, shorts = _packaging_folders(session_id)
@@ -529,7 +541,7 @@ def create_app(
             allowed = {str(e["arquivo"]) for e in load_manifest(folder)}
         except ThumbnailError as exc:
             raise HTTPException(404, str(exc)) from exc
-        path = folder / "thumbnails" / name
+        path = thumbnails_in(folder) / name
         if name not in allowed or not path.is_file():
             raise HTTPException(404, "thumbnail não encontrada")
         return FileResponse(path, media_type="image/jpeg")
@@ -709,7 +721,9 @@ def create_app(
 
     @app.get("/sessions/{session_id}/script", response_model=ScriptOut)
     def get_script(session_id: int) -> ScriptOut:
-        path = settings.data_dir / "story" / str(session_id) / "roteiro.json"
+        with _connect() as db:
+            _require_session(db, session_id)
+        path = SessionPaths.of(settings, session_id).script
         if not path.is_file():
             raise HTTPException(404, "roteiro ainda não importado (`cronista roteiro-import`)")
         return ScriptOut(script=load_script(path))
@@ -717,8 +731,10 @@ def create_app(
     @app.put("/sessions/{session_id}/script", response_model=ScriptOut)
     def put_script(session_id: int, script: Script) -> ScriptOut:
         """Valida e grava o roteiro editado; a versão anterior vira `roteiro.v<N>.json`."""
+        with _connect() as db:
+            _require_session(db, session_id)
         try:
-            report = save_script(settings.data_dir / "story" / str(session_id), script)
+            report = save_script(SessionPaths.of(settings, session_id).story_dir, script)
         except ScriptSaveError as e:
             raise HTTPException(422, {"message": str(e), "errors": e.errors}) from e
         return ScriptOut(script=script.model_copy(update={"lines": report.lines}), warnings=report.warnings)

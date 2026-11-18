@@ -23,24 +23,24 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from fractions import Fraction
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-from cronista.assembly.plan import Card, EditPlan, Mode, Track
-from cronista.domain.frames import FPS
+from cronista.assembly.plan import Card, EditPlan, Mode
+from cronista.domain.frames import FPS, fcpxml_time
+from cronista.domain.tracks import Track
 from cronista.export.fcpxml import _parse_time, check_fcpxml
+from cronista.export.fcpxml_base import add_asset, new_skeleton, serialize
 from cronista.export.finish_fcpxml import FinishLayers, add_finish_clips
 from cronista.mix.envelope import narration_cues
 from cronista.story.models import ScriptLine
 
-WIDTH, HEIGHT = 1920, 1080
-_XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n\n'
 TITLE_UID = ".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"
-LANE_B_ROLL, LANE_CARD = 2, 4
-STEM_LANES = {"A1": -1, "A2": -2, "A4": -4, "A6": -6, "A7": -7}
+LANE_B_ROLL, LANE_CARD = Track.V3.lane, Track.V5.lane
+STEM_LANES = {t.value: t.lane for t in (Track.A1, Track.A2, Track.A4, Track.A6, Track.A7)}
 DISABLED_STEMS = frozenset({"A6", "A7"})
 
 
@@ -60,81 +60,48 @@ class ExportMedia:
     stem_frames: int = 0
 
 
-def _t(frames: int) -> str:
-    return f"{frames}/{FPS}s"
-
-
 def render_plan_fcpxml(
     plan: EditPlan, media: ExportMedia, name: str = "Cronista", layers: FinishLayers | None = None
 ) -> str:
-    root = ET.Element("fcpxml", version="1.9")
-    resources = ET.SubElement(root, "resources")
-    ET.SubElement(
-        resources,
-        "format",
-        id="r1",
-        name=f"FFVideoFormat{HEIGHT}p{FPS}",
-        frameDuration=f"1/{FPS}s",
-        width=str(WIDTH),
-        height=str(HEIGHT),
-    )
+    skeleton = new_skeleton(name, duration=fcpxml_time(plan.total_frames))
+    root, resources, spine = skeleton.root, skeleton.resources, skeleton.spine
     ids: dict[str, str] = {}
 
     def asset(path: Path, frames: int, *, video: bool) -> str:
         key = f"{'v' if video else 'a'}:{path}"
         if key not in ids:
             ids[key] = f"r{len(ids) + 3}"  # r1 = format, r2 = título
-            attrs = {
-                "id": ids[key],
-                "name": path.name,
-                "src": path.resolve().as_uri(),
-                "start": "0s",
-                "duration": _t(frames),
-            }
-            if video:  # o áudio do master fica de fora: o som vem dos stems
-                attrs |= {"format": "r1", "hasVideo": "1", "hasAudio": "0"}
-            else:
-                attrs |= {"hasVideo": "0", "hasAudio": "1", "audioSources": "1", "audioChannels": "2"}
-                attrs["audioRate"] = "48000"
-            ET.SubElement(resources, "asset", attrs)
+            add_asset(resources, ids[key], path.name, path.resolve().as_uri(), frames, video=video)
         return ids[key]
 
     ET.SubElement(resources, "effect", id="r2", name="Basic Title", uid=TITLE_UID)
-
-    library = ET.SubElement(root, "library")
-    event = ET.SubElement(library, "event", name="Cronista")
-    project = ET.SubElement(event, "project", name=name)
-    sequence = ET.SubElement(
-        project,
-        "sequence",
-        format="r1",
-        duration=_t(plan.total_frames),
-        tcStart="0s",
-        tcFormat="NDF",
-        audioLayout="stereo",
-        audioRate="48k",
-    )
-    spine = ET.SubElement(sequence, "spine")
 
     v1 = [(n, i) for n, i in enumerate(plan.items) if i.track == Track.V1]
     broll = [i for i in plan.items if i.track == Track.V3]
     cards = {c.timeline_start: c for c in plan.cards}
     title_count = 0
     fx_titles = [0]
+    # Sem a duração do master, o asset vai até o maior corte do arquivo (não só o do primeiro).
+    last_out: dict[int, int] = {}
+    for i in plan.items:
+        last_out[i.file_id] = max(last_out.get(i.file_id, 0), i.out_frame)
     for n, item in v1:
         if item.mode == Mode.TIMELAPSE:
             ref, start = asset(media.timelapses[n], item.timeline_frames, video=True), 0
         else:
             info = media.masters[item.file_id]
-            ref, start = asset(info.path, info.duration_frames or item.out_frame, video=True), item.in_frame
+            ref, start = (
+                asset(info.path, info.duration_frames or last_out[item.file_id], video=True),
+                item.in_frame,
+            )
         parent = ET.SubElement(
             spine,
             "asset-clip",
             ref=ref,
             name=f"{item.mode.value}|{item.segment_id}",
-            offset=_t(item.timeline_start),
-            start=_t(start),
-            duration=_t(item.timeline_frames),
+            offset=fcpxml_time(item.timeline_start),
+            start=fcpxml_time(start),
+            duration=fcpxml_time(item.timeline_frames),
             format="r1",
             tcFormat="NDF",
         )
@@ -149,9 +116,9 @@ def render_plan_fcpxml(
                 ref=asset(stem, media.stem_frames, video=False),
                 lane=str(lane),
                 name=label,
-                offset=_t(start),
-                start=_t(item.timeline_start),
-                duration=_t(item.timeline_frames),
+                offset=fcpxml_time(start),
+                start=fcpxml_time(item.timeline_start),
+                duration=fcpxml_time(item.timeline_frames),
             )
             if label in DISABLED_STEMS:
                 ET.SubElement(child, "audio-channel-source", srcCh="1, 2", enabled="0")
@@ -162,12 +129,12 @@ def render_plan_fcpxml(
             ET.SubElement(
                 parent,
                 "asset-clip",
-                ref=asset(info.path, info.duration_frames or b.out_frame, video=True),
+                ref=asset(info.path, info.duration_frames or last_out[b.file_id], video=True),
                 lane=str(LANE_B_ROLL),
                 name=f"B-roll|{b.segment_id}",
-                offset=_t(start),
-                start=_t(b.in_frame),
-                duration=_t(b.timeline_frames),
+                offset=fcpxml_time(start),
+                start=fcpxml_time(b.in_frame),
+                duration=fcpxml_time(b.timeline_frames),
                 format="r1",
             )
         if layers is not None:
@@ -177,8 +144,7 @@ def render_plan_fcpxml(
             title_count += 1
             _add_title(parent, card, start, min(card.frames, item.timeline_frames), title_count)
 
-    ET.indent(root, space="  ")
-    return _XML_HEAD + ET.tostring(root, encoding="unicode") + "\n"
+    return serialize(root)
 
 
 def _add_title(parent: ET.Element, card: Card, parent_start: int, frames: int, n: int) -> None:
@@ -188,9 +154,9 @@ def _add_title(parent: ET.Element, card: Card, parent_start: int, frames: int, n
         ref="r2",
         lane=str(LANE_CARD),
         name=card.text,
-        offset=_t(parent_start),
+        offset=fcpxml_time(parent_start),
         start="0s",
-        duration=_t(frames),
+        duration=fcpxml_time(frames),
     )
     style = f"ts{n}"
     text = ET.SubElement(title, "text")
@@ -285,7 +251,18 @@ def timeline_markers(
                 custom=f"{m.kind}|{m.marker_id}",
             )
         )
-    return sorted(out, key=lambda t: t.frame), skipped
+    out.sort(key=lambda t: t.frame)
+    # Dois marcadores no mesmo quadro: o `AddMarker` do Resolve recusa o segundo (de memória, a verificar em
+    # `prod`), então cada um ganha o próximo quadro livre.
+    taken: set[int] = set()
+    shifted: list[TimelineMarker] = []
+    for t in out:
+        frame = t.frame
+        while frame in taken:
+            frame += 1
+        taken.add(frame)
+        shifted.append(replace(t, frame=frame) if frame != t.frame else t)
+    return shifted, skipped
 
 
 def _lua_string(text: str) -> str:
@@ -331,7 +308,7 @@ def check_plan_fcpxml(xml: str, plan: EditPlan) -> list[str]:
         return problems
     resources = root.find("resources")
     assets: dict[str, ET.Element] = (
-        {a.get("id", ""): a for a in resources.findall("asset")} if resources else {}
+        {a.get("id", ""): a for a in resources.findall("asset")} if resources is not None else {}
     )
     for a in assets.values():
         parsed = urlparse(a.get("src", ""))

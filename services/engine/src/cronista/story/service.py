@@ -13,8 +13,10 @@ from sqlalchemy.orm import Session
 from cronista.audio.events import load_active_events
 from cronista.db.models import Marker, Objective, RecordingSession
 from cronista.domain.evidence import AnalysisEvent
+from cronista.paths import SCRIPT, STORY_PACK, VOICE_PROFILE
 from cronista.relevance.engine import Segment
 from cronista.review.decisions import load_effective_segments
+from cronista.review.learning import params_for_project
 from cronista.story.arc import Chapter, allocate_time, build_chapters
 from cronista.story.models import Script
 from cronista.story.objectives import (
@@ -26,7 +28,7 @@ from cronista.story.objectives import (
     sync_profile_objectives,
 )
 from cronista.story.pack import build_story_pack
-from cronista.story.script import ValidationReport, to_srt, validate_script, voice_profile
+from cronista.story.script import LIVE_KINDS, ValidationReport, to_srt, validate_script, voice_profile
 
 DEFAULT_TARGET_S = 40 * 60.0
 
@@ -59,7 +61,6 @@ def build_story(
     speech_by_file: dict[int, list[AnalysisEvent]] = {}
     kinds: dict[str, str] = {}
     discovery = DiscoveryReport()
-    known = [o.title for o in db.scalars(select(Objective).where(Objective.project_id == project.id))]
     for media in sorted(session.media_files, key=lambda m: m.ordinal):
         segments = load_effective_segments(db, media.id)
         if not segments:
@@ -67,11 +68,14 @@ def build_story(
         files.append((media.id, segments))
         events = load_active_events(db, media.id)
         speech = speech_events([e for e in events if e.kind == "fala"])
-        speech_by_file[media.id] = speech
+        # Para as lacunas valem também risada, exclamação e voz sem texto: a narração não pode cobri-las.
+        speech_by_file[media.id] = [e for e in events if e.kind in LIVE_KINDS]
         marks = list(db.scalars(select(Marker).where(Marker.media_file_id == media.id)))
         kinds.update({m.marker_id: m.kind for m in marks})
         corroboration = [(m.media_frame, m.media_frame) for m in marks if m.kind == "conquista"]
         failures = [(m.media_frame, m.media_frame) for m in marks if m.kind == "morte_falha"]
+        # Os objetivos mudam a cada arquivo (o anterior pode propor um novo): lê de novo antes de cada um.
+        known = [o.title for o in db.scalars(select(Objective).where(Objective.project_id == project.id))]
         part = discover(
             db, project.id, session_id, media.id, speech, RuleExtractor(known), corroboration, failures
         )
@@ -81,7 +85,7 @@ def build_story(
     if not files:
         raise StoryError("sem segmentos; rode `cronista relevance` antes")
 
-    chapters = build_chapters(files, kinds)
+    chapters = build_chapters(files, kinds, params_for_project(db, project.id).keep_score)
     allocate_time(chapters, target_s)
     objectives = []
     for obj in db.scalars(select(Objective).where(Objective.project_id == project.id)):
@@ -99,7 +103,7 @@ def build_story(
     pack = build_story_pack(
         chapters, speech_by_file, {"nome": project.name, "jogo": project.game}, objectives, target_s
     )
-    quotes = [e.evidence.quote or "" for sp in speech_by_file.values() for e in sp]
+    quotes = [e.evidence.quote or "" for sp in speech_by_file.values() for e in sp if e.kind == "fala"]
     return StoryResult(chapters, pack, discovery, voice_profile(quotes))
 
 
@@ -118,9 +122,9 @@ def segment_index(pack: dict[str, Any]) -> dict[str, tuple[float, float, list[tu
 
 def write_pack(directory: Path, result: StoryResult) -> tuple[Path, Path]:
     directory.mkdir(parents=True, exist_ok=True)
-    pack_path = directory / "story-pack.json"
+    pack_path = directory / STORY_PACK
     pack_path.write_text(json.dumps(result.pack, ensure_ascii=False, indent=1), encoding="utf-8")
-    voice_path = directory / "voice-profile.json"
+    voice_path = directory / VOICE_PROFILE
     voice_path.write_text(json.dumps(result.voice, ensure_ascii=False, indent=1), encoding="utf-8")
     return pack_path, voice_path
 
@@ -139,19 +143,19 @@ def save_script(folder: Path, script: Script) -> ValidationReport:
     A versão anterior nunca se perde: vira `roteiro.v<N>.json` (histórico só de inserção). Com erros de
     validação nada é gravado.
     """
-    pack_path = folder / "story-pack.json"
+    pack_path = folder / STORY_PACK
     if not pack_path.is_file():
         raise ScriptSaveError("rode `cronista story` antes")
     index = segment_index(json.loads(pack_path.read_text(encoding="utf-8")))
     report = validate_script(script, index)
     if not report.ok:
         raise ScriptSaveError("roteiro inválido", report.errors)
-    current = folder / "roteiro.json"
+    current = folder / SCRIPT
     saved = script.model_copy(update={"lines": report.lines})
     starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
     # Grava o novo em arquivos temporários ANTES de mexer no atual: se a escrita falhar, o roteiro vigente
     # continua no lugar e o histórico não fica com buraco.
-    tmp_json, tmp_srt = folder / "roteiro.json.tmp", folder / "roteiro.srt.tmp"
+    tmp_json, tmp_srt = folder / f"{SCRIPT}.tmp", folder / "roteiro.srt.tmp"
     tmp_json.write_text(saved.model_dump_json(indent=1), encoding="utf-8")
     tmp_srt.write_text(to_srt(report.lines, starts), encoding="utf-8")
     if current.is_file():

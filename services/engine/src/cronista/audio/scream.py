@@ -73,15 +73,22 @@ def frame_features(audio: FloatArray, rate: int, params: ScreamParams) -> tuple[
     return level, f0
 
 
-def find_screams(level: FloatArray, f0: FloatArray, params: ScreamParams) -> list[tuple[float, float, float]]:
-    """(início, fim, confiança) em segundos, a partir dos arrays por quadro."""
+def find_screams(
+    level: FloatArray, f0: FloatArray, params: ScreamParams, hop_s: float | None = None
+) -> list[tuple[float, float, float]]:
+    """(início, fim, confiança) em segundos, a partir dos arrays por quadro.
+
+    `hop_s` é o passo real entre quadros (`hop / taxa`): `int(frame_s * taxa)` trunca, e com `frame_s`
+    no lugar o tempo derivaria (~16 s em 10 h a 44,1 kHz).
+    """
+    step = hop_s or params.frame_s
     voiced = level > params.floor_db
     if not voiced.any():
         return []
     baseline = float(np.median(level[voiced]))
     delta = level - baseline
     hit = (delta >= params.min_delta_db) & (f0 >= params.min_f0_scream_hz)
-    gap = max(int(params.max_gap_s / params.frame_s), 1)
+    gap = max(int(params.max_gap_s / step), 1)
     spans: list[list[int]] = []
     for i in np.flatnonzero(hit):
         if spans and i - spans[-1][1] <= gap:
@@ -90,7 +97,7 @@ def find_screams(level: FloatArray, f0: FloatArray, params: ScreamParams) -> lis
             spans.append([int(i), int(i)])
     out: list[tuple[float, float, float]] = []
     for first, last in spans:
-        start, end = first * params.frame_s, (last + 1) * params.frame_s + (params.window_s - params.frame_s)
+        start, end = first * step, (last + 1) * step + (params.window_s - params.frame_s)
         if end - start < params.min_duration_s:
             continue
         seg_delta = float(delta[first : last + 1].max())
@@ -105,6 +112,7 @@ class ScreamHeuristic:
 
     name = "grito-energia-f0"
     version = "1"
+    uses_gpu = False
 
     def __init__(self, params: ScreamParams | None = None) -> None:
         self.params = params or ScreamParams()
@@ -114,6 +122,7 @@ class ScreamHeuristic:
         p = self.params
         levels: list[FloatArray] = []
         pitches: list[FloatArray] = []
+        hop_s = p.frame_s
         with sf.SoundFile(str(wav)) as handle:
             rate = handle.samplerate
             per_block = int(p.block_s * rate)
@@ -126,9 +135,10 @@ class ScreamHeuristic:
                 # Completa o fim para o bloco render exatamente `len/hop` quadros e o tempo não derivar.
                 tail = int((p.window_s - p.frame_s) * analysis_rate)
                 level, f0 = frame_features(np.pad(audio, (0, tail)), analysis_rate, p)
+                hop_s = int(p.frame_s * analysis_rate) / analysis_rate
                 levels.append(level)
                 pitches.append(f0)
         if not levels:
             return []
-        spans = find_screams(np.concatenate(levels), np.concatenate(pitches), p)
+        spans = find_screams(np.concatenate(levels), np.concatenate(pitches), p, hop_s=hop_s)
         return [SoundEventSpan(label="exclamacao", start_s=s, end_s=e, score=c) for s, e, c in spans]

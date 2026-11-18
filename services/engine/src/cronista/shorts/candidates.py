@@ -184,9 +184,18 @@ def pick_candidates(
     return chosen
 
 
-def to_json(candidates: Sequence[ShortCandidate]) -> str:
+def short_key(file_id: int, start_frame: int, end_frame: int) -> str:
+    """Identidade de um Short: o trecho inteiro. Com outro fim, a decisão antiga não vale (D4)."""
+    return f"{file_id}-{start_frame}-{end_frame}"
+
+
+def to_json(candidates: Sequence[ShortCandidate], clips: Mapping[str, str] | None = None) -> str:
+    """`clips`: `<arquivo>-<quadro inicial>` → nome do MP4 renderizado; vira o campo `clip` de cada candidato
+    (o pacote de publicação lê dali, em vez de adivinhar o clipe pela data de modificação)."""
     rows = [
-        asdict(c) | {"duracao_s": round(c.duration_s, 2), "gancho_em_s": round(c.hook_offset_s, 2)}
+        asdict(c)
+        | {"duracao_s": round(c.duration_s, 2), "gancho_em_s": round(c.hook_offset_s, 2)}
+        | ({"clip": clips.get(short_key(c.file_id, c.start_frame, c.end_frame))} if clips is not None else {})
         for c in candidates
     ]
     return json.dumps({"fps": FPS, "candidatos": rows}, ensure_ascii=False, indent=1)

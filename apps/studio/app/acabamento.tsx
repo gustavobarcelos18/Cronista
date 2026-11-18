@@ -1,20 +1,20 @@
 "use client";
 
 import type {
+  EffectMode,
   EffectSettingOut,
   FinishDecisionIn,
   FinishingOut,
   FinishItemOut,
 } from "@cronista/contracts";
 import { useCallback, useEffect, useState } from "react";
+import { API } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
-
-const MODES = [
-  ["sugerir", "Só sugerir (marcador)"],
-  ["editavel", "Editável no Resolve"],
-  ["renderizado", "Renderizado pelo app"],
-] as const;
+const MODES: Record<EffectMode, string> = {
+  sugerir: "Só sugerir (marcador)",
+  editavel: "Editável no Resolve",
+  renderizado: "Renderizado pelo app",
+};
 
 const SOURCES: Record<EffectSettingOut["source"], string> = {
   padrao: "padrão",
@@ -53,9 +53,9 @@ function EffectRow({
         <select
           aria-label={`Modo de ${effect.kind}`}
           value={mode}
-          onChange={(e) => setMode(e.target.value as EffectSettingOut["mode"])}
+          onChange={(e) => setMode(e.target.value as EffectMode)}
         >
-          {MODES.map(([value, label]) => (
+          {(Object.entries(MODES) as [EffectMode, string][]).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>

@@ -17,6 +17,7 @@ from cronista.finishing.loader import load_style
 from cronista.montage import SessionPlanError, load_masters
 from cronista.packaging.service import TITLES_NAME
 from cronista.packaging.titles import check_creator_thumbnail_text, load_titles
+from cronista.paths import STORY_PACK, thumbnails_in
 from cronista.pipeline.gpu import GpuGate
 from cronista.thumbnails.model import check_model_files, load_thumbnail_model
 from cronista.thumbnails.render import ThumbnailError, ThumbnailItem, render_thumbnails
@@ -69,7 +70,7 @@ def render_session_thumbnails(
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise ThumbnailError(f"sessão {session_id} não existe (veja `cronista status`)")
-    story_pack = story_folder / "story-pack.json"
+    story_pack = story_folder / STORY_PACK
     if not story_pack.is_file():
         raise ThumbnailError("rode `cronista story` antes")
     pack = json.loads(story_pack.read_text(encoding="utf-8"))
@@ -92,7 +93,7 @@ def render_session_thumbnails(
         masters,
         model,
         resolved.brand.visual,
-        folder / "thumbnails",
+        thumbnails_in(folder),
         settings,
         texts=chosen,
         day=day,
@@ -127,7 +128,7 @@ def record_thumbnail_choice(db: Session, session_id: int, folder: Path, variatio
         raise ThumbnailError(
             f"variação {variation} não existe (há {', '.join(str(e['variacao']) for e in entries)})"
         )
-    if not (folder / "thumbnails" / entry["arquivo"]).is_file():
+    if not (thumbnails_in(folder) / entry["arquivo"]).is_file():
         raise ThumbnailError(f"{entry['arquivo']} não existe mais; rode `cronista thumbnails` de novo")
     row = ThumbnailChoice(
         session_id=session_id,
@@ -139,6 +140,25 @@ def record_thumbnail_choice(db: Session, session_id: int, folder: Path, variatio
     db.add(row)
     db.commit()
     return row
+
+
+def valid_thumbnail_choice(db: Session, session_id: int, folder: Path) -> ThumbnailChoice | None:
+    """A escolha vigente, só se ainda vale: a variação está no manifesto atual e o arquivo existe.
+
+    Variações geradas de novo invalidam a escolha antiga. Painel e pacote de publicação usam esta regra única.
+    """
+    choice = current_thumbnail(db, session_id)
+    if choice is None:
+        return None
+    try:
+        entries = load_manifest(folder)
+    except (ThumbnailError, ValueError):
+        return None
+    ok = any(
+        str(e["arquivo"]) == choice.file_name and (thumbnails_in(folder) / str(e["arquivo"])).is_file()
+        for e in entries
+    )
+    return choice if ok else None
 
 
 def current_thumbnail(db: Session, session_id: int) -> ThumbnailChoice | None:

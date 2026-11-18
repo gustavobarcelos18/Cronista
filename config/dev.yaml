@@ -1,15 +1,6 @@
 # Ambiente dev: PC do trabalho, sem GPU. Caminhos pessoais ficam em dev.local.yaml (fora do git).
+# Só o que muda por ambiente: o resto vem dos padrões de `config.py` (uma fonte só; `expected_fps` é sempre 60/1).
 env: dev
 data_dir: data          # relativo à raiz do repositório
-ffmpeg: ffmpeg
-ffprobe: ffprobe
-expected_fps: "60/1"    # 60 fps exatos (nunca 59,94)
-proxy_height: 360
-proxy_crf: 28
-video_extensions: [".mp4", ".mkv"]
 preview_encoder: libx264   # CPU: o dev não tem GPU
-preview_pre_s: 20
-preview_post_s: 10
 gpu_gate: false          # sem GPU nem OBS neste PC: nunca pausa
-gpu_poll_seconds: 5
-log_level: INFO

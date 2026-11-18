@@ -5,14 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import pairwise
 
+from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import (
-    FPS,
     AssetRef,
     CardRef,
     FinishPlan,
     Moment,
-    Track,
     build_finish_plan,
     chapter_mood,
     intensity_of,
@@ -226,3 +226,15 @@ def test_items_stay_inside_timeline() -> None:
     plan: FinishPlan = build_finish_plan(ms, policies(), total_frames=105 * FPS)
     for item in plan.items:
         assert item.start >= 0 and item.start + item.frames <= 105 * FPS
+
+
+def test_effects_without_an_applied_form_are_downgraded_with_a_warning() -> None:
+    """C7 (auditoria 10A): piada visual e freeze em `editavel` ocupavam vaga sem aparecer no vídeo."""
+    pol = only(
+        piada_visual=Policy(EffectMode.EDITAVEL, 6, 0.0), freeze_texto=Policy(EffectMode.RENDERIZADO, 6, 0.0)
+    )
+    plan = build_finish_plan(
+        [moment(1, tags=frozenset({"engracado"}), beat="falha")], pol, total_frames=20 * MIN
+    )
+    assert plan.items and all(i.mode == EffectMode.SUGERIR for i in plan.items)
+    assert any("rebaixado para sugerir" in w for w in plan.warnings)

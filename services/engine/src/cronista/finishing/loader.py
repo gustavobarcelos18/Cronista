@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from pydantic import ValidationError
@@ -15,6 +16,7 @@ from cronista.finishing.brand import (
     resolve_style,
 )
 from cronista.finishing.library import Library, load_library
+from cronista.logging_setup import log_event
 
 StyleLoader = Callable[[], tuple[ResolvedStyle, Library | None] | None]
 """Devolve o estilo e a biblioteca, ou `None` quando o acabamento não está configurado."""
@@ -34,7 +36,8 @@ def default_loader(settings: Settings) -> StyleLoader:
     def load() -> tuple[ResolvedStyle, Library | None] | None:
         try:
             return load_style(settings, settings.finishing_series)
-        except (FileNotFoundError, ValueError, ValidationError):
+        except (FileNotFoundError, ValueError, ValidationError) as exc:
+            log_event("brand_kit_invalido", logging.WARNING, erro=str(exc)[:500])
             return None
 
     return load

@@ -28,10 +28,12 @@ from cronista.export.service import export_session
 from cronista.finishing.loader import default_loader, load_style
 from cronista.gabarito import validate_gabarito
 from cronista.gates import build_gate
-from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
+from cronista.ingest.ffmpeg import probe_media
 from cronista.ingest.service import SessionConflictError, ingest_folder
 from cronista.logging_setup import setup_logging
+from cronista.media.ffmpeg import run_ffmpeg
 from cronista.montage import SessionPlanError
+from cronista.paths import SessionPaths, review_csv
 from cronista.pipeline import StageError, recover_orphans
 from cronista.preview import PreviewError, build_preview
 from cronista.profiles import build_models_with_profile
@@ -46,6 +48,17 @@ from cronista.watch import serve as watch_serve
 class AnalysisPart(StrEnum):
     AUDIO = "audio"
     VIDEO = "video"
+
+
+class Reframe(StrEnum):
+    DESFOQUE = "desfoque"
+    RECORTE = "recorte"
+
+
+class ShortChoice(StrEnum):
+    APROVADO = "aprovado"
+    REJEITADO = "rejeitado"
+    PADRAO = "padrao"
 
 
 def _pick_media(db: Session, session: int, file: str | None) -> MediaFile:
@@ -204,12 +217,13 @@ def preview(
         typer.echo(f"  aviso: {warning}")
 
 
-@app.command()
+@app.command(deprecated=True)
 def export(
     session: Annotated[int, typer.Argument(help="Número da sessão (veja `cronista status`)")],
     out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/export)")] = None,
 ) -> None:
-    """Grava a timeline da sessão (V1 + A1/A2, 60 fps) como .fcpxml e .otio para importar no Resolve."""
+    """DEPRECADO (use `cronista montagem`): timeline simples da Fase 1, como .fcpxml e .otio."""
+    typer.echo("aviso: `export` é da Fase 1 e foi substituído por `cronista montagem`", err=True)
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
@@ -650,6 +664,7 @@ def relevance(
     top: Annotated[int, typer.Option(help="Quantos candidatos mostrar por arquivo")] = 15,
 ) -> None:
     """Segmenta a sessão, dá nota explicável a cada trecho e grava os segmentos (Fase 4)."""
+    from cronista.profiles import load_settings_profile
     from cronista.relevance.quality import top_candidates
     from cronista.relevance.service import RelevanceError, relevance_session
 
@@ -657,7 +672,9 @@ def relevance(
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
         try:
-            results = relevance_session(db, session)
+            results = relevance_session(
+                db, session, overrides=load_settings_profile(settings).thresholds.get("relevance")
+            )
         except RelevanceError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
@@ -704,17 +721,22 @@ def bench_relevance(
 
 @app.command("series")
 def series() -> None:
-    """Painel da série: horas gravadas e minutos estimados de produto por sessão, e o acumulado."""
-    from cronista.relevance.service import series_panel
+    """Painel da série por projeto: horas gravadas e minutos de produto por sessão, e o acumulado."""
+    from cronista.review.panel import series_panel_full
 
     settings = load_settings()
     with open_db(settings.db_path) as db:
-        rows = series_panel(db)
-    typer.echo(f"{'sessão':>7}{'gravado (h)':>13}{'produto (min)':>15}{'acumulado (min)':>17}")
-    for r in rows:
-        typer.echo(f"{r['sessao']:>7}{r['gravado_h']:>13}{r['produto_min']:>15}{r['acumulado_min']:>17}")
+        panel = series_panel_full(db)
+    for project in panel.projetos:
+        typer.echo(
+            f"{project.projeto} (projeto {project.projeto_id}): {project.total_min} min, {project.situacao}"
+        )
+        typer.echo(f"{'sessão':>7}{'gravado (h)':>13}{'produto (min)':>15}{'acumulado (min)':>17}")
+        for r in project.sessoes:
+            typer.echo(f"{r.sessao:>7}{r.gravado_h:>13}{r.produto_min:>15}{r.acumulado_min:>17}")
     typer.echo(
-        "estimativa: trechos relevantes (até 45 s cada) + farm em timelapse; alvo do vídeo: 30 a 50 min"
+        "estimativa: trechos relevantes (até 45 s cada) + farm em timelapse, com as suas decisões; "
+        f"alvo do vídeo: {panel.minimo_min:.0f} a {panel.maximo_min:.0f} min"
     )
 
 
@@ -741,7 +763,7 @@ def story(
         except StoryError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    target = out or settings.data_dir / "story" / str(session)
+    target = out or SessionPaths.of(settings, session).story_dir
     pack_path, voice_path = write_pack(target, result)
     for c in result.chapters:
         beats = ", ".join(f"{i.beat.value}" for i in c.items[:8])
@@ -764,7 +786,7 @@ def revisao(
     settings = load_settings()
     with open_db(settings.db_path) as db:
         items = review_queue(db, project)
-        target = export_review_csv(items, out or settings.data_dir / "story" / f"revisao-{project}.csv")
+        target = export_review_csv(items, out or review_csv(settings, project))
     typer.echo(f"{len(items)} itens para revisar: {target}")
 
 
@@ -778,7 +800,7 @@ def roteiro_import(
     from cronista.story.service import ScriptSaveError, save_script
 
     settings = load_settings()
-    folder = settings.data_dir / "story" / str(session)
+    folder = SessionPaths.of(settings, session).story_dir
     try:
         loaded = load_script(script)
         report = save_script(folder, loaded)
@@ -986,7 +1008,7 @@ def montar(
         except StoryError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    path = write_plan(plan, out or settings.data_dir / "montagem" / str(session), session)
+    path = write_plan(plan, out or SessionPaths.of(settings, session).assembly_dir, session)
     for number, budget in plan.chapter_budget_s.items():
         typer.echo(f"capítulo {number}: {plan.chapter_s(number):.0f} s de {budget:.0f} s alocados")
     typer.echo(
@@ -1107,22 +1129,20 @@ def montagem(
 def shorts(
     session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
     top: Annotated[int, typer.Option(help="Quantos candidatos listar")] = 10,
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/shorts/<sessão>)")] = None,
 ) -> None:
-    """Candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D; a finalização é da Fase 9)."""
+    """Lista os candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D). Não grava nada:
+    o manifesto é do `shorts-render`."""
     from cronista.shorts.candidates import ShortsParams
-    from cronista.shorts.service import build_shorts, write_shorts
-    from cronista.story.service import StoryError
+    from cronista.shorts.service import ShortsError, build_shorts
 
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
         try:
             found = build_shorts(db, session, ShortsParams(max_candidates=top))
-        except StoryError as exc:
+        except ShortsError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    path = write_shorts(found, out or settings.data_dir / "shorts" / str(session), session)
     for n, c in enumerate(found, start=1):
         typer.echo(
             f"{n}. arquivo {c.file_id} {c.start_frame / 60:.1f}s: {c.duration_s:.1f} s, nota {c.score:.2f}, "
@@ -1132,7 +1152,6 @@ def shorts(
         typer.echo(
             "nenhum candidato: faltam momentos com pico (marcador ou emoção) e gancho nos 3 s iniciais"
         )
-    typer.echo(str(path))
 
 
 @app.command("shorts-render")
@@ -1143,22 +1162,17 @@ def shorts_render(
     ] = 5,
     serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
     reframe: Annotated[
-        str, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
-    ] = "desfoque",
+        Reframe, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
+    ] = Reframe.DESFOQUE,
     focus_x: Annotated[float, typer.Option(help="Só no `recorte`: 0 = esquerda, 1 = direita")] = 0.5,
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/shorts/<sessão>)")] = None,
 ) -> None:
     """Renderiza os Shorts 9:16 com legenda gravada e margens seguras (Fase 9A)."""
     from pydantic import ValidationError
 
-    from cronista.shorts.candidates import ShortsParams
+    from cronista.shorts.candidates import ShortsParams, short_key
     from cronista.shorts.render import ShortStyle
-    from cronista.shorts.service import render_session_shorts
-    from cronista.story.service import StoryError
+    from cronista.shorts.service import ShortsError, render_session_shorts
 
-    if reframe not in ("desfoque", "recorte"):
-        typer.echo("erro: --reframe aceita `desfoque` ou `recorte`", err=True)
-        raise typer.Exit(1)
     settings = load_settings()
     setup_logging(settings.log_level)
     with open_db(settings.db_path) as db:
@@ -1167,19 +1181,19 @@ def shorts_render(
                 db,
                 session,
                 settings,
-                out or settings.data_dir / "shorts" / str(session),
+                SessionPaths.of(settings, session).shorts_dir,
                 params=ShortsParams(max_candidates=top),
-                style=ShortStyle(reframe=reframe, focus_x=focus_x),  # type: ignore[arg-type]
+                style=ShortStyle(reframe=reframe.value, focus_x=focus_x),
                 serie=serie,
                 gate=build_gate(settings),
             )
-        except (StoryError, FileNotFoundError, ValueError, ValidationError, StageError) as exc:
+        except (ShortsError, FileNotFoundError, ValueError, ValidationError, StageError) as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
     for warning in package.warnings:
         typer.echo(f"aviso: {warning}")
     for c in package.candidates:
-        clip = package.clips.get(f"{c.file_id}-{c.start_frame}")
+        clip = package.clips.get(short_key(c.file_id, c.start_frame, c.end_frame))
         typer.echo(f"{c.duration_s:.1f} s, nota {c.score:.2f}: {clip if clip else 'não renderizado'}")
     if not package.candidates:
         typer.echo("nenhum candidato a Short")
@@ -1188,7 +1202,6 @@ def shorts_render(
 @app.command("titulos")
 def titulos(
     session: Annotated[int, typer.Argument(help="Sessão com `story-pack.json` (`cronista story`)")],
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/packaging/<sessão>)")] = None,
 ) -> None:
     """Gera o `titulo-pack.json` compacto para o /titular escrever sugestões de título (Fase 9C)."""
     from cronista.packaging.service import TitleError, write_title_pack
@@ -1196,7 +1209,7 @@ def titulos(
     settings = load_settings()
     try:
         path = write_title_pack(
-            settings.data_dir / "story" / str(session), out or settings.data_dir / "packaging" / str(session)
+            SessionPaths.of(settings, session).story_dir, SessionPaths.of(settings, session).packaging_dir
         )
     except TitleError as exc:
         typer.echo(f"erro: {exc}", err=True)
@@ -1214,7 +1227,7 @@ def titulos_import(
     from cronista.packaging.titles import load_titles
 
     settings = load_settings()
-    folder = settings.data_dir / "packaging" / str(session)
+    folder = SessionPaths.of(settings, session).packaging_dir
     try:
         report = save_titles(folder, load_titles(titles))
     except (ValueError, TitleError) as exc:
@@ -1228,7 +1241,8 @@ def titulos_import(
         typer.echo(f"{n}. {option.text} ({len(option.text)})")
 
 
-@app.command("titulo-escolher")
+@app.command("titulos-escolher")
+@app.command("titulo-escolher", deprecated=True, hidden=True)
 def titulo_escolher(
     session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
     sugestao: Annotated[int | None, typer.Option(help="Número da sugestão escolhida (1, 2, …)")] = None,
@@ -1243,7 +1257,7 @@ def titulo_escolher(
     with open_db(settings.db_path) as db:
         try:
             row = record_title_choice(
-                db, session, settings.data_dir / "packaging" / str(session), suggestion=sugestao, text=texto
+                db, session, SessionPaths.of(settings, session).packaging_dir, suggestion=sugestao, text=texto
             )
         except TitleError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -1261,9 +1275,8 @@ def thumbnails(
         ),
     ] = None,
     dia: Annotated[int | None, typer.Option(help="Número do dia para o selo (decidido na edição)")] = None,
-    variacoes: Annotated[int, typer.Option(help="Quantas variações gerar (2 ou 3)", min=1, max=3)] = 3,
+    variacoes: Annotated[int, typer.Option(help="Quantas variações gerar (2 ou 3)", min=2, max=3)] = 3,
     serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
-    out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/packaging/<sessão>)")] = None,
 ) -> None:
     """Gera 2 a 3 variações de thumbnail a partir dos picos do vídeo e do modelo do brand kit (Fase 9B)."""
     from pydantic import ValidationError
@@ -1280,8 +1293,8 @@ def thumbnails(
                 db,
                 session,
                 settings,
-                settings.data_dir / "story" / str(session),
-                out or settings.data_dir / "packaging" / str(session),
+                SessionPaths.of(settings, session).story_dir,
+                SessionPaths.of(settings, session).packaging_dir,
                 texts=texto,
                 day=dia,
                 count=variacoes,
@@ -1304,7 +1317,8 @@ def thumbnails(
         typer.echo("Escolha com `cronista thumbnail-escolher <sessão> --variacao N`.")
 
 
-@app.command("thumbnail-escolher")
+@app.command("thumbnails-escolher")
+@app.command("thumbnail-escolher", deprecated=True, hidden=True)
 def thumbnail_escolher(
     session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
     variacao: Annotated[int, typer.Option(help="Número da variação escolhida (1, 2, 3)")],
@@ -1317,7 +1331,7 @@ def thumbnail_escolher(
     with open_db(settings.db_path) as db:
         try:
             row = record_thumbnail_choice(
-                db, session, settings.data_dir / "packaging" / str(session), variacao
+                db, session, SessionPaths.of(settings, session).packaging_dir, variacao
             )
         except ThumbnailError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -1335,7 +1349,7 @@ def shorts_status(
     settings = load_settings()
     with open_db(settings.db_path) as db:
         try:
-            entries = list_shorts(settings.data_dir / "shorts" / str(session), session)
+            entries = list_shorts(SessionPaths.of(settings, session).shorts_dir, session)
         except PublishError as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
@@ -1350,13 +1364,14 @@ def shorts_status(
         typer.echo("nenhum Short")
 
 
-@app.command("short-decidir")
+@app.command("shorts-decidir")
+@app.command("short-decidir", deprecated=True, hidden=True)
 def short_decidir(
     session: Annotated[int, typer.Argument(help="Sessão (veja `cronista status`)")],
     short: Annotated[str, typer.Argument(help="Chave do Short (`cronista shorts-status`)")],
     decisao: Annotated[
-        str, typer.Option(help="`aprovado`, `rejeitado` ou `padrao` (volta a pendente)")
-    ] = "aprovado",
+        ShortChoice, typer.Option(help="`aprovado`, `rejeitado` ou `padrao` (volta a pendente)")
+    ],
 ) -> None:
     """Aprova ou rejeita um Short (só inserção; a última decisão vale)."""
     from cronista.packaging.publish import PublishError, record_short_decision
@@ -1365,7 +1380,7 @@ def short_decidir(
     with open_db(settings.db_path) as db:
         try:
             row = record_short_decision(
-                db, session, settings.data_dir / "shorts" / str(session), short, decisao
+                db, session, SessionPaths.of(settings, session).shorts_dir, short, decisao.value
             )
         except PublishError as exc:
             typer.echo(f"erro: {exc}", err=True)
@@ -1392,8 +1407,8 @@ def pacote_publicacao(
             report = build_publish_package(
                 db,
                 session,
-                settings.data_dir / "shorts" / str(session),
-                settings.data_dir / "packaging" / str(session),
+                SessionPaths.of(settings, session).shorts_dir,
+                SessionPaths.of(settings, session).packaging_dir,
                 video=video,
                 out=out,
             )
@@ -1501,7 +1516,7 @@ def acabamento(
         except (StoryError, SessionPlanError) as exc:
             typer.echo(f"erro: {exc}", err=True)
             raise typer.Exit(1) from exc
-    path = write_finish_plan(plan, out or settings.data_dir / "acabamento" / str(session), session)
+    path = write_finish_plan(plan, out or SessionPaths.of(settings, session).finishing_dir, session)
     for kind, modes in sorted(plan.summary().items()):
         typer.echo(f"{kind:<16} " + ", ".join(f"{n} {mode}" for mode, n in sorted(modes.items())))
     for warning in plan.warnings:

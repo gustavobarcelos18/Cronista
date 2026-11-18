@@ -2,8 +2,7 @@
 
 import type { LearningOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+import { ApiError, getJson, send } from "../lib/api";
 
 /** Proposta de pesos por manter/tirar trecho (7E). Só vale depois de aceita. */
 export default function Aprendizado({ projectId }: { projectId: number }) {
@@ -11,19 +10,19 @@ export default function Aprendizado({ projectId }: { projectId: number }) {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`${API}/projects/${projectId}/learning`)
-      .then((r) => r.json() as Promise<LearningOut>)
+    getJson<LearningOut>(`/projects/${projectId}/learning`)
       .then(setInfo)
-      .catch(() => setMessage("Engine fora do ar."));
+      .catch((e: Error) => setMessage(e.message));
   }, [projectId]);
 
   async function accept() {
-    const res = await fetch(`${API}/projects/${projectId}/learning/accept`, { method: "POST" });
-    if (res.ok) {
-      setInfo((await res.json()) as LearningOut);
+    try {
+      setInfo(await send<LearningOut>(`/projects/${projectId}/learning/accept`));
       setMessage("Aceito: vale na próxima vez que a relevância rodar (`cronista relevance`).");
-    } else {
-      setMessage("Ainda faltam decisões.");
+    } catch (e) {
+      // Só o 409 quer dizer "faltam decisões"; o resto (rede, 404, 500) mostra o motivo real.
+      const missing = e instanceof ApiError && e.status === 409;
+      setMessage(missing ? "Ainda faltam decisões." : e instanceof Error ? e.message : "erro ao aceitar");
     }
   }
 

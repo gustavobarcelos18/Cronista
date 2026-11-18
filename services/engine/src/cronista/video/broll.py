@@ -15,6 +15,7 @@ import numpy as np
 import numpy.typing as npt
 
 from cronista.domain.evidence import AnalysisEvent
+from cronista.domain.frames import FPS
 from cronista.video.ports import FrameEmbedder
 
 FloatArray = npt.NDArray[np.float32]
@@ -73,7 +74,7 @@ class Candidate:
     confidence: float
 
 
-def candidates(events: Sequence[AnalysisEvent], params: BrollParams, fps: int = 60) -> list[Candidate]:
+def candidates(events: Sequence[AnalysisEvent], params: BrollParams, fps: int = FPS) -> list[Candidate]:
     blocked = [(e.evidence.start_frame, e.evidence.end_frame) for e in events if e.kind in BLOCKED]
     out: list[Candidate] = []
     for e in events:

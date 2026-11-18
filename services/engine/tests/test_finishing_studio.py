@@ -14,6 +14,7 @@ from cronista.api.app import create_app
 from cronista.assembly.plan import EditPlan
 from cronista.config import Settings
 from cronista.db.models import FinishingDecision, FinishingSetting, MediaFile, Project, RecordingSession
+from cronista.domain.tracks import Track as FxTrack
 from cronista.finishing.brand import BrandKit, ResolvedStyle, SeriesStyle, resolve_style
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.library import Library
@@ -26,7 +27,6 @@ from cronista.finishing.overrides import (
     with_overrides,
 )
 from cronista.finishing.plan import FinishItem, FinishPlan
-from cronista.finishing.plan import Track as FxTrack
 
 BRAND = BrandKit.model_validate(
     {

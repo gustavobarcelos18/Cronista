@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -16,9 +17,6 @@ from cronista.relevance.engine import MarkerRef, RelevanceParams, Segment, build
 STAGE = "relevance"
 MODEL = "relevancia-regras"
 MODEL_VERSION = "1"
-TIMELAPSE_FACTOR = 10.0
-MAX_KEPT_S = 45.0
-MAX_FARM_S = 20.0
 
 
 class RelevanceError(Exception):
@@ -69,7 +67,10 @@ def events_to_segments(events: list[AnalysisEvent]) -> list[Segment]:
 
 
 def relevance_session(
-    db: Session, session_id: int, params: RelevanceParams | None = None
+    db: Session,
+    session_id: int,
+    params: RelevanceParams | None = None,
+    overrides: Mapping[str, float] | None = None,
 ) -> list[FileRelevance]:
     """Recalcula e grava os segmentos de cada arquivo da sessão (substitui os anteriores)."""
     session = db.get(RecordingSession, session_id)
@@ -78,7 +79,7 @@ def relevance_session(
     if params is None:  # pesos aceitos pelo criador no Studio (7E); sem calibração, os padrão
         from cronista.review.learning import params_for_project
 
-        params = params_for_project(db, session.project_id)
+        params = params_for_project(db, session.project_id, overrides)
     return [_one_file(db, m, params) for m in sorted(session.media_files, key=lambda m: m.ordinal)]
 
 
@@ -95,39 +96,3 @@ def _one_file(db: Session, media: MediaFile, params: RelevanceParams) -> FileRel
 
 def load_segments(db: Session, media_id: int) -> list[Segment]:
     return events_to_segments(load_events(db, media_id, stage=STAGE))
-
-
-def product_seconds(segments: list[Segment], keep_score: float = 0.35) -> float:
-    """Estimativa do material mantido: trechos relevantes (cada um limitado) e farm em timelapse."""
-    total = 0.0
-    for s in segments:
-        if s.classe == "descartavel":
-            continue
-        if s.classe == "farm":
-            total += min(s.duration_s / TIMELAPSE_FACTOR, MAX_FARM_S)
-        elif s.score >= keep_score:
-            total += min(float(s.duration_s), MAX_KEPT_S)
-    return total
-
-
-def series_panel(db: Session) -> list[dict[str, float | int]]:
-    """Painel da série: por sessão, horas gravadas e minutos estimados de produto, e o acumulado."""
-    rows: list[dict[str, float | int]] = []
-    cumulative = 0.0
-    for session in db.scalars(select(RecordingSession).order_by(RecordingSession.id)):
-        raw = kept = 0.0
-        for media in session.media_files:
-            segs = load_segments(db, media.id)
-            if segs:
-                raw += max(s.end_s for s in segs)
-                kept += product_seconds(segs)
-        cumulative += kept
-        rows.append(
-            {
-                "sessao": session.id,
-                "gravado_h": round(raw / 3600, 2),
-                "produto_min": round(kept / 60, 1),
-                "acumulado_min": round(cumulative / 60, 1),
-            }
-        )
-    return rows

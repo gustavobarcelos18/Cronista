@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 from cronista.config import Settings
-from cronista.pipeline.stage import StageError
+from cronista.media.ffmpeg import run_ffmpeg_stderr
 
 
 @dataclass(frozen=True)
@@ -36,21 +35,9 @@ def parse_ebur128(stderr: str) -> Loudness:
 
 
 def measure(settings: Settings, wav: Path) -> Loudness:
-    cmd = [
-        settings.ffmpeg,
-        "-hide_banner",
-        "-nostats",
-        "-i",
-        str(wav),
-        "-af",
-        "ebur128=peak=true",
-        "-f",
-        "null",
-        "-",
-    ]
-    proc = subprocess.run(
-        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+    stderr = run_ffmpeg_stderr(
+        settings,
+        ["-nostats", "-i", str(wav), "-af", "ebur128=peak=true", "-f", "null", "-"],
+        what=f"medir {wav.name}",
     )
-    if proc.returncode != 0:
-        raise StageError(f"ffmpeg falhou ao medir {wav.name}: {proc.stderr.strip()[-300:]}")
-    return parse_ebur128(proc.stderr)
+    return parse_ebur128(stderr)

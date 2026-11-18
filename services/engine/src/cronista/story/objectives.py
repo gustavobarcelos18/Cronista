@@ -86,6 +86,8 @@ CONCLUSION = re.compile(
 )
 FAILURE = re.compile(r"\b(morri|perdi tudo|falhei|nao consegui|fracassei)\b[^.!?]{0,60}", re.IGNORECASE)
 HYPOTHETICAL = re.compile(r"\b(se eu|e se|talvez|quem sabe|imagina se|poderia)\b", re.IGNORECASE)
+MIN_SHARED_FRACTION = 0.5
+"""Fração das palavras-chave do objetivo que a fala precisa ter (uma palavra solta, como "grande", não liga)."""
 STOP = {"de", "do", "da", "o", "a", "os", "as", "um", "uma", "que", "pra", "para", "e", "no", "na", "em"}
 
 
@@ -110,12 +112,16 @@ class RuleExtractor:
             if match := DECLARATION.search(norm):
                 title = match.group(0).strip()
                 out.append(Candidate(title, ObjKind.SECUNDARIO, ObjState.PROPOSTO, text, *frames, 0.4))
-            for pattern, state in ((CONCLUSION, ObjState.CONCLUIDO), (FAILURE, ObjState.FALHOU)):
-                if not pattern.search(norm):
+            # "não consegui" contém "consegui": a falha sai do texto antes de procurar a conclusão.
+            for pattern, state, scope in (
+                (CONCLUSION, ObjState.CONCLUIDO, FAILURE.sub(" ", norm)),
+                (FAILURE, ObjState.FALHOU, norm),
+            ):
+                if not pattern.search(scope):
                     continue
                 words = keywords(text)
                 for title, kws in self.known:
-                    if kws and words & kws:
+                    if kws and len(words & kws) / len(kws) >= MIN_SHARED_FRACTION:
                         out.append(Candidate(title, ObjKind.SECUNDARIO, state, text, *frames, 0.5))
         return out
 
@@ -230,8 +236,18 @@ def discover(
                 ObjState.INCERTO
             )  # declaração não é conclusão nem falha: sem marcador por perto, só hipótese
         prior = current_state(db, obj.id, session_id)
-        if prior is not None and prior.state == state.value and prior.ev_quote == cand.quote:
-            continue  # nada mudou: reexecutar não cria transição falsa nem engorda a tabela
+        if prior is not None and prior.origin == "humano":
+            continue  # decisão do criador nunca é sobrescrita por reexecução
+        already = db.scalar(
+            select(ObjectiveState.id).where(
+                ObjectiveState.objective_id == obj.id,
+                ObjectiveState.session_id == session_id,
+                ObjectiveState.state == state.value,
+                ObjectiveState.ev_quote == cand.quote,
+            )
+        )
+        if already is not None:
+            continue  # (objetivo, estado, citação) já gravado: reexecutar não duplica nem alterna o estado
         set_state(
             db, obj.id, session_id, state, source="transcricao", quote=cand.quote,
             start_frame=cand.start_frame, end_frame=cand.end_frame, confidence=cand.confidence,

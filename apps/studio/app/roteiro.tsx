@@ -2,8 +2,7 @@
 
 import type { Script, ScriptLine, ScriptOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+import { ApiError, getJson, send } from "../lib/api";
 
 export default function Roteiro({ sessionId }: { sessionId: number }) {
   const [script, setScript] = useState<Script | null>(null);
@@ -12,15 +11,15 @@ export default function Roteiro({ sessionId }: { sessionId: number }) {
   const [status, setStatus] = useState<string>("");
 
   useEffect(() => {
-    fetch(`${API}/sessions/${sessionId}/script`)
-      .then(async (res) => {
-        if (!res.ok) {
-          setStatus("Roteiro ainda não importado (`cronista roteiro-import`).");
-          return;
-        }
-        setScript(((await res.json()) as ScriptOut).script);
-      })
-      .catch(() => setStatus("Engine fora do ar."));
+    getJson<ScriptOut>(`/sessions/${sessionId}/script`)
+      .then((out) => setScript(out.script))
+      .catch((e: Error) =>
+        setStatus(
+          e instanceof ApiError && e.status === 404
+            ? "Roteiro ainda não importado (`cronista roteiro-import`)."
+            : e.message,
+        ),
+      );
   }, [sessionId]);
 
   function edit(index: number, text: string) {
@@ -39,18 +38,17 @@ export default function Roteiro({ sessionId }: { sessionId: number }) {
   async function save() {
     if (!script) return;
     setStatus("Salvando…");
-    const res = await fetch(`${API}/sessions/${sessionId}/script`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(script),
-    });
-    if (!res.ok) {
-      const body = (await res.json()) as { detail?: { errors?: string[]; message?: string } };
-      setErrors(body.detail?.errors ?? [body.detail?.message ?? `erro ${res.status}`]);
+    let out: ScriptOut;
+    try {
+      out = await send<ScriptOut>(`/sessions/${sessionId}/script`, script, "PUT");
+    } catch (e) {
+      const body = e instanceof ApiError ? (e.body as { detail?: { errors?: string[]; message?: string } } | null) : null;
+      const detail = body?.detail;
+      const fromBody = detail && typeof detail === "object" ? (detail.errors ?? (detail.message ? [detail.message] : null)) : null;
+      setErrors(fromBody ?? [e instanceof Error ? e.message : "erro ao salvar"]);
       setStatus("Não salvo.");
       return;
     }
-    const out = (await res.json()) as ScriptOut;
     setScript(out.script);
     setWarnings(out.warnings ?? []);
     setErrors([]);

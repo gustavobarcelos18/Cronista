@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+import { send as post } from "../lib/api";
 
 /** Feedback em texto livre sobre um segmento (Q26). Fica guardado; a interpretação automática ainda não existe. */
 export default function Feedback({ mediaId, segStart }: { mediaId: number; segStart: number }) {
@@ -11,18 +10,15 @@ export default function Feedback({ mediaId, segStart }: { mediaId: number; segSt
   const [status, setStatus] = useState("");
 
   async function send() {
-    const res = await fetch(`${API}/media/${mediaId}/feedback`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, seg_start_s: segStart }),
-    });
-    if (res.ok) {
-      setText("");
-      setOpen(false);
-      setStatus("Anotado.");
-    } else {
-      setStatus(`erro ${res.status}`);
+    try {
+      await post(`/media/${mediaId}/feedback`, { text, seg_start_s: segStart });
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "erro ao enviar");
+      return;
     }
+    setText("");
+    setOpen(false);
+    setStatus("Anotado.");
   }
 
   if (!open) {

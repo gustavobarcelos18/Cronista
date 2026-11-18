@@ -42,7 +42,7 @@ def upgrade_db(engine: Engine) -> None:
 
 @contextmanager
 def open_db(db_path: Path, *, migrate: bool = True) -> Iterator[Session]:
-    """`migrate=False` pula o Alembic (a API migra uma vez na partida e reabre o banco a cada requisição)."""
+    """`migrate=False` pula o Alembic (para quem já migrou o banco)."""
     engine = make_engine(db_path)
     if migrate:
         upgrade_db(engine)

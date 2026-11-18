@@ -19,7 +19,7 @@ Escreve `roteiro.json` para a sessão. Entrada: `data/<ambiente>/story/<sessão>
    distorcer fatos. Toda antecipação leva `"kind": "antecipacao"` e `"justification"`.
 5. **Fim direto.** Se o desfecho real foi fracasso, preserve o fracasso (beat `falha`).
 6. **Tom do criador.** Use `voice-profile.json` (tamanho de frase, bordões, palavras frequentes). Frases curtas, de um
-   fôlego (até ~25 palavras). Sem voz de IA: depois de escrever, rode `/humanizar`.
+   fôlego (até 28 palavras, o limite do `roteiro-lint`). Sem voz de IA: depois de escrever, rode `/humanizar`.
 7. **Duração.** Cada fala cabe nas `lacunas` do seu beat (≈ 2,6 palavras por segundo). O criador corta se ficar curto
    ou estende se ficar longo; o roteiro não depende da duração prevista.
 

@@ -8,7 +8,8 @@ import type {
   SessionOut,
   WaveformOut,
 } from "@cronista/contracts";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { API, getJson, send } from "../lib/api";
 import Acabamento from "./acabamento";
 import Aprendizado from "./aprendizado";
 import Embalagem from "./embalagem";
@@ -17,8 +18,6 @@ import Feedback from "./feedback";
 import Painel from "./painel";
 import Progresso from "./progresso";
 import Roteiro from "./roteiro";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
 
 type MediaFile = MediaFileOut;
 type Session = SessionOut;
@@ -33,11 +32,6 @@ function fmt(total: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`);
-  if (!res.ok) throw new Error(`${path}: ${res.status}`);
-  return (await res.json()) as T;
-}
 
 export default function Revisao() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -58,6 +52,7 @@ export default function Revisao() {
   }, []);
 
   function pick(file: MediaFile, session: number, project: number) {
+    setError(null);
     setMedia(file);
     setSessionId(session);
     setProjectId(project);
@@ -77,17 +72,14 @@ export default function Revisao() {
 
   async function decide(g: Segment, body: DecisionIn) {
     if (!media) return;
-    const res = await fetch(`${API}/media/${media.id}/segments/${g.start_s}/decision`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { detail?: unknown } | null;
-      setError(typeof body?.detail === "string" ? body.detail : `decisão: ${res.status}`);
+    let updated: Segment;
+    try {
+      updated = await send<Segment>(`/media/${media.id}/segments/${g.start_s}/decision`, body);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "decisão: erro desconhecido");
       return;
     }
-    const updated = (await res.json()) as Segment;
+    setError(null);
     setSegments((all) => all.map((x) => (x.start_s === g.start_s ? updated : x)));
     setDecisaoVersao((versao) => versao + 1);
   }
@@ -172,13 +164,16 @@ export default function Revisao() {
                 </li>
               ))}
             </ol>
-            {sessionId !== null && <Roteiro key={sessionId} sessionId={sessionId} />}
-            {projectId !== null && <Aprendizado key={projectId} projectId={projectId} />}
-            {sessionId !== null && projectId !== null && (
-              <Acabamento key={sessionId} sessionId={sessionId} projectId={projectId} />
+            {sessionId !== null && (
+              // Um só pai com `key`: quando a sessão muda, os quatro painéis remontam juntos.
+              <Fragment key={sessionId}>
+                <Roteiro sessionId={sessionId} />
+                {projectId !== null && <Aprendizado key={projectId} projectId={projectId} />}
+                {projectId !== null && <Acabamento sessionId={sessionId} projectId={projectId} />}
+                <Embalagem sessionId={sessionId} />
+                <Exportar sessionId={sessionId} />
+              </Fragment>
             )}
-            {sessionId !== null && <Embalagem key={sessionId} sessionId={sessionId} />}
-            {sessionId !== null && <Exportar key={sessionId} sessionId={sessionId} />}
           </>
         ) : (
           <p>Escolha um arquivo à esquerda.</p>

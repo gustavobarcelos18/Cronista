@@ -133,10 +133,8 @@ class SimpleObsLink:
         return directory
 
     async def create_chapter(self, name: str) -> bool:
-        try:
-            await self._call("CreateRecordChapter", {"chapterName": name})
-        except ObsError:
-            return False
+        """Cria o capítulo. Erro do OBS sobe como `ObsError` (o gravador mostra o motivo ao criador)."""
+        await self._call("CreateRecordChapter", {"chapterName": name})
         return True
 
     async def close(self) -> None:

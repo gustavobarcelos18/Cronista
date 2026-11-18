@@ -28,7 +28,7 @@ def resolve_hotkeys(config: dict[str, str | None]) -> dict[MarkerKind, str]:
     for kind in REQUIRED:
         if kind not in keys:
             raise HotkeyConfigError(f"a tecla '{kind.value}' é obrigatória (plano mestre, seção 4)")
-    combos = list(keys.values())
+    combos = [c.lower() for c in keys.values()]
     if len(set(combos)) != len(combos):
         raise HotkeyConfigError("duas ações com a mesma tecla")
     return keys

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import base64
 import html
-import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -18,6 +17,7 @@ from cronista.audio.signals import Signal
 from cronista.config import Settings
 from cronista.db.models import Marker
 from cronista.domain.frames import FPS
+from cronista.media.ffmpeg import grab_frame
 
 VIDEO_STAGES = (
     "video_signals",
@@ -58,17 +58,10 @@ def is_video_event(stored: StoredEvent) -> bool:
 
 def thumbnail(settings: Settings, proxy: Path, frame: int) -> str | None:
     """JPEG do quadro `frame` (60 fps) em data URI, ou `None` se o FFmpeg não conseguir."""
-    cmd = [
-        settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", f"{frame / FPS:.2f}", "-i", str(proxy),
-        "-frames:v", "1", "-vf", f"scale={THUMB_WIDTH}:-2", "-f", "image2pipe", "-c:v", "mjpeg", "-",
-    ]  # fmt: skip
-    try:
-        proc = subprocess.run(cmd, capture_output=True, check=False, timeout=60)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if proc.returncode != 0 or not proc.stdout:
-        return None
-    return "data:image/jpeg;base64," + base64.b64encode(proc.stdout).decode("ascii")
+    data = grab_frame(
+        settings, proxy, frame, f"scale={THUMB_WIDTH}:-2", ["-f", "image2pipe", "-c:v", "mjpeg", "-"]
+    )
+    return None if data is None else "data:image/jpeg;base64," + base64.b64encode(data).decode("ascii")
 
 
 def state_lanes(events: list[StoredEvent], markers: list[Marker], total_frames: int) -> str:

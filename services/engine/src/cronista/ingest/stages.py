@@ -8,7 +8,8 @@ from typing import Any
 
 from cronista.config import Settings
 from cronista.domain.models import MediaProbe, StageResult
-from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
+from cronista.ingest.ffmpeg import probe_media
+from cronista.media.ffmpeg import run_ffmpeg
 from cronista.pipeline.stage import Stage, StageContext, StageError
 
 MIN_AUDIO_TRACKS = 3  # 1 = mix, 2 = jogo, 3 = microfone (plano mestre, seção 2)

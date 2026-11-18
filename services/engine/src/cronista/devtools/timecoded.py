@@ -20,7 +20,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from cronista.config import Settings
-from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.media.ffmpeg import run_ffmpeg
 
 WALL_SPAN_S = 20.0
 SIZE = "320x180"

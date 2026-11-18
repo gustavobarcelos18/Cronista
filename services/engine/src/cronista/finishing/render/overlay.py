@@ -20,12 +20,13 @@ from functools import partial
 from pathlib import Path
 
 from cronista.config import Settings
+from cronista.domain.frames import FPS
 from cronista.finishing.brand import DeathCounter, Visual
 from cronista.finishing.effects import EffectKind, EffectMode
-from cronista.finishing.plan import FPS, FinishItem, FinishPlan
+from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.atomic import render_to
 from cronista.finishing.render.video import HEIGHT, WIDTH, filter_path
-from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.media.ffmpeg import run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 
 MARGIN_PX = 80

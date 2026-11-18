@@ -138,8 +138,14 @@ def test_segmentos_efetivos_aplicam_decisoes(db: Session) -> None:
     assert [s.start_s for s in load_effective_segments(db, 1)] == [10, 32, 50]
 
 
-def test_api_roteiro_edita_e_guarda_historico(settings: Settings) -> None:
+def test_api_roteiro_edita_e_guarda_historico(settings: Settings, db: Session) -> None:
     import json
+
+    _seed(db)
+    unknown = TestClient(create_app(settings))
+    assert unknown.get("/sessions/99/script").status_code == 404  # D13a
+    assert unknown.put("/sessions/99/script", json={"lines": []}).status_code == 404
+    assert not (settings.data_dir / "story" / "99").exists()
 
     folder = settings.data_dir / "story" / "1"
     folder.mkdir(parents=True)
@@ -260,13 +266,13 @@ def test_api_painel_da_serie(settings: Settings, db: Session) -> None:
     segs = [Segment(0, 30, "conquista", 0.9), Segment(60, 90, "morte_falha", 0.8)]
     replace_events(db, 1, "relevance", "", segments_to_events(segs, RelevanceParams()))
     client = TestClient(create_app(settings))
-    panel = client.get("/series").json()
-    assert panel["total_min"] == 1.0 and panel["situacao"] == "faltando"
+    panel = client.get("/series").json()["projetos"][0]
+    assert panel["total_min"] == 1.0 and panel["situacao"] == "abaixo_da_referencia"  # sem clímax no arco
     assert panel["sessoes"][0]["dias"] == 1
     assert set(panel["por_classe_min"]) == {"conquista", "morte_falha"}
 
     record_decision(db, 1, 60, "rejeitado")  # rejeitar baixa a estimativa
-    assert client.get("/series").json()["total_min"] == 0.5
+    assert client.get("/series").json()["projetos"][0]["total_min"] == 0.5
 
 
 def test_painel_avisa_capitulos_curtos_e_recalcula_apos_revisao(settings: Settings, db: Session) -> None:
@@ -307,15 +313,15 @@ def test_painel_avisa_capitulos_curtos_e_recalcula_apos_revisao(settings: Settin
         ),
     )
     client = TestClient(create_app(settings))
-    chapter_2 = {"projeto_id": 1, "projeto": "serie", "capitulo": 2, "produto_s": 10.0}
+    chapter_2 = {"capitulo": 2, "produto_s": 10.0}
     before = client.get("/series").json()
     assert before["referencia_capitulo_s"] == 30
     # O primeiro capítulo soma 16 + 14 s, atravessa duas sessões e já alcança a referência.
-    assert before["capitulos_com_pouco_material"] == [chapter_2]
+    assert before["projetos"][0]["capitulos_com_pouco_material"] == [chapter_2]
 
     decision = client.post(f"/media/{next_media.id}/segments/0/decision", json={"decision": "rejeitado"})
     assert decision.status_code == 200
-    assert client.get("/series").json()["capitulos_com_pouco_material"] == [
+    assert client.get("/series").json()["projetos"][0]["capitulos_com_pouco_material"] == [
         {**chapter_2, "capitulo": 1, "produto_s": 16.0},
         chapter_2,
     ]
@@ -400,3 +406,12 @@ def test_salvar_roteiro_falha_sem_perder_o_atual(settings: Settings, monkeypatch
         service.save_script(folder, Script(lines=[ScriptLine(segment_id="s-1", text="Segunda versão.")]))
     assert "Primeira" in (folder / "roteiro.json").read_text(encoding="utf-8")  # o atual ficou intacto
     assert not (folder / "roteiro.v1.json").exists()
+
+
+def test_e7_studio_origin_comes_from_the_settings(settings: Settings) -> None:
+    custom = settings.model_copy(update={"studio_origins": ["http://localhost:3001"]})
+    client = TestClient(create_app(custom))
+    ok = client.post("/projects/1/learning/accept", headers={"Origin": "http://localhost:3001"})
+    assert ok.status_code != 403
+    other = client.post("/projects/1/learning/accept", headers={"Origin": "http://localhost:3000"})
+    assert other.status_code == 403

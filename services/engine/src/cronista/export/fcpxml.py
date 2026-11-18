@@ -16,15 +16,10 @@ from fractions import Fraction
 
 import opentimelineio as otio
 
-from cronista.export.timeline import FPS
+from cronista.domain.frames import FPS, fcpxml_time
+from cronista.export.fcpxml_base import add_asset, new_skeleton, serialize
 
-WIDTH, HEIGHT = 1920, 1080
 _TIME_ATTRS = ("offset", "duration", "start")
-_XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n\n'
-
-
-def _t(frames: float) -> str:
-    return f"{round(frames)}/{FPS}s"
 
 
 def render_fcpxml(timeline: otio.schema.Timeline) -> str:
@@ -32,46 +27,18 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
     video = next(t for t in timeline.tracks if t.kind == otio.schema.TrackKind.Video)
     audio = [t for t in timeline.tracks if t.kind == otio.schema.TrackKind.Audio]
 
-    root = ET.Element("fcpxml", version="1.9")
-    resources = ET.SubElement(root, "resources")
-    ET.SubElement(
-        resources,
-        "format",
-        id="r1",
-        name=f"FFVideoFormat{HEIGHT}p{FPS}",
-        frameDuration=f"1/{FPS}s",
-        width=str(WIDTH),
-        height=str(HEIGHT),
-    )
+    skeleton = new_skeleton(timeline.name or "sessao")
+    resources, sequence, spine = skeleton.resources, skeleton.sequence, skeleton.spine
     ids: dict[str, str] = {}
 
     def asset_id(clip: otio.schema.Clip, is_video: bool) -> str:
         url = clip.media_reference.target_url
         if url not in ids:
             ids[url] = f"r{len(ids) + 2}"
-            rng = clip.media_reference.available_range
-            attrs = {
-                "id": ids[url],
-                "name": clip.media_reference.name or url.rsplit("/", 1)[-1],
-                "src": url,
-                "start": "0s",
-                "duration": _t(rng.duration.value),
-            }
-            if is_video:  # o áudio do mestre fica de fora: o do jogo e o do microfone vêm dos WAVs
-                attrs |= {"format": "r1", "hasVideo": "1", "hasAudio": "0"}
-            else:
-                attrs |= {"hasVideo": "0", "hasAudio": "1", "audioSources": "1", "audioChannels": "2"}
-                attrs["audioRate"] = "48000"
-            ET.SubElement(resources, "asset", attrs)
+            name = clip.media_reference.name or url.rsplit("/", 1)[-1]
+            frames = int(clip.media_reference.available_range.duration.value)
+            add_asset(resources, ids[url], name, url, frames, video=is_video)
         return ids[url]
-
-    library = ET.SubElement(root, "library")
-    event = ET.SubElement(library, "event", name="Cronista")
-    project = ET.SubElement(event, "project", name=timeline.name or "sessao")
-    sequence = ET.SubElement(
-        project, "sequence", format="r1", tcStart="0s", tcFormat="NDF", audioLayout="stereo", audioRate="48k"
-    )
-    spine = ET.SubElement(sequence, "spine")
 
     cursor = 0
     for index, clip in enumerate(video):
@@ -82,9 +49,9 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
             "asset-clip",
             ref=asset_id(clip, True),
             name=clip.name,
-            offset=_t(cursor),
-            start=_t(start),
-            duration=_t(duration),
+            offset=fcpxml_time(cursor),
+            start=fcpxml_time(start),
+            duration=fcpxml_time(duration),
             format="r1",
             tcFormat="NDF",
         )
@@ -99,15 +66,14 @@ def render_fcpxml(timeline: otio.schema.Timeline) -> str:
                 ref=asset_id(child, False),
                 lane=str(-lane),
                 name=child.name,
-                offset=_t(start),
-                start=_t(start),
-                duration=_t(duration),
+                offset=fcpxml_time(start),
+                start=fcpxml_time(start),
+                duration=fcpxml_time(duration),
             )
         cursor += duration
-    sequence.set("duration", _t(cursor))
+    sequence.set("duration", fcpxml_time(cursor))
 
-    ET.indent(root, space="  ")
-    return _XML_HEAD + ET.tostring(root, encoding="unicode") + "\n"
+    return serialize(skeleton.root)
 
 
 def _parse_time(text: str) -> Fraction | None:

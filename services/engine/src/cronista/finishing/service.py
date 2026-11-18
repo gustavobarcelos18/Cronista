@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from cronista.assembly.plan import LIVE_MODES, EditPlan, Track
+from cronista.assembly.plan import LIVE_MODES, EditItem, EditPlan
 from cronista.assembly.service import assemble
 from cronista.config import Settings
 from cronista.db.models import (
@@ -19,6 +19,7 @@ from cronista.db.models import (
     RecordingSession,
     SegmentDecision,
 )
+from cronista.domain.tracks import Track
 from cronista.finishing.brand import ResolvedStyle
 from cronista.finishing.library import Library
 from cronista.finishing.plan import (
@@ -39,11 +40,36 @@ def marker_kinds_by_segment(chapters: Sequence[Chapter]) -> dict[str, frozenset[
     }
 
 
-def moments_from_plan(plan: EditPlan, kinds: Mapping[str, frozenset[str]]) -> list[Moment]:
-    """Um momento por corte de V1, em tempo de timeline. Sem pico conhecido, o pico é o meio do corte.
+PEAK_PRIORITY = ("morte_falha", "conquista", "engracado", "momento")
+"""Qual marcador do criador manda no pico do corte quando há mais de um (o resto cai no primeiro)."""
 
-    Limite conhecido: cortes fundidos pela montagem guardam só os marcadores do primeiro trecho.
-    """
+MarkerFrames = Mapping[int, Sequence[tuple[int, str]]]
+"""`file_id` → `(quadro no arquivo, tipo)` de cada marcador do criador."""
+
+
+def marker_peaks(db: Session, session_id: int) -> dict[int, list[tuple[int, str]]]:
+    """Marcadores do criador por arquivo: o pico do zoom é onde ele apertou a tecla."""
+    out: dict[int, list[tuple[int, str]]] = {}
+    for marker in db.scalars(select(Marker).where(Marker.session_id == session_id)):
+        if marker.media_file_id is not None:
+            out.setdefault(marker.media_file_id, []).append((marker.media_frame, marker.kind))
+    return out
+
+
+def _peak_in_timeline(item: EditItem, marks: Sequence[tuple[int, str]]) -> int | None:
+    inside = [(f, k) for f, k in marks if item.in_frame <= f < item.out_frame]
+    if not inside:
+        return None
+    rank = {kind: n for n, kind in enumerate(PEAK_PRIORITY)}
+    frame = min(inside, key=lambda m: (rank.get(m[1], len(rank)), m[0]))[0]
+    return item.timeline_start + (frame - item.in_frame) // max(item.speed, 1)
+
+
+def moments_from_plan(
+    plan: EditPlan, kinds: Mapping[str, frozenset[str]], peaks: MarkerFrames | None = None
+) -> list[Moment]:
+    """Um momento por corte de V1, em tempo de timeline. O pico é o marcador do criador no corte; sem ele,
+    o pico é o meio do corte."""
     return [
         Moment(
             id=f"{item.file_id}:{item.segment_id}:{item.timeline_start}",
@@ -53,7 +79,8 @@ def moments_from_plan(plan: EditPlan, kinds: Mapping[str, frozenset[str]]) -> li
             score=min(1.0, max(0.0, item.score)),
             beat=item.beat,
             live=item.mode in LIVE_MODES,
-            tags=kinds.get(item.segment_id, frozenset()),
+            tags=frozenset().union(*(kinds.get(sid, frozenset()) for sid in item.segment_ids)),
+            peak=_peak_in_timeline(item, (peaks or {}).get(item.file_id, ())),
         )
         for item in plan.items
         if item.track == Track.V1
@@ -74,9 +101,10 @@ def finish_from_edit_plan(
     kinds: Mapping[str, frozenset[str]],
     style: ResolvedStyle,
     library: Library | None = None,
+    peaks: MarkerFrames | None = None,
 ) -> FinishPlan:
     return build_finish_plan(
-        moments_from_plan(plan, kinds),
+        moments_from_plan(plan, kinds, peaks),
         style.effects,
         total_frames=plan.total_frames,
         max_total_per_minute=style.max_effects_per_minute,
@@ -99,7 +127,9 @@ def build_finishing(
 ) -> FinishPlan:
     """`assembled` reaproveita uma montagem já feita (a prévia do Studio guarda uma por sessão e alvo)."""
     plan, story = assembled or assemble(db, session_id, settings, target_s, profile_objectives)
-    return finish_from_edit_plan(plan, marker_kinds_by_segment(story.chapters), style, library)
+    return finish_from_edit_plan(
+        plan, marker_kinds_by_segment(story.chapters), style, library, marker_peaks(db, session_id)
+    )
 
 
 def write_finish_plan(plan: FinishPlan, directory: Path, session_id: int) -> Path:

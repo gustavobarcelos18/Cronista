@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
+
+from cronista.domain.frames import FPS
 
 DEFAULT_HOTKEYS: dict[str, str | None] = {
     "momento": "<f13>",
@@ -52,6 +54,12 @@ class Settings(BaseModel):
     audio_models: bool = (
         False  # liga os modelos reais de áudio (grupo `ml`, só prod); dev usa só os sinais de CPU
     )
+    studio_origins: list[
+        str
+    ] = []  # origens do Studio aceitas pelo engine; vazio = localhost/127.0.0.1 na :3000
+    scream_enabled: bool = (
+        False  # detector de grito por energia: reprovado (0/8, histórico §46), só experimento
+    )
     profiles_dir: Path | None = None  # padrão: `profiles/` na raiz do repositório
     models_dir: Path | None = None  # padrão: data/models (fora do git)
     brand_dir: Path | None = None  # brand kit versionado; padrão: `packages/brand-kit/` na raiz do repo
@@ -67,7 +75,21 @@ class Settings(BaseModel):
     vlm_model: str = ""  # checkpoint do VLM local (3C-4), ex.: Qwen/Qwen3-VL-4B-Instruct; vazio = desligado
     vlm_4bit: bool = False
     video_embedder: str = ""  # checkpoint de embeddings de quadro (3B); vazio = desligado, sem baixar nada
+    script_provider: Literal["null", "local"] = "null"
+    """Roteiro local (experimental, §40): só vale com `script_benchmark_ok`; senão, `NullProvider`."""
+    script_benchmark_ok: bool = False
+    """Marcar `true` (em *.local.yaml) só depois de o roteiro local passar no benchmark."""
     log_level: str = "INFO"
+
+    @field_validator("expected_fps")
+    @classmethod
+    def _only_the_fixed_fps(cls, value: str) -> str:
+        """Toda a conta de tempo é a 60 fps exatos (`domain.frames.FPS`): outro valor não funciona."""
+        if value != f"{FPS}/1":
+            raise ValueError(
+                f"expected_fps só pode ser '{FPS}/1' (o Cronista é 60 fps exatos), veio '{value}'"
+            )
+        return value
 
     @field_validator("marker_hotkeys")
     @classmethod

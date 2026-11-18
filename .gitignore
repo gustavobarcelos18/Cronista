@@ -41,3 +41,6 @@ Thumbs.db
 # Claude Code (configurações locais da máquina)
 .claude/settings.local.json
 *.tsbuildinfo
+
+# Gerado pelo Next
+apps/studio/next-env.d.ts

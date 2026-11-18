@@ -6,8 +6,6 @@ corresponde ao quadro `i * hop_frames` a 60 fps (aritmética inteira, histórico
 
 from __future__ import annotations
 
-import subprocess
-import tempfile
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -16,6 +14,7 @@ import numpy.typing as npt
 
 from cronista.config import Settings
 from cronista.domain.frames import FPS
+from cronista.media.ffmpeg import grab_frame, pipe_raw
 from cronista.pipeline.stage import StageError
 
 SAMPLE_FPS = 5
@@ -71,32 +70,16 @@ def _iter_raw(
 ) -> Iterator[npt.NDArray[np.uint8]]:
     if FPS % sample_fps:
         raise ValueError(f"sample_fps={sample_fps} precisa dividir {FPS}")
-    cmd = [
-        settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(video),
-        "-an", "-vf", f"fps={sample_fps},scale={width}:{height}:flags=area,format={pix_fmt}",
+    args = [
+        "-i", str(video), "-an",
+        "-vf", f"fps={sample_fps},scale={width}:{height}:flags=area,format={pix_fmt}",
         "-f", "rawvideo", "-",
     ]  # fmt: skip
     size = width * height * channels
-    # stderr em arquivo: um pipe que ninguém drena enche (64 KB) e trava o ffmpeg com o stdout parado.
-    with tempfile.TemporaryFile() as err:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
-        assert proc.stdout is not None
-        try:
-            while True:
-                between_blocks()
-                data = proc.stdout.read(size * block)
-                usable = len(data) // size * size
-                if usable:
-                    yield np.frombuffer(data[:usable], dtype=np.uint8)
-                if len(data) < size * block:  # fim do fluxo (o pipe só devolve menos no EOF)
-                    break
-        finally:
-            proc.stdout.close()
-            code = proc.wait()
-        if code != 0:
-            err.seek(0)
-            stderr = err.read().decode(errors="replace")
-            raise StageError(f"ffmpeg falhou ({code}) ao ler quadros: {stderr.strip()[-500:]}")
+    for data in pipe_raw(
+        settings, args, chunk_bytes=size * block, unit_bytes=size, between=between_blocks, what="ler quadros"
+    ):
+        yield np.frombuffer(data, dtype=np.uint8)
 
 
 def iter_frames_every(
@@ -115,49 +98,30 @@ def iter_frames_every(
     """
     if every_s <= 0:
         raise ValueError("every_s precisa ser positivo")
-    cmd = [settings.ffmpeg, "-hide_banner", "-loglevel", "error"]
+    args: list[str] = []
     if start_s > 0:
-        cmd += ["-ss", f"{start_s:.3f}"]
+        args += ["-ss", f"{start_s:.3f}"]
     if end_s is not None:
-        cmd += ["-t", f"{max(end_s - start_s, 0):.3f}"]
-    cmd += [
+        args += ["-t", f"{max(end_s - start_s, 0):.3f}"]
+    args += [
         "-i", str(video), "-an",
         "-vf", f"fps=1/{every_s:g},scale={width}:{height}:flags=area,format=rgb24",
         "-f", "rawvideo", "-",
     ]  # fmt: skip
     size = width * height * 3
-    with tempfile.TemporaryFile() as err:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
-        assert proc.stdout is not None
-        index = 0
-        try:
-            while True:
-                data = proc.stdout.read(size)
-                if len(data) < size:
-                    break
-                yield start_s + index * every_s, np.frombuffer(data, dtype=np.uint8).reshape(height, width, 3)
-                index += 1
-        finally:
-            proc.stdout.close()
-            code = proc.wait()
-        if code != 0:
-            err.seek(0)
-            detail = err.read().decode(errors="replace").strip()[-500:]
-            raise StageError(f"ffmpeg falhou ({code}) ao ler o master: {detail}")
+    for index, data in enumerate(
+        pipe_raw(settings, args, chunk_bytes=size, unit_bytes=size, what="ler o master")
+    ):
+        yield start_s + index * every_s, np.frombuffer(data, dtype=np.uint8).reshape(height, width, 3)
 
 
 def read_rgb_frame(
     settings: Settings, video: Path, frame: int, width: int, height: int
 ) -> npt.NDArray[np.uint8]:
     """Um quadro RGB `(altura, largura, 3)` do quadro `frame` (60 fps), esticado para `width` x `height`."""
-    cmd = [
-        settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", f"{frame / FPS:.3f}", "-i", str(video),
-        "-frames:v", "1", "-vf", f"scale={width}:{height}:flags=area,format=rgb24", "-f", "rawvideo", "-",
-    ]  # fmt: skip
-    try:
-        proc = subprocess.run(cmd, capture_output=True, check=False, timeout=60)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise StageError(f"não consegui ler o quadro {frame} de {video}: {exc}") from exc
-    if proc.returncode != 0 or len(proc.stdout) != width * height * 3:
+    data = grab_frame(
+        settings, video, frame, f"scale={width}:{height}:flags=area,format=rgb24", ["-f", "rawvideo", "-"]
+    )
+    if data is None or len(data) != width * height * 3:
         raise StageError(f"ffmpeg não devolveu o quadro {frame} de {video}")
-    return np.frombuffer(proc.stdout, dtype=np.uint8).reshape(height, width, 3)
+    return np.frombuffer(data, dtype=np.uint8).reshape(height, width, 3)

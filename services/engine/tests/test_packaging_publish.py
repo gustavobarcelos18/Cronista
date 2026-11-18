@@ -53,7 +53,7 @@ def make_shorts(folder: Path, session_id: int, n: int = 4, *, render: bool = Tru
     if render:
         for r in rows:
             (folder / f"short-1-{r['start_frame']}-{r['end_frame']}-abc123.mp4").write_bytes(b"mp4")
-    return [f"1-{r['start_frame']}" for r in rows]
+    return [f"1-{r['start_frame']}-{r['end_frame']}" for r in rows]
 
 
 def make_thumbnails(folder: Path, names: list[str]) -> None:
@@ -209,7 +209,7 @@ def test_sem_video_o_pacote_usa_o_corte_mais_recente(db: Session, session_id: in
     build_publish_package(db, session_id, shorts, pack, video=old)
     new.write_bytes(b"2")
     build_publish_package(db, session_id, shorts, pack, video=new)
-    os.utime(pack / "publicacao" / "serie-v1.mp4", (1, 1))
+    assert not (pack / "publicacao" / "serie-v1.mp4").exists()  # D5: o vídeo anterior sai da pasta
     report = build_publish_package(db, session_id, shorts, pack)  # sem --video, como o botão do Studio
     assert "serie-v2.mp4" in report.files and "serie-v1.mp4" not in report.files
 
@@ -260,9 +260,9 @@ def test_cli_fluxo_status_decidir_e_pacote(
     runner = CliRunner()
     status = runner.invoke(app, ["shorts-status", str(session_id)])
     assert status.exit_code == 0 and "pendente" in status.output and keys[0] in status.output
-    ok = runner.invoke(app, ["short-decidir", str(session_id), keys[0]])
+    ok = runner.invoke(app, ["shorts-decidir", str(session_id), keys[0], "--decisao", "aprovado"])
     assert ok.exit_code == 0 and f"{keys[0]}: aprovado" in ok.output
-    bad = runner.invoke(app, ["short-decidir", str(session_id), "9-9"])
+    bad = runner.invoke(app, ["shorts-decidir", str(session_id), "9-9", "--decisao", "aprovado"])
     assert bad.exit_code == 1
     pkg = runner.invoke(app, ["pacote-publicacao", str(session_id)])
     assert pkg.exit_code == 2 and "falta: título" in pkg.output  # incompleto: sai com 2 e lista o que falta

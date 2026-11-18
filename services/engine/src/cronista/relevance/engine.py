@@ -34,18 +34,10 @@ MARKER_WEIGHT: dict[str, float] = {
     "foto_progresso": 0.3,
 }
 """Peso de cada tipo de marcador na nota (tocar uma tecla já é um voto do criador)."""
-LOOKBACK_S: dict[str, float] = {
-    "momento": 25.0,
-    "engracado": 20.0,
-    "conquista": 20.0,
-    "morte_falha": 30.0,
-    "cinematica": 5.0,
-    "novo_dia": 5.0,
-    "construcao": 5.0,
-    "foto_progresso": 5.0,
-}
-"""Quanto antes do toque o trecho começa: o criador aperta depois de o momento acontecer."""
-TAIL_S = 8.0
+TIMELAPSE_FACTOR = 10.0
+MAX_KEPT_S = 45.0
+MAX_FARM_S = 20.0
+DEFAULT_LOOKBACK_S = 20.0
 
 
 @dataclass(frozen=True)
@@ -68,6 +60,22 @@ class RelevanceParams:
     w_pause: float = 0.5
     speech_gap_s: int = 4
     """Silêncio que separa dois blocos de fala."""
+    tail_s: float = 8.0
+    """Quanto depois do toque o trecho do marcador termina."""
+    lookback_momento: float = 25.0
+    lookback_engracado: float = 20.0
+    lookback_conquista: float = 20.0
+    lookback_morte_falha: float = 30.0
+    lookback_cinematica: float = 5.0
+    lookback_novo_dia: float = 5.0
+    lookback_construcao: float = 5.0
+    lookback_foto_progresso: float = 5.0
+    """Quanto antes do toque o trecho do marcador começa (o criador aperta depois de o momento acontecer).
+    Ajustável por perfil (grupo `relevance`); um tipo de marcador sem campo usa `DEFAULT_LOOKBACK_S`."""
+
+    def lookback(self, kind: str) -> float:
+        value = getattr(self, f"lookback_{kind}", None)
+        return float(value) if isinstance(value, float) else DEFAULT_LOOKBACK_S
 
 
 @dataclass
@@ -83,6 +91,25 @@ class Segment:
     @property
     def duration_s(self) -> int:
         return self.end_s - self.start_s
+
+
+def is_kept(seg: Segment, keep_score: float = RelevanceParams.keep_score) -> bool:
+    """Critério único de "material mantido" (painel, arco, qualidade).
+
+    Vale nota >= `keep_score`, farm, dia ou trecho com marcador (o voto do criador). Descartável nunca.
+    """
+    if seg.classe == "descartavel":
+        return False
+    return seg.classe in ("farm", "dia") or seg.score >= keep_score or bool(seg.markers)
+
+
+def kept_seconds(seg: Segment, keep_score: float = RelevanceParams.keep_score) -> float:
+    """Segundos que o segmento deve ocupar no vídeo: farm em timelapse, o resto limitado a `MAX_KEPT_S`."""
+    if not is_kept(seg, keep_score):
+        return 0.0
+    if seg.classe == "farm":
+        return min(seg.duration_s / TIMELAPSE_FACTOR, MAX_FARM_S)
+    return min(float(seg.duration_s), MAX_KEPT_S)
 
 
 @dataclass(frozen=True)
@@ -151,20 +178,39 @@ def marker_window(
     params: RelevanceParams,
 ) -> tuple[int, int]:
     """Janela do trecho de um marcador: lookback por tipo, depois encostada nas fronteiras naturais."""
-    start = _snap(marker.second - LOOKBACK_S.get(marker.kind, 20.0), anchors_start, params.snap_s)
-    end = _snap(marker.second + TAIL_S, anchors_end, params.snap_s)
+    start = _snap(marker.second - params.lookback(marker.kind), anchors_start, params.snap_s)
+    end = _snap(marker.second + params.tail_s, anchors_end, params.snap_s)
     start = max(0, min(start, int(marker.second)))
     end = min(n, max(end, math.ceil(marker.second) + 1))
     return start, end
 
 
-def _merge_windows(wins: list[tuple[int, int, list[str]]]) -> list[tuple[int, int, list[str]]]:
+def _merge_windows(
+    wins: list[tuple[int, int, list[str]]], max_s: int, boundary_ids: frozenset[str] = frozenset()
+) -> list[tuple[int, int, list[str]]]:
+    """Junta janelas de marcador que se sobrepõem, sem passar de `max_s` e sem atravessar um `novo_dia`.
+
+    Quando não pode juntar, divide no ponto de encontro: o marcador de fronteira (`boundary_ids`) mantém o
+    início do seu próprio trecho, e o resto fica com o que sobra. Janela inteira dentro da anterior só entrega
+    os ids.
+    """
     out: list[tuple[int, int, list[str]]] = []
     for a, b, ids in sorted(wins):
-        if out and a <= out[-1][1]:
-            out[-1] = (out[-1][0], max(out[-1][1], b), out[-1][2] + ids)
-        else:
+        if not out or a > out[-1][1]:
             out.append((a, b, list(ids)))
+            continue
+        pa, pb, pids = out[-1]
+        new_edge = bool(boundary_ids.intersection(ids))
+        old_edge = bool(boundary_ids.intersection(pids))
+        if not new_edge and not old_edge and max(pb, b) - pa <= max_s:
+            out[-1] = (pa, max(pb, b), pids + ids)
+        elif new_edge and a > pa:
+            out[-1] = (pa, a, pids)  # o `novo_dia` começa o trecho dele; o anterior termina ali
+            out.append((a, b, list(ids)))
+        elif b <= pb:
+            out[-1] = (pa, pb, pids + ids)  # inteira dentro da anterior: só entrega os ids
+        else:
+            out.append((pb, b, list(ids)))  # começa onde a anterior termina
     return out
 
 
@@ -209,7 +255,7 @@ def build_segments(
 ) -> list[Segment]:
     """Segmenta o arquivo todo, classifica e dá nota explicável a cada segmento (ordem do tempo)."""
     params = params or RelevanceParams()
-    ends = [_sec(e.evidence.end_frame) for e in events] + [m.second + TAIL_S for m in markers]
+    ends = [_sec(e.evidence.end_frame) for e in events] + [m.second + params.tail_s for m in markers]
     n = math.ceil(duration_s if duration_s is not None else max(ends, default=0.0))
     if n <= 0:
         return []
@@ -233,7 +279,9 @@ def build_segments(
     anchors_end = sorted({b for _, b in blocks} | ctx_starts | {a for a, _ in _runs(paused)})
 
     forced = _merge_windows(
-        [(*marker_window(m, anchors_start, anchors_end, n, params), [m.marker_id]) for m in markers]
+        [(*marker_window(m, anchors_start, anchors_end, n, params), [m.marker_id]) for m in markers],
+        params.max_s,
+        frozenset(m.marker_id for m in markers if m.kind == "novo_dia"),
     )
     spans: list[tuple[int, int, list[str]]] = list(forced)
     cursor = 0

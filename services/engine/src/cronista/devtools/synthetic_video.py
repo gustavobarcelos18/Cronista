@@ -88,12 +88,16 @@ def write_video(settings: Settings, path: Path, frames: Frames) -> None:
     """Codifica os quadros cinza em MP4 H.264 (qualidade alta, para os detalhes finos sobreviverem)."""
     import subprocess
 
+    from cronista.media.ffmpeg import ffmpeg_cmd
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
-        "-f", "rawvideo", "-pix_fmt", "gray", "-s", f"{WIDTH}x{HEIGHT}", "-r", str(FPS), "-i", "-",
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "12", "-pix_fmt", "yuv420p", str(path),
-    ]  # fmt: skip
+    cmd = ffmpeg_cmd(
+        settings,
+        [
+            "-f", "rawvideo", "-pix_fmt", "gray", "-s", f"{WIDTH}x{HEIGHT}", "-r", str(FPS), "-i", "-",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "12", "-pix_fmt", "yuv420p", str(path),
+        ],
+    )  # fmt: skip
     proc = subprocess.run(cmd, input=frames.tobytes(), capture_output=True, check=False)
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.decode(errors="replace")[-500:])

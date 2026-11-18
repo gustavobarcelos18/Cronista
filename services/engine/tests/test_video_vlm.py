@@ -34,7 +34,7 @@ CHOICES = ("inventory", "map", "other")
         ('{"answer": "map"}', "map"),
         ('Sure! {"answer": "inventory"} done', "inventory"),
         ('{"answer": "banana"}', None),  # fora das opções
-        ("It looks like an Inventory screen.", "inventory"),
+        ("It looks like an Inventory screen.", None),  # A6: texto livre não conta
         ("inventory or map", None),  # ambíguo: duas opções
         ("", None),
         ("{quebrado", None),
@@ -110,3 +110,7 @@ def test_stage_only_with_vlm() -> None:
     models = VideoModels(embedder=FakeEmbedder(), vlm=FakeVLM([]))
     assert "video_menu_names" in [s.name for s in video_stages(models)]
     assert "video_menu_names" not in [s.name for s in video_stages(VideoModels(embedder=FakeEmbedder()))]
+
+
+def test_a6_free_text_is_never_an_answer() -> None:
+    assert parse_answer("I think it is the map", CHOICES) is None

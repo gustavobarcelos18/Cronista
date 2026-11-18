@@ -19,7 +19,9 @@ from sqlalchemy.orm import Session
 
 from cronista.db.models import RecordingSession, ShortDecision
 from cronista.packaging.service import current_title
-from cronista.thumbnails.service import MANIFEST_NAME, current_thumbnail, load_manifest
+from cronista.paths import PUBLISH_DIR_NAME, shorts_manifest_in, thumbnails_in
+from cronista.shorts.candidates import short_key
+from cronista.thumbnails.service import current_thumbnail, valid_thumbnail_choice
 
 APPROVED = "aprovado"
 REJECTED = "rejeitado"
@@ -27,7 +29,6 @@ DEFAULT = "padrao"
 DECISIONS = (APPROVED, REJECTED)
 MIN_SHORTS = 3
 """Critério de aceite da Fase 9: pelo menos 3 Shorts aprovados."""
-PUBLISH_DIR = "publicacao"
 
 
 class PublishError(Exception):
@@ -47,31 +48,45 @@ class ShortEntry:
 
 
 def _manifest(shorts_folder: Path, session_id: int) -> dict[str, Any]:
-    path = shorts_folder / f"shorts-{session_id}.json"
+    path = shorts_manifest_in(shorts_folder, session_id)
     if not path.is_file():
         raise PublishError("sem Shorts; rode `cronista shorts-render` antes")
     data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return data
 
 
+def _clip_of(shorts_folder: Path, row: dict[str, Any]) -> Path | None:
+    """MP4 que o `shorts-render` gravou no manifesto (campo `clip`); `None` se não foi renderizado ou sumiu.
+
+    Manifesto antigo, sem o campo: cai no MP4 mais recente daquele trecho (comportamento anterior).
+    """
+    if "clip" in row:
+        path = shorts_folder / row["clip"] if row["clip"] else None
+        return path if path is not None and path.is_file() else None
+    found = sorted(
+        shorts_folder.glob(
+            f"short-{int(row['file_id'])}-{int(row['start_frame'])}-{int(row['end_frame'])}-*.mp4"
+        ),
+        key=lambda p: (p.stat().st_mtime, p.name),
+    )
+    return found[-1] if found else None
+
+
 def list_shorts(shorts_folder: Path, session_id: int) -> list[ShortEntry]:
     """Candidatos do `shorts-<sessão>.json` com o MP4 pronto de cada um, na ordem do manifesto (por nota)."""
     out: list[ShortEntry] = []
     for row in _manifest(shorts_folder, session_id).get("candidatos", []):
-        file_id, start = int(row["file_id"]), int(row["start_frame"])
-        clips = sorted(
-            shorts_folder.glob(f"short-{file_id}-{start}-{int(row['end_frame'])}-*.mp4"),
-            key=lambda p: (p.stat().st_mtime, p.name),
-        )
+        file_id, start, end = int(row["file_id"]), int(row["start_frame"]), int(row["end_frame"])
+        clip = _clip_of(shorts_folder, row)
         out.append(
             ShortEntry(
-                f"{file_id}-{start}",
+                short_key(file_id, start, end),
                 file_id,
                 start,
                 float(row["duracao_s"]),
                 float(row["score"]),
                 str(row["reason"]),
-                clips[-1] if clips else None,
+                clip,
             )
         )
     return out
@@ -192,7 +207,7 @@ def build_publish_package(
         raise PublishError(f"sessão {session_id} não existe (veja `cronista status`)")
     if video is not None and not video.is_file():
         raise PublishError(f"vídeo {video} não existe")
-    target = out or packaging_folder / PUBLISH_DIR
+    target = out or packaging_folder / PUBLISH_DIR_NAME
     if target.is_dir() and any(target.iterdir()) and not (target / "LEIA-ME.md").is_file():
         raise PublishError(
             f"{target} já tem arquivos que não são de um pacote; escolha uma pasta vazia ou nova"
@@ -205,6 +220,9 @@ def build_publish_package(
     video_name: str | None = None
     if video is not None:
         video_name = video.name
+        for stale in target.glob("*.mp4"):  # o vídeo anterior (outro nome) não pode ficar ao lado do novo
+            if not stale.name.startswith(("short-", "part-")) and stale.name != video_name:
+                stale.unlink(missing_ok=True)
         _copy(video, target / video_name)
         report.files.append(video_name)
     else:
@@ -222,32 +240,27 @@ def build_publish_package(
         (target / "titulo.txt").write_text(title.text + "\n", encoding="utf-8")
         report.files.append("titulo.txt")
     else:
-        report.missing.append("título: `cronista titulo-escolher`")
+        report.missing.append("título: `cronista titulos-escolher`")
 
-    thumb = current_thumbnail(db, session_id)
-    if (
-        thumb is not None
-        and (packaging_folder / MANIFEST_NAME).is_file()
-        and thumb.file_name not in {str(e["arquivo"]) for e in load_manifest(packaging_folder)}
-    ):
-        thumb = None  # variações geradas de novo: a escolha antiga não vale mais (o painel pensa igual)
+    thumb = valid_thumbnail_choice(db, session_id, packaging_folder)
     thumb_name: str | None = None
-    source = packaging_folder / "thumbnails" / thumb.file_name if thumb else None
+    source = thumbnails_in(packaging_folder) / thumb.file_name if thumb else None
     if source is not None and source.is_file():
         _copy(source, target / "thumbnail.jpg")
         thumb_name = "thumbnail.jpg"
         report.files.append(thumb_name)
     else:
+        stale_choice = current_thumbnail(db, session_id)
         report.missing.append(
-            "thumbnail: `cronista thumbnails` e `cronista thumbnail-escolher`"
-            if thumb is None
-            else f"thumbnail: {thumb.file_name} não existe mais; rode `cronista thumbnails` de novo"
+            "thumbnail: `cronista thumbnails` e `cronista thumbnails-escolher`"
+            if stale_choice is None
+            else f"thumbnail: {stale_choice.file_name} não existe mais; rode `cronista thumbnails` de novo"
         )
 
     decisions = current_short_decisions(db, session_id)
     entries = (
         list_shorts(shorts_folder, session_id)
-        if (shorts_folder / f"shorts-{session_id}.json").is_file()
+        if (shorts_manifest_in(shorts_folder, session_id)).is_file()
         else []
     )
     approved: list[tuple[str, ShortEntry]] = []

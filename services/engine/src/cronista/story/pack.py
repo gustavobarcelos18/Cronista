@@ -30,12 +30,10 @@ INSTRUCTIONS = [
 
 
 def _beat_entry(item: BeatedSegment, speech: Sequence[AnalysisEvent], with_quotes: bool) -> dict[str, Any]:
+    """`speech`: eventos de áudio ao vivo do arquivo (fala, risada, exclamação); as lacunas evitam todos."""
     a, b = item.span.start_s, item.span.end_s
-    live = [
-        e
-        for e in speech
-        if e.kind == "fala" and e.evidence.end_frame / FPS > a and e.evidence.start_frame / FPS < b
-    ]
+    in_window = [e for e in speech if e.evidence.end_frame / FPS > a and e.evidence.start_frame / FPS < b]
+    live = [e for e in in_window if e.kind == "fala"]
     return {
         "segmento_id": item.span.segment_id,
         "arquivo_id": item.span.file_id,
@@ -54,7 +52,7 @@ def _beat_entry(item: BeatedSegment, speech: Sequence[AnalysisEvent], with_quote
             }
             for e in live
         ],
-        "lacunas": [{"inicio_s": x, "fim_s": y} for x, y in free_gaps(a, b, live)],
+        "lacunas": [{"inicio_s": x, "fim_s": y} for x, y in free_gaps(a, b, in_window)],
     }
 
 
@@ -73,7 +71,6 @@ def build_story_pack(
             "projeto": dict(project),
             "alvo_s": target_s,
             "objetivos": list(objectives),
-            "antecipacoes": [],
             "instrucoes": INSTRUCTIONS,
             "capitulos": [
                 {

@@ -13,12 +13,14 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from cronista.assembly.plan import EditItem, Mode, Track
+from cronista.assembly.plan import EditItem, Mode
+from cronista.domain.frames import FPS
+from cronista.domain.tracks import Track
 from cronista.mix.envelope import FloatArray, gain_at
 from cronista.pipeline.stage import StageError
 
 RATE = 48_000
-SAMPLES_PER_FRAME = RATE // 60
+SAMPLES_PER_FRAME = RATE // FPS
 BLOCK = RATE * 10
 
 

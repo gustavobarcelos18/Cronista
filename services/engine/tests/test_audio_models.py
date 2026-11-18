@@ -99,18 +99,21 @@ def test_threshold_and_models_are_part_of_the_cache_key(settings: Settings) -> N
 
 
 def test_analysis_stages_depend_on_the_available_models() -> None:
-    # dev: só CPU (sinais + detector de grito por energia, que não usa modelo)
-    assert [s.name for s in analysis_stages(AudioModels())] == ["audio_signals", "sound_events"]
+    # dev: só CPU (sinais); o detector de grito por energia fica atrás de `scream_enabled` (reprovado, §46)
+    assert [s.name for s in analysis_stages(AudioModels())] == ["audio_signals"]
+    assert [s.name for s in analysis_stages(AudioModels(), scream_enabled=True)] == [
+        "audio_signals",
+        "sound_events",
+    ]
     full = AudioModels(FakeDetector(), FakeTranscriber(), FakeClassifier())
     assert [s.name for s in analysis_stages(full)] == [
         "audio_signals",
         "speech",
         "sound_events",
         "sound_events",
-        "sound_events",
     ]
     only_vad = AudioModels(detector=FakeDetector())  # VAD sem transcritor não roda fala
-    assert [s.name for s in analysis_stages(only_vad)] == ["audio_signals", "sound_events"]
+    assert [s.name for s in analysis_stages(only_vad)] == ["audio_signals"]
 
 
 def test_pause_is_requested_by_the_models(ctx: StageContext) -> None:

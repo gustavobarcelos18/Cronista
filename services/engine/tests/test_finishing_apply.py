@@ -9,8 +9,10 @@ import numpy as np
 import pytest
 import soundfile
 
-from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
+from cronista.assembly.plan import EditItem, EditPlan, Mode
 from cronista.config import Settings
+from cronista.domain.tracks import Track
+from cronista.domain.tracks import Track as FxTrack
 from cronista.export.finish_fcpxml import FinishLayers
 from cronista.export.montagem import ExportMedia, MediaFileInfo, check_plan_fcpxml, render_plan_fcpxml
 from cronista.finishing.apply import FinishArtifacts, apply_finishing, leia_me_section, lua_lut
@@ -18,7 +20,6 @@ from cronista.finishing.brand import BrandKit, resolve_style
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.library import Library, LibraryItem
 from cronista.finishing.plan import FinishItem, FinishPlan, apply_decisions
-from cronista.finishing.plan import Track as FxTrack
 
 BRAND = BrandKit.model_validate(
     {

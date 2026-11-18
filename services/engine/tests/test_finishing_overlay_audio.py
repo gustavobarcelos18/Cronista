@@ -7,9 +7,10 @@ import pytest
 import soundfile
 
 from cronista.config import Settings
+from cronista.domain.tracks import Track
 from cronista.finishing.brand import BrandKit
 from cronista.finishing.effects import EffectKind, EffectMode
-from cronista.finishing.plan import FinishItem, FinishPlan, Track
+from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.audio import (
     MusicClip,
     audio_frames,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -16,6 +15,7 @@ from cronista.audio.events import load_active_events
 from cronista.config import Settings
 from cronista.db.models import RecordingSession
 from cronista.domain.frames import FPS
+from cronista.media.ffmpeg import run_ffmpeg
 from cronista.mix.envelope import (
     DuckParams,
     gain_curve,
@@ -25,9 +25,11 @@ from cronista.mix.envelope import (
 )
 from cronista.mix.loudness import Loudness, measure
 from cronista.mix.stems import render_stem
-from cronista.montage import SessionPlanError, _load_source
+from cronista.montage import SessionPlanError, load_source
+from cronista.paths import SessionPaths
 from cronista.pipeline.stage import StageError
 from cronista.story.models import Script
+from cronista.story.service import DEFAULT_TARGET_S
 
 VOICE_CHAIN = (
     "highpass=f=80,afftdn=nr=12:nf=-30,acompressor=threshold=0.125:ratio=3:attack=5:release=120:makeup=2"
@@ -61,21 +63,8 @@ class MixReport:
     warnings: list[str] = field(default_factory=list)
 
 
-def _ffmpeg(settings: Settings, args: list[str]) -> None:
-    proc = subprocess.run(
-        [settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", *args],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise StageError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-400:]}")
-
-
 def _final(settings: Settings, src: Path, dst: Path, filters: str) -> None:
-    _ffmpeg(settings, ["-i", str(src), "-af", filters, "-c:a", "pcm_s24le", str(dst)])
+    run_ffmpeg(settings, ["-i", str(src), "-af", filters, "-c:a", "pcm_s24le", str(dst)])
 
 
 def _leveled(settings: Settings, src: Path, dst: Path, target_lufs: float, pre: str = "") -> StemReport:
@@ -157,7 +146,7 @@ def mix_session(
     session_id: int,
     settings: Settings,
     script: Script | None = None,
-    target_s: float = 40 * 60.0,
+    target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     out_dir: Path | None = None,
     plan: EditPlan | None = None,
@@ -169,7 +158,7 @@ def mix_session(
     mic: dict[int, Path] = {}
     speech: dict[int, list[tuple[int, int]]] = {}
     for media in session.media_files:
-        source = _load_source(db, media)
+        source = load_source(db, media)
         if source.game_wav is None or source.mic_wav is None:
             raise SessionPlanError(
                 f"{source.master.name}: WAVs não encontrados (rode `cronista ingest` de novo)"
@@ -180,5 +169,5 @@ def mix_session(
             for e in load_active_events(db, media.id)
             if e.kind == "fala"
         ]
-    target = out_dir or settings.data_dir / "export" / "stems" / str(session_id)
+    target = out_dir or SessionPaths.of(settings, session_id).stems_dir
     return mix_plan(plan, game, mic, speech, script, settings, target)

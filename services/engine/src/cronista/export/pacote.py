@@ -19,6 +19,7 @@ from cronista.assembly.plan import EditPlan
 from cronista.assembly.service import assemble
 from cronista.config import Settings
 from cronista.db.models import Marker, RecordingSession
+from cronista.domain.frames import FPS, duration_frames
 from cronista.export.montagem import (
     ExportMedia,
     MarkerInput,
@@ -36,10 +37,11 @@ from cronista.finishing.brand import ResolvedStyle, brand_dir
 from cronista.finishing.library import Library
 from cronista.finishing.markers import suggestion_markers
 from cronista.finishing.plan import FinishPlan, apply_decisions
-from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_segment
+from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_segment, marker_peaks
 from cronista.logging_setup import log_event
 from cronista.mix.service import MixReport, mix_session
-from cronista.montage import _load_source
+from cronista.montage import load_source
+from cronista.paths import SessionPaths
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.story.models import Script
 from cronista.story.service import DEFAULT_TARGET_S
@@ -126,10 +128,7 @@ def _resume_target(base: Path, digest: str) -> tuple[Path, int, PackageReport | 
 
 
 def next_version_dir(base: Path) -> tuple[Path, int]:
-    existing = [
-        int(m.group(1)) for p in base.glob("versao-*") if (m := re.fullmatch(r"versao-(\d+)", p.name))
-    ]
-    version = max(existing, default=0) + 1
+    version = max(_version_numbers(base), default=0) + 1
     return base / f"versao-{version}", version
 
 
@@ -154,10 +153,12 @@ def export_montagem(
 
     `finish_decisions` são as decisões do criador no Studio por `id` de item (`aceito`/`removido`).
     """
-    base = out_base or settings.data_dir / "export" / "montagem" / str(session_id)
+    base = out_base or SessionPaths.of(settings, session_id).package_base
     plan, story = assemble(db, session_id, settings, target_s, profile_objectives)
     finish = (
-        finish_from_edit_plan(plan, marker_kinds_by_segment(story.chapters), style, library)
+        finish_from_edit_plan(
+            plan, marker_kinds_by_segment(story.chapters), style, library, marker_peaks(db, session_id)
+        )
         if style is not None
         else None
     )
@@ -182,7 +183,7 @@ def export_montagem(
 
     session = db.get(RecordingSession, session_id)
     assert session is not None  # build_assembly já validou
-    sources = {m.id: _load_source(db, m) for m in session.media_files}
+    sources = {m.id: load_source(db, m) for m in session.media_files}
     masters = {fid: s.master for fid, s in sources.items()}
 
     # Os timelapses ficam na base (não na versão): versões novas reaproveitam o que já foi renderizado.
@@ -215,7 +216,7 @@ def export_montagem(
             stems["A4"] = artifacts.music_stem
     media = ExportMedia(
         masters={
-            fid: MediaFileInfo(s.master, round(s.duration_s * 60) if s.duration_s is not None else None)
+            fid: MediaFileInfo(s.master, duration_frames(s.duration_s) if s.duration_s is not None else None)
             for fid, s in sources.items()
         },
         timelapses=timelapses,
@@ -273,7 +274,7 @@ def export_montagem(
         "versao_do_plano": PLAN_VERSION,
         "sessao": session_id,
         "entrada_hash": digest,
-        "fps": 60,
+        "fps": FPS,
         "duracao_s": round(plan.total_s, 2),
         "cortes_v1": len(plan.v1),
         "marcadores": len(timeline_marks),

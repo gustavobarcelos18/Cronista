@@ -4,6 +4,8 @@ import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import pytest
+
 from cronista.assembly.plan import BrollClip, EditPlan, Mode, build_edit_plan
 from cronista.config import Settings
 from cronista.domain.frames import FPS
@@ -230,3 +232,45 @@ def test_timelapse_espera_a_gpu_liberar(tmp_path: Path, settings: Settings) -> N
     fast = settings.model_copy(update={"gpu_poll_seconds": 0.0})
     render_timelapses(plan, {1: master}, tmp_path / "tl", fast, gate)
     assert gate.calls == 3
+
+
+def test_timelapse_interrompido_nao_deixa_arquivo_parcial(
+    tmp_path: Path, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C1 (auditoria 10A): o render grava num temporário; se o FFmpeg cai, o nome final não existe."""
+    from cronista.export import timelapse
+
+    def crash(_settings: Settings, args: list[str]) -> None:
+        Path(args[-1]).write_bytes(b"parcial")
+        raise RuntimeError("ffmpeg caiu")
+
+    monkeypatch.setattr(timelapse, "run_ffmpeg", crash)
+    plan = build_edit_plan([Chapter(1, [_seg(0, 30, "farm")], 600.0)], durations={1: 30 * FPS})
+    with pytest.raises(RuntimeError):
+        render_timelapses(plan, {1: tmp_path / "m.mp4"}, tmp_path / "tl", settings)
+    assert list((tmp_path / "tl").iterdir()) == []
+
+
+def test_marcadores_no_mesmo_quadro_ganham_o_proximo_quadro_livre() -> None:
+    """C9: o AddMarker do Resolve recusa o segundo marcador no mesmo quadro."""
+    plan = _plan()
+    first = plan.v1[0]
+    marks = [
+        MarkerInput(1, first.in_frame + 90, "conquista", "a"),
+        MarkerInput(1, first.in_frame + 90, "momento", "b"),
+        MarkerInput(1, first.in_frame + 91, "momento", "c"),
+    ]
+    result, _ = timeline_markers(plan, marks)
+    frames = [t.frame for t in result]
+    assert len(set(frames)) == 3 and min(frames) == first.timeline_start + 90
+
+
+def test_asset_sem_duracao_do_master_cobre_o_maior_corte_do_arquivo(tmp_path: Path) -> None:
+    """C3: o asset assumia o `out_frame` do primeiro corte e os seguintes viravam "problema" falso."""
+    plan = _plan()
+    media = _media(tmp_path, plan)
+    media = ExportMedia(
+        {1: MediaFileInfo(media.masters[1].path, None)}, media.timelapses, media.stems, media.stem_frames
+    )
+    xml = render_plan_fcpxml(plan, media)
+    assert check_plan_fcpxml(xml, plan) == []

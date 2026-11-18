@@ -23,7 +23,7 @@ from cronista.domain.frames import frame_to_seconds
 from cronista.domain.models import MarkerKind
 from cronista.ingest.journal import JournalWriter, Stamp
 from cronista.ingest.service import IngestReport, ingest_folder
-from cronista.montage import _load_source
+from cronista.montage import load_source
 from cronista.pipeline import AlwaysFreeGate
 from tests.conftest import needs_ffmpeg
 
@@ -58,7 +58,7 @@ def check_presses(
         media = db.get(MediaFile, marker.media_file_id)
         assert media is not None
         assert Path(media.path).name == press.file, f"{press.marker_id}: caiu em {Path(media.path).name}"
-        shown = wall_time_at(settings, _load_source(db, media).master, frame_to_seconds(marker.media_frame))
+        shown = wall_time_at(settings, load_source(db, media).master, frame_to_seconds(marker.media_frame))
         errors[press.marker_id] = abs(shown - press.wall)
         assert errors[press.marker_id] < TOLERANCE_S, (
             f"{press.marker_id}: toque às {press.wall:.2f}s, quadro mostra {shown:.3f}s "

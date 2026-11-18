@@ -10,11 +10,11 @@ import numpy as np
 import pytest
 import soundfile
 
+from cronista.domain.tracks import Track as FxTrack
 from cronista.finishing.apply import inputs_digest
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.library import Library, LibraryItem
 from cronista.finishing.plan import FinishItem, FinishPlan, decision_key
-from cronista.finishing.plan import Track as FxTrack
 from cronista.finishing.render.atomic import render_to
 from tests.test_finishing_apply import BRAND, Env, env, fx, run  # noqa: F401
 from tests.test_finishing_package import BRAND as PACKAGE_BRAND  # noqa: F401

@@ -1,7 +1,8 @@
 """Plano de montagem de uma sessão: marcadores → janelas + os arquivos de onde elas saem.
 
-Compartilhado pela prévia MP4 e pela exportação para o Resolve, para os dois usarem exatamente os mesmos
-trechos. Lê só o banco e os artefatos da ingestão; não roda FFmpeg.
+Usado pela prévia MP4 e pela exportação legada (`cronista export`, deprecada); a montagem principal para o
+Resolve usa `assembly/` e a `story`. Também é a porta de leitura dos masters (`load_source`, `load_masters`).
+Lê só o banco e os artefatos da ingestão; não roda FFmpeg.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ def _artifact_result(db: Session, media: MediaFile, stage: str) -> StageResult |
     return StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8"))
 
 
-def _load_source(db: Session, media: MediaFile) -> SourceFile:
+def load_source(db: Session, media: MediaFile) -> SourceFile:
     normalized = _artifact_result(db, media, "normalize")
     if normalized is None:
         raise SessionPlanError(f"{Path(media.path).name} ainda não foi ingerido (rode `cronista ingest`)")
@@ -82,7 +83,7 @@ def load_masters(db: Session, session: RecordingSession) -> tuple[dict[int, Path
     notes: list[str] = []
     for media in session.media_files:
         try:
-            masters[media.id] = _load_source(db, media).master
+            masters[media.id] = load_source(db, media).master
         except SessionPlanError as exc:
             notes.append(str(exc))
     if not masters:
@@ -98,7 +99,16 @@ def plan_session(db: Session, session_id: int, settings: Settings) -> SessionPla
     if not markers:
         raise SessionPlanError(f"sessão {session_id} não tem marcadores")
 
-    sources = {media.id: _load_source(db, media) for media in session.media_files}
+    # Como em `load_masters`: gravação sem ingestão vira aviso; só falha se nenhuma estiver pronta.
+    sources: dict[int, SourceFile] = {}
+    notes: list[str] = []
+    for media in session.media_files:
+        try:
+            sources[media.id] = load_source(db, media)
+        except SessionPlanError as exc:
+            notes.append(str(exc))
+    if not sources:
+        raise SessionPlanError(notes[0] if notes else f"sessão {session_id} não tem gravações")
     ordinals = {media.id: media.ordinal for media in session.media_files}
 
     points: list[MarkerPoint] = []
@@ -118,4 +128,4 @@ def plan_session(db: Session, session_id: int, settings: Settings) -> SessionPla
     windows, warnings = plan_windows(points, settings.preview_pre_s, settings.preview_post_s)
     if not windows:
         raise SessionPlanError("nenhum marcador gerou trecho utilizável")
-    return SessionPlan(session_id, windows, sources, warnings)
+    return SessionPlan(session_id, windows, sources, [*notes, *warnings])

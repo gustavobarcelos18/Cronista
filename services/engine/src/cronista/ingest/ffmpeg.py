@@ -1,4 +1,4 @@
-"""Chamadas ao FFmpeg/FFprobe."""
+"""Chamadas ao FFprobe (e `run_ffmpeg`, reexportado de `media.ffmpeg` por compatibilidade)."""
 
 from __future__ import annotations
 
@@ -12,16 +12,7 @@ from cronista.config import Settings
 from cronista.domain.frames import seconds_to_frame
 from cronista.domain.models import MediaProbe
 from cronista.domain.timeline import FileChapter
-from cronista.pipeline.stage import StageError
-
-
-def run_ffmpeg(settings: Settings, args: list[str]) -> None:
-    cmd = [settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", *args]
-    proc = subprocess.run(
-        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
-    )
-    if proc.returncode != 0:
-        raise StageError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-500:]}")
+from cronista.media.ffmpeg import run_ffmpeg
 
 
 def _bit_depth(pix_fmt: str | None) -> int:
@@ -71,7 +62,10 @@ def probe_media(settings: Settings, path: Path) -> MediaProbe:
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         return MediaProbe(path=str(path), interrupted=True)
-    info: dict[str, Any] = json.loads(proc.stdout)
+    try:
+        info: dict[str, Any] = json.loads(proc.stdout)
+    except json.JSONDecodeError:  # ffprobe saiu com 0 mas o JSON veio truncado
+        return MediaProbe(path=str(path), interrupted=True)
     streams: list[dict[str, Any]] = info.get("streams", [])
     video = next((s for s in streams if s.get("codec_type") == "video"), None)
     audio_count = sum(1 for s in streams if s.get("codec_type") == "audio")
@@ -104,7 +98,10 @@ def probe_chapters(settings: Settings, path: Path) -> list[FileChapter]:
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         return []
-    info: dict[str, Any] = json.loads(proc.stdout)
+    try:
+        info: dict[str, Any] = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return []
     chapters: list[FileChapter] = []
     for raw in info.get("chapters", []):
         title = str(raw.get("tags", {}).get("title", ""))
@@ -112,3 +109,6 @@ def probe_chapters(settings: Settings, path: Path) -> list[FileChapter]:
             FileChapter(title=title, media_frame=seconds_to_frame(float(raw.get("start_time", 0.0))))
         )
     return chapters
+
+
+__all__ = ["is_unfinalized_mp4", "probe_chapters", "probe_media", "run_ffmpeg"]

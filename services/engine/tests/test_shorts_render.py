@@ -32,8 +32,7 @@ from cronista.shorts.render import (
     short_name,
     video_chain,
 )
-from cronista.shorts.service import load_caption_words
-from cronista.story.service import StoryError
+from cronista.shorts.service import ShortsError, load_caption_words
 
 VISUAL = Visual(
     palette=Palette(
@@ -192,7 +191,7 @@ def test_render_chama_ffmpeg_uma_vez_por_short_e_reaproveita(
 
     assert len(calls) == 1 and first.clips == again.clips
     (clip,) = first.clips.values()
-    assert clip.is_file() and first.clips[f"1-{round(10 * FPS)}"] == clip
+    assert clip.is_file() and first.clips[f"1-{round(10 * FPS)}-{round(20 * FPS)}"] == clip
     a = calls[0]
     assert a[a.index("-ss") + 1] == "10.000000" and a[a.index("-t") + 1] == "10.000000"
     assert a[a.index("-map") + 1] == "[v]" and "0:a:0" in a  # áudio = faixa 1 (o mix da entrega)
@@ -298,5 +297,5 @@ def test_palavras_do_whisper_vem_do_banco_com_texto(db: Session) -> None:
     db.commit()
     got = load_caption_words(db, session.id)
     assert got[media.id] == [CaptionWord(600, 650, "olha"), CaptionWord(660, 690, " isso")]
-    with pytest.raises(StoryError):
+    with pytest.raises(ShortsError):
         load_caption_words(db, 999)

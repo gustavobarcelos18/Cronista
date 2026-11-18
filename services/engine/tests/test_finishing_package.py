@@ -9,10 +9,12 @@ from typing import Any
 
 import pytest
 
-from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
+from cronista.assembly.plan import EditItem, EditPlan, Mode
 from cronista.config import Settings
+from cronista.domain.tracks import Track
 from cronista.export import pacote
-from cronista.finishing.brand import BrandKit, resolve_style
+from cronista.finishing.brand import BrandKit, EffectPolicy, SeriesStyle, resolve_style
+from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.mix.service import MixReport
 from cronista.montage import SourceFile
 
@@ -70,7 +72,7 @@ def setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     session = SimpleNamespace(media_files=[SimpleNamespace(id=1)])
     db = SimpleNamespace(get=lambda *_: session, scalars=lambda *_: [])
     monkeypatch.setattr(pacote, "assemble", lambda *a, **k: (plan, SimpleNamespace(chapters=[])))
-    monkeypatch.setattr(pacote, "_load_source", lambda *_: SourceFile(1, master, 400.0, None, None))
+    monkeypatch.setattr(pacote, "load_source", lambda *_: SourceFile(1, master, 400.0, None, None))
     monkeypatch.setattr(pacote, "render_timelapses", lambda *a, **k: {})
     monkeypatch.setattr(pacote, "mix_session", fake_mix)
 
@@ -79,7 +81,9 @@ def setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
     monkeypatch.setattr("cronista.finishing.render.video.run_ffmpeg", fake_ffmpeg)
     settings = Settings(env="test", data_dir=tmp_path / "data", brand_dir=brand_dir)
-    return {"db": db, "settings": settings, "base": tmp_path / "out", "style": resolve_style(BRAND)}
+    # O LUT é `sugerir` por padrão (SetLUT não confirmado no gratuito, §60): a série o liga como `editavel`.
+    series = SeriesStyle(name="teste", effects={EffectKind.COR_LUT: EffectPolicy(mode=EffectMode.EDITAVEL)})
+    return {"db": db, "settings": settings, "base": tmp_path / "out", "style": resolve_style(BRAND, series)}
 
 
 def export(setup: dict[str, Any], **kwargs: Any) -> pacote.PackageReport:

@@ -20,6 +20,7 @@ from typing import Any, Protocol
 import numpy as np
 from pydantic import BaseModel, ValidationError
 
+from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent
 from cronista.domain.frames import FPS
 from cronista.story.models import Script, ScriptLine
@@ -34,6 +35,10 @@ def estimate_seconds(text: str, wps: float = WORDS_PER_S) -> float:
     return round(max(len(re.findall(r"\w+", text)), 1) / wps, 1)
 
 
+LIVE_KINDS = frozenset({"fala", "risada", "exclamacao", "grito"})
+"""O que ocupa o áudio ao vivo: voz e emoção (risada e exclamação também não podem ser cobertas)."""
+
+
 def free_gaps(
     start_s: float, end_s: float, speech: Sequence[AnalysisEvent], min_gap_s: float = MIN_GAP_S
 ) -> list[tuple[float, float]]:
@@ -41,7 +46,9 @@ def free_gaps(
     taken = sorted(
         (e.evidence.start_frame / FPS - PAD_S, e.evidence.end_frame / FPS + PAD_S)
         for e in speech
-        if e.kind == "fala" and e.evidence.end_frame / FPS > start_s and e.evidence.start_frame / FPS < end_s
+        if e.kind in LIVE_KINDS
+        and e.evidence.end_frame / FPS > start_s
+        and e.evidence.start_frame / FPS < end_s
     )
     gaps: list[tuple[float, float]] = []
     cursor = start_s
@@ -94,6 +101,21 @@ class ValidationReport:
         return not self.errors
 
 
+SLACK_S = 0.05
+"""Tolerância de arredondamento ao conferir se uma fala cabe numa lacuna."""
+
+
+def _place(
+    gaps: Sequence[tuple[float, float]], cursor: float, est: float
+) -> tuple[float | None, tuple[float, float] | None]:
+    """Primeira posição, depois de `cursor`, em que `est` segundos cabem numa lacuna; senão (None, None)."""
+    for a, b in gaps:
+        start = max(a, cursor)
+        if start + est <= b + SLACK_S:
+            return start, (a, b)
+    return None, None
+
+
 def validate_script(
     script: Script,
     segments: Mapping[str, tuple[float, float, Sequence[tuple[float, float]]]],
@@ -101,10 +123,14 @@ def validate_script(
 ) -> ValidationReport:
     """`segments`: id → `(início, fim, espaços livres)`. Cada fala precisa de um segmento existente.
 
-    Fala que não cabe nos espaços sem fala ao vivo é aviso (o criador corta); antecipação sem justificativa é erro.
+    A fala ao vivo tem prioridade, então o encaixe é conferido por lacuna: segmento sem lacuna e `start_s` fora
+    de qualquer lacuna são erro (a fala cairia em cima da fala ao vivo). Fala sem `start_s` é encadeada, uma
+    depois da outra, dentro das lacunas. Fala que passa do que cabe é aviso (o criador corta); antecipação sem
+    justificativa é erro.
     """
     report = ValidationReport()
     used: dict[str, float] = {}
+    cursor: dict[str, float] = {}
     for n, line in enumerate(script.lines, start=1):
         label = f"fala {n} ({line.segment_id})"
         if line.segment_id not in segments:
@@ -115,17 +141,34 @@ def validate_script(
             continue
         est = line.est_s if line.est_s else estimate_seconds(line.text, wps)
         _, _, gaps = segments[line.segment_id]
+        if not gaps:
+            report.errors.append(f"{label}: segmento sem espaço livre de fala ao vivo")
+            continue
         room = sum(b - a for a, b in gaps)
         used[line.segment_id] = used.get(line.segment_id, 0.0) + est
-        if not gaps:
-            report.warnings.append(f"{label}: segmento sem espaço livre de fala ao vivo")
-        elif used[line.segment_id] > room:
+        fits = True
+        if line.start_s is None:
+            start, _gap = _place(gaps, cursor.get(line.segment_id, 0.0), est)
+            if start is None:  # não cabe em nenhuma lacuna: entra no começo da maior e o criador corta
+                fits = False
+                start = max(gaps, key=lambda g: g[1] - g[0])[0]
+        else:
+            start = line.start_s
+            inside = next(((a, b) for a, b in gaps if a - SLACK_S <= start < b), None)
+            if inside is None:
+                report.errors.append(
+                    f"{label}: start_s {start:.1f}s cai fora dos espaços livres (fala ao vivo)"
+                )
+                continue
+            fits = start + est <= inside[1] + SLACK_S
+        if not fits:
             report.warnings.append(
                 f"{label}: {used[line.segment_id]:.1f}s de fala para {room:.1f}s livres (o criador corta)"
             )
+        cursor[line.segment_id] = start + est
         for flag in lint_text(line.text):
             report.warnings.append(f"{label}: sinal de texto de IA ({flag})")
-        report.lines.append(line.model_copy(update={"est_s": est}))
+        report.lines.append(line.model_copy(update={"est_s": est, "start_s": round(start, 2)}))
     return report
 
 
@@ -213,7 +256,11 @@ class LocalScriptProvider:
         for chapter in pack.get("capitulos", []):
             for beat in chapter.get("beats", []):
                 gaps = [(g["inicio_s"], g["fim_s"]) for g in beat.get("lacunas", [])]
-                room = sum(b - a for a, b in gaps)
+                if not gaps:
+                    continue
+                # Uma fala só, numa lacuna só: a maior. Somar as lacunas deixaria a fala invadir a fala ao vivo.
+                gap = max(gaps, key=lambda g: g[1] - g[0])
+                room = gap[1] - gap[0]
                 if room < MIN_GAP_S:
                     continue
                 max_words = int(room * self.wps)
@@ -230,8 +277,15 @@ class LocalScriptProvider:
                     continue
                 if not text or len(re.findall(r"\w+", text)) > max_words or lint_text(text):
                     continue
-                lines.append(ScriptLine(segment_id=beat["segmento_id"], text=text, start_s=gaps[0][0]))
+                lines.append(ScriptLine(segment_id=beat["segmento_id"], text=text, start_s=gap[0]))
         return Script(provider=self.name, lines=lines)
+
+
+def script_provider(settings: Settings, generator: TextGenerator | None = None) -> ScriptProvider:
+    """Escolhe o provedor de roteiro: `NullProvider` por padrão; o local só com benchmark aprovado e gerador."""
+    if settings.script_provider == "local" and settings.script_benchmark_ok and generator is not None:
+        return LocalScriptProvider(generator)
+    return NullProvider()
 
 
 # ---------------------------------------------------------------- perfil de voz

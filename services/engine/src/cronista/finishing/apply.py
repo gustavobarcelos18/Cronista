@@ -16,11 +16,12 @@ from pathlib import Path
 
 from cronista.assembly.plan import EditPlan
 from cronista.config import Settings
+from cronista.domain.frames import FPS
 from cronista.export.finish_fcpxml import APPLIED, AudioFile, FinishLayers
 from cronista.finishing.brand import ResolvedStyle
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.library import Library
-from cronista.finishing.plan import FPS, FinishItem, FinishPlan
+from cronista.finishing.plan import FinishItem, FinishPlan
 from cronista.finishing.render.audio import audio_frames, render_music_stem
 from cronista.finishing.render.overlay import counter_text, render_overlays
 from cronista.finishing.render.video import render_video_effects, source_window
@@ -50,15 +51,19 @@ class FinishArtifacts:
 
 
 def lua_lut(lut_path: Path) -> str:
-    """Lua de uma linha: LUT no nó 1 de cada clipe da V1 (sem `io`, `dofile` nem `require`).
+    """Lua de uma linha: LUT no nó 1 de cada clipe da V1 e da V2 (sem `io`, `dofile` nem `require`).
+
+    A V2 leva os efeitos (zoom e shake, editáveis ou renderizados): sem LUT nela, a cor "pula" durante cada
+    efeito, porque o clipe da V2 cobre a V1 já corrigida.
 
     ⚠️ `SetLUT` do scripting do Resolve ainda não foi conferido na versão gratuita (plano 6.5).
     """
     escaped = lut_path.resolve().as_posix().replace("\\", "\\\\").replace('"', '\\"')
     return (
         "local t = resolve:GetProjectManager():GetCurrentProject():GetCurrentTimeline(); local n = 0; "
-        'for _, i in ipairs(t:GetItemListInTrack("video", 1)) do '
-        f'if i:SetLUT(1, "{escaped}") then n = n + 1 end end; '
+        "for _, track in ipairs({1, 2}) do "
+        'for _, i in ipairs(t:GetItemListInTrack("video", track)) do '
+        f'if i:SetLUT(1, "{escaped}") then n = n + 1 end end end; '
         'print("LUT aplicada em " .. n .. " clipes")'
     )
 

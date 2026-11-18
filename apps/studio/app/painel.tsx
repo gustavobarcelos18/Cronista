@@ -1,16 +1,54 @@
 "use client";
 
-import type { SeriesPanelOut } from "@cronista/contracts";
+import type { ProjectPanelOut, SeriesPanelOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
+import { API } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
 const SEGUNDOS = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 
-const SITUACAO: Record<SeriesPanelOut["situacao"], string> = {
-  faltando: "ainda falta material",
+const SITUACAO: Record<ProjectPanelOut["situacao"], string> = {
+  curto_ok: "curto, mas com arco completo: pronto para postar",
+  abaixo_da_referencia: "abaixo de 30 min e o arco ainda está incompleto",
   no_alvo: "dentro da meta",
   acima: "acima da meta (dá para cortar)",
 };
+
+function Projeto({ projeto, panel }: { projeto: ProjectPanelOut; panel: SeriesPanelOut }) {
+  const meta = panel.meta_min;
+  const pct = Math.min(100, (projeto.total_min / meta) * 100);
+  return (
+    <section aria-label={`Painel da série ${projeto.projeto}`}>
+      <h3>{projeto.projeto}</h3>
+      <progress value={pct} max={100} style={{ width: "100%" }} />
+      <p>
+        <strong>{projeto.total_min} min</strong> de {meta} · {SITUACAO[projeto.situacao]}
+      </p>
+      <ul>
+        {Object.entries(projeto.por_classe_min).map(([classe, min]) => (
+          <li key={classe}>
+            {classe}: {min} min
+          </li>
+        ))}
+      </ul>
+      <small>
+        {projeto.sessoes.map((s) => `sessão ${s.sessao}: ${s.gravado_h} h → ${s.produto_min} min, ${s.dias} dias`).join(" · ")}
+      </small>
+      {projeto.capitulos_com_pouco_material.length > 0 && (
+        <>
+          <h4>Capítulos com pouco material</h4>
+          <p>Referência de {panel.referencia_capitulo_s} s por capítulo.</p>
+          <ul>
+            {projeto.capitulos_com_pouco_material.map((c) => (
+              <li key={c.capitulo}>
+                capítulo {c.capitulo} · {SEGUNDOS.format(c.produto_s)} s estimados
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
 
 export default function Painel({ revisao }: { revisao: number }) {
   const [panel, setPanel] = useState<SeriesPanelOut | null>(null);
@@ -33,38 +71,11 @@ export default function Painel({ revisao }: { revisao: number }) {
   }, [revisao]);
 
   if (!panel) return null;
-  const meta = panel.meta_min ?? 40;
-  const pct = Math.min(100, (panel.total_min / meta) * 100);
   return (
-    <section aria-label="Painel da série">
-      <h3>Série</h3>
-      <progress value={pct} max={100} style={{ width: "100%" }} />
-      <p>
-        <strong>{panel.total_min} min</strong> de {meta} · {SITUACAO[panel.situacao]}
-      </p>
-      <ul>
-        {Object.entries(panel.por_classe_min ?? {}).map(([classe, min]) => (
-          <li key={classe}>
-            {classe}: {min} min
-          </li>
-        ))}
-      </ul>
-      <small>
-        {panel.sessoes.map((s) => `sessão ${s.sessao}: ${s.gravado_h} h → ${s.produto_min} min, ${s.dias} dias`).join(" · ")}
-      </small>
-      {panel.capitulos_com_pouco_material.length > 0 && (
-        <>
-          <h4>Capítulos com pouco material</h4>
-          <p>Referência de {panel.referencia_capitulo_s} s por capítulo.</p>
-          <ul>
-            {panel.capitulos_com_pouco_material.map((c) => (
-              <li key={`${c.projeto_id}-${c.capitulo}`}>
-                {c.projeto} · capítulo {c.capitulo} · {SEGUNDOS.format(c.produto_s)} s estimados
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </section>
+    <>
+      {panel.projetos.map((projeto) => (
+        <Projeto key={projeto.projeto_id} projeto={projeto} panel={panel} />
+      ))}
+    </>
   );
 }

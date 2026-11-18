@@ -2,8 +2,7 @@
 
 import type { ExportStatusOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://127.0.0.1:8000";
+import { ApiError, getJson, send } from "../lib/api";
 
 export default function Exportar({ sessionId }: { sessionId: number }) {
   const [status, setStatus] = useState<ExportStatusOut | null>(null);
@@ -12,10 +11,9 @@ export default function Exportar({ sessionId }: { sessionId: number }) {
   useEffect(() => {
     let alive = true;
     const poll = () =>
-      fetch(`${API}/sessions/${sessionId}/export`)
-        .then((r) => r.json() as Promise<ExportStatusOut>)
+      getJson<ExportStatusOut>(`/sessions/${sessionId}/export`)
         .then((s) => alive && setStatus(s))
-        .catch(() => undefined);
+        .catch((e: Error) => alive && setStatus({ state: "error", message: e.message }));
     void poll();
     if (!running) return () => void (alive = false);
     const timer = setInterval(() => void poll(), 2000);
@@ -26,9 +24,13 @@ export default function Exportar({ sessionId }: { sessionId: number }) {
   }, [sessionId, running]);
 
   async function start() {
-    const res = await fetch(`${API}/sessions/${sessionId}/export`, { method: "POST" });
-    if (res.ok || res.status === 409) setStatus((await res.json()) as ExportStatusOut);
-    else setStatus({ state: "error", message: `erro ${res.status}` });
+    try {
+      setStatus(await send<ExportStatusOut>(`/sessions/${sessionId}/export`));
+    } catch (e) {
+      // 409 = já há uma exportação rodando: o corpo traz o estado dela.
+      if (e instanceof ApiError && e.status === 409 && e.body) setStatus(e.body as ExportStatusOut);
+      else setStatus({ state: "error", message: e instanceof Error ? e.message : "erro ao exportar" });
+    }
   }
 
   return (

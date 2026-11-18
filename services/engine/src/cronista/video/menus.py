@@ -16,6 +16,7 @@ import numpy.typing as npt
 from cronista.audio.events import EVENTS_KEY, events_from_result, write_events_file
 from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
+from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
 from cronista.pipeline.stage import StageContext
 from cronista.video.context_stages import EMBED_HOP, load_embeddings
@@ -104,7 +105,9 @@ class MenuTypesStage:
             rep = int(idx[int(np.argmax(vectors[idx] @ cents[tid]))])
             rep_ev = rows[rep][0].evidence
             rep_frame = (rep_ev.start_frame + rep_ev.end_frame) // 2
-            seconds = sum((rows[i][0].evidence.end_frame - rows[i][0].evidence.start_frame) / 60 for i in idx)
+            seconds = sum(
+                (rows[i][0].evidence.end_frame - rows[i][0].evidence.start_frame) / FPS for i in idx
+            )
             types.append(
                 {"id": tid, "menus": len(idx), "seconds": seconds, "representative_frame": rep_frame}
             )

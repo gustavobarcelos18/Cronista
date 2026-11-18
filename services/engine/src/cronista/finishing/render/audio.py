@@ -18,7 +18,7 @@ from cronista.config import Settings
 from cronista.domain.frames import FPS
 from cronista.finishing.effects import EffectKind, EffectMode
 from cronista.finishing.plan import FinishItem, FinishPlan
-from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.media.ffmpeg import run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 
 MUSIC_BED_DB = -20.0

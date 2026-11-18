@@ -16,7 +16,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 from cronista.config import Settings
-from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.media.ffmpeg import run_ffmpeg
 
 FPS = 60
 TONES = (440, 660, 880)  # faixa 1 (mix), 2 (jogo), 3 (microfone): tons diferentes para ouvir o mapeamento

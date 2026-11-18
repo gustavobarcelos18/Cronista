@@ -30,7 +30,8 @@ from cronista.finishing.render.atomic import render_to
 from cronista.finishing.render.overlay import find_font
 from cronista.finishing.render.overlay import fmt_num as _num
 from cronista.finishing.render.video import filter_path
-from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
+from cronista.ingest.ffmpeg import probe_media
+from cronista.media.ffmpeg import run_ffmpeg, video_args
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.pipeline.stage import StageError
 from cronista.shorts.candidates import ShortCandidate, short_key
@@ -229,10 +230,7 @@ def audio_chain(style: ShortStyle, seconds: float) -> str:
 
 def encoder_args(settings: Settings) -> list[str]:
     """Qualidade de entrega (acima da prévia): o Short é o produto final."""
-    encoder = settings.preview_encoder
-    if encoder.endswith("_nvenc"):
-        return ["-c:v", encoder, "-preset", "p5", "-rc", "vbr", "-cq", "19", "-b:v", "0"]
-    return ["-c:v", encoder, "-preset", "medium", "-crf", "18"]
+    return video_args(settings, "delivery")
 
 
 def short_name(c: ShortCandidate, chain: str, ass: str, audio: str, encoder: list[str]) -> str:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -16,6 +15,7 @@ from cronista.audio.events import load_active_events
 from cronista.config import Settings
 from cronista.db.models import RecordingSession
 from cronista.domain.frames import FPS
+from cronista.media.ffmpeg import run_ffmpeg
 from cronista.mix.envelope import (
     DuckParams,
     gain_curve,
@@ -61,21 +61,8 @@ class MixReport:
     warnings: list[str] = field(default_factory=list)
 
 
-def _ffmpeg(settings: Settings, args: list[str]) -> None:
-    proc = subprocess.run(
-        [settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", *args],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise StageError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-400:]}")
-
-
 def _final(settings: Settings, src: Path, dst: Path, filters: str) -> None:
-    _ffmpeg(settings, ["-i", str(src), "-af", filters, "-c:a", "pcm_s24le", str(dst)])
+    run_ffmpeg(settings, ["-i", str(src), "-af", filters, "-c:a", "pcm_s24le", str(dst)])
 
 
 def _leveled(settings: Settings, src: Path, dst: Path, target_lufs: float, pre: str = "") -> StemReport:

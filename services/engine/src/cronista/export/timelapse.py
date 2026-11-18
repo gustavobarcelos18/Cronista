@@ -10,7 +10,7 @@ from cronista.assembly.plan import EditItem, EditPlan, Mode, Track
 from cronista.config import Settings
 from cronista.domain.frames import FPS
 from cronista.finishing.render.atomic import render_to
-from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.media.ffmpeg import run_ffmpeg, video_args
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 
 
@@ -24,7 +24,7 @@ def _render(settings: Settings, master: Path, item: EditItem, out: Path) -> None
             "-an",
             "-vf", f"setpts=PTS/{item.speed},fps={FPS}",
             "-frames:v", str(item.timeline_frames),
-            "-c:v", settings.preview_encoder,
+            *video_args(settings, "delivery"),
             "-pix_fmt", "yuv420p",
             str(out),
         ],

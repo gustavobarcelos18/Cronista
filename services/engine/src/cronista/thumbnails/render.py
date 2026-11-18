@@ -12,7 +12,6 @@ entrada, mesmos arquivos (o nome leva o hash do filtro, do frame de moldura e da
 from __future__ import annotations
 
 import hashlib
-import subprocess
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
@@ -22,12 +21,13 @@ from typing import Any
 import numpy as np
 
 from cronista.config import Settings
+from cronista.domain.frames import seconds_to_frame
 from cronista.finishing.brand import Visual
 from cronista.finishing.render.atomic import render_to
 from cronista.finishing.render.overlay import SYSTEM_FONTS, drawtext_escape, ffmpeg_color, find_font
 from cronista.finishing.render.overlay import fmt_num as _num
 from cronista.finishing.render.video import filter_path
-from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.media.ffmpeg import grab_frame, run_ffmpeg
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.pipeline.stage import StageError
 from cronista.thumbnails.frames import (
@@ -231,14 +231,17 @@ def file_digest(path: Path | None) -> str:
 
 def grab_gray(settings: Settings, master: Path, t_s: float) -> GrayImage | None:
     """Um frame da gravação em tons de cinza (480x270) para medir; `None` se o FFmpeg não entregou o frame."""
-    cmd = [
-        settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", f"{t_s:.3f}", "-i", str(master),
-        "-frames:v", "1", "-vf", f"scale={PROBE_W}:{PROBE_H},format=gray", "-f", "rawvideo", "-",
-    ]  # fmt: skip
-    proc = subprocess.run(cmd, capture_output=True, check=False)
-    if proc.returncode != 0 or len(proc.stdout) != PROBE_W * PROBE_H:
+    data = grab_frame(
+        settings,
+        master,
+        seconds_to_frame(t_s),
+        f"scale={PROBE_W}:{PROBE_H},format=gray",
+        ["-f", "rawvideo", "-"],
+        timeout=None,
+    )
+    if data is None or len(data) != PROBE_W * PROBE_H:
         return None
-    return np.frombuffer(proc.stdout, dtype=np.uint8).reshape(PROBE_H, PROBE_W)
+    return np.frombuffer(data, dtype=np.uint8).reshape(PROBE_H, PROBE_W)
 
 
 GrabFn = Callable[[Path, float], "GrayImage | None"]

@@ -28,9 +28,10 @@ from cronista.export.service import export_session
 from cronista.finishing.loader import default_loader, load_style
 from cronista.gabarito import validate_gabarito
 from cronista.gates import build_gate
-from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
+from cronista.ingest.ffmpeg import probe_media
 from cronista.ingest.service import SessionConflictError, ingest_folder
 from cronista.logging_setup import setup_logging
+from cronista.media.ffmpeg import run_ffmpeg
 from cronista.montage import SessionPlanError
 from cronista.pipeline import StageError, recover_orphans
 from cronista.preview import PreviewError, build_preview

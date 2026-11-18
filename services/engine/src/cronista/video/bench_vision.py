@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from cronista.config import Settings
+from cronista.media.ffmpeg import ffmpeg_cmd
 from cronista.video.bench import free_gpu
 
 SCREEN_LABELS = ("gameplay", "menu", "dialogue")
@@ -78,10 +79,10 @@ def extract_frames(settings: Settings, video: Path, height: int, out_dir: Path) 
     """Um quadro a cada 90 s, na altura pedida. O quadro `k` (a partir de 1) é o `k`-ésimo do filtro `fps`."""
     out_dir.mkdir(parents=True, exist_ok=True)
     pattern = out_dir / "f%02d.png"
-    cmd = [
-        settings.ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(video),
-        "-vf", f"fps=1/{SAMPLE_EVERY_S},scale=-2:{height}:flags=lanczos", str(pattern),
-    ]  # fmt: skip
+    cmd = ffmpeg_cmd(
+        settings,
+        ["-i", str(video), "-vf", f"fps=1/{SAMPLE_EVERY_S},scale=-2:{height}:flags=lanczos", str(pattern)],
+    )
     subprocess.run(cmd, check=True, timeout=1800)
     return {int(p.stem[1:]): p for p in sorted(out_dir.glob("f*.png"))}
 
@@ -291,8 +292,11 @@ def decode_speed(settings: Settings, master: Path, proxy: Path, seconds: int = 1
     ]
     out: list[dict[str, Any]] = []
     for label, path, pre, vf in cases:
-        cmd = [settings.ffmpeg, "-hide_banner", "-loglevel", "error", *pre, "-t", str(seconds)]
-        cmd += ["-i", str(path), "-an", "-vf", vf, "-f", "null", "-"]
+        cmd = ffmpeg_cmd(
+            settings,
+            [*pre, "-t", str(seconds), "-i", str(path), "-an", "-vf", vf, "-f", "null", "-"],
+            overwrite=False,
+        )
         t0 = time.monotonic()
         proc = subprocess.run(cmd, capture_output=True, check=False, timeout=900)
         wall = time.monotonic() - t0

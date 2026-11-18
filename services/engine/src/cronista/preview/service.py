@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session
 
 from cronista.config import Settings
 from cronista.domain.preview import ClipWindow, expected_duration_s
-from cronista.ingest.ffmpeg import probe_media, run_ffmpeg
+from cronista.ingest.ffmpeg import probe_media
 from cronista.logging_setup import log_event
+from cronista.media.ffmpeg import run_ffmpeg, video_args
 from cronista.montage import SessionPlanError, plan_session
 from cronista.pipeline import GpuGate, StageError, wait_until_free
 
@@ -35,13 +36,6 @@ class PreviewReport:
     expected_s: float
     actual_s: float | None
     warnings: list[str] = field(default_factory=list)
-
-
-def video_args(settings: Settings) -> list[str]:
-    encoder = settings.preview_encoder
-    if encoder.endswith("_nvenc"):
-        return ["-c:v", encoder, "-preset", "p5", "-rc", "vbr", "-cq", str(settings.preview_crf), "-b:v", "0"]
-    return ["-c:v", encoder, "-preset", "veryfast", "-crf", str(settings.preview_crf)]
 
 
 def _concat_line(path: Path) -> str:

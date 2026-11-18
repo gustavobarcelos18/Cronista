@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from cronista.config import Settings
-from cronista.ingest.ffmpeg import run_ffmpeg
+from cronista.media.ffmpeg import run_ffmpeg
 
 DURATION_S = 2
 _AUDIO_TONES = (440, 660, 880)

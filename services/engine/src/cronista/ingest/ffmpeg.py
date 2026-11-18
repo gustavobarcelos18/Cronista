@@ -1,4 +1,4 @@
-"""Chamadas ao FFmpeg/FFprobe."""
+"""Chamadas ao FFprobe (e `run_ffmpeg`, reexportado de `media.ffmpeg` por compatibilidade)."""
 
 from __future__ import annotations
 
@@ -12,16 +12,7 @@ from cronista.config import Settings
 from cronista.domain.frames import seconds_to_frame
 from cronista.domain.models import MediaProbe
 from cronista.domain.timeline import FileChapter
-from cronista.pipeline.stage import StageError
-
-
-def run_ffmpeg(settings: Settings, args: list[str]) -> None:
-    cmd = [settings.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", *args]
-    proc = subprocess.run(
-        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
-    )
-    if proc.returncode != 0:
-        raise StageError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-500:]}")
+from cronista.media.ffmpeg import run_ffmpeg
 
 
 def _bit_depth(pix_fmt: str | None) -> int:
@@ -118,3 +109,6 @@ def probe_chapters(settings: Settings, path: Path) -> list[FileChapter]:
             FileChapter(title=title, media_frame=seconds_to_frame(float(raw.get("start_time", 0.0))))
         )
     return chapters
+
+
+__all__ = ["is_unfinalized_mp4", "probe_chapters", "probe_media", "run_ffmpeg"]

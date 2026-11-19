@@ -3,6 +3,8 @@
 Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-mestre.md) (seção 7, Fase 2; seções 3 e 5.2).
 Decisões que alimentam esta fase: [histórico §36, §40 e §41](01-historico-de-decisoes.md).
 
+**Status vigente: tabela única em [plano mestre §7](00-plano-mestre.md). O texto abaixo é o registro da época e pode estar superado.**
+
 Status (2026-11-16): **2A implementada** (PR #7, histórico §43) e **2B implementada** na branch `fase/2b-modelos` (histórico §44); 2C bloqueada pelo gabarito · Branch: `fase/2-audio` (2A) e `fase/2b-modelos` (2B, empilhada sobre a 2A).
 
 ## Divisão
@@ -76,7 +78,7 @@ Só em `prod`. Os modelos entram como **dependências opcionais** (grupo `ml` do
 
 1. **Ambiente de ML.** Decidir, com base no teste da 1C (`integrations/cuda/check_cuda.py`: torch + CTranslate2 conviveram na RTX 3060), se tudo vive no mesmo ambiente do engine ou se a transcrição roda em processo separado (exceção do CTranslate2, seção 5.2). Versões exatas registradas depois de verificadas (hoje só de memória). Os modelos baixam para `data/models/` (fora do git); registrar origem, licença e tamanho de cada um.
 2. **Adaptadores reais**, atrás das portas da 2A.1: Silero VAD; faster-whisper (large-v3-turbo, int8, timestamps por palavra e `vad_filter` coerente com o VAD próprio); classificador de eventos sonoros (candidatos: PANNs, BEATs, CLAP; um por vez, escolhido pelo benchmark). DeepFilterNet entra só como candidato de pré-processamento (⚠️ pode não instalar com Python 3.12 e PyTorch recentes; falhar aqui não bloqueia).
-3. **Benchmark de desempenho** (`integrations/bench/` ou `cronista bench`): tempo real por hora de áudio, pico de VRAM e de RAM, convivência de CUDA (torch + CTranslate2 no mesmo processo e em processos separados), com a RTX 3060 ocupada só pelo benchmark. Sobre a gravação de teste real (`claude_teste.mp4`, 37 min) e sobre uma versão concatenada para estimar 10 h. Resultado registrado no histórico (tabela por modelo).
+3. **Benchmark de desempenho** (`integrations/bench/` e `cronista bench-audio`): tempo real por hora de áudio, pico de VRAM e de RAM, convivência de CUDA (torch + CTranslate2 no mesmo processo e em processos separados), com a RTX 3060 ocupada só pelo benchmark. Sobre a gravação de teste real (`claude_teste.mp4`, 37 min) e sobre uma versão concatenada para estimar 10 h. Resultado registrado no histórico (tabela por modelo).
 4. **Pausa de GPU na prática:** testar `wait_for_gpu` entre blocos com o OBS gravando de verdade (item ainda não validado da 1C).
 5. Testes `@pytest.mark.gpu` por adaptador (poucos segundos de áudio real pequeno, só `prod`).
 

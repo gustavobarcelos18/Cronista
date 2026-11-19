@@ -14,7 +14,7 @@ não falhar, o item é descartado.
 | 10A | Bugs de severidade alta e de regra | Concluída (B11 foi para a 10C) |
 | 10B | Fundação transversal (T1 a T4) | T1 a T3 feitas; T4 (glossário) aguarda aprovação |
 | 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`) |
-| 10D | Documentação | Não iniciada |
+| 10D | Documentação | Em andamento (parte feita; ver abaixo) |
 | 10E | Testes e CI | Não iniciada |
 | 10F | Narrativa por série | Não iniciada |
 
@@ -77,6 +77,14 @@ de sessão fora de `paths.py`.
 (teste de fumaça com `--help` de cada comando).
 
 ## 10D. Documentação (F1 a F8)
+
+**Feito (2026-11-19):** F15 (CLAUDE.md: Pydantic é a fonte dos contratos) e regra de substituição/revisão de fase; F11
+(tabela de status única em plano mestre §7, com ponteiros nas fases 1 a 3, no README e no cabeçalho do plano); F1, F3, F4,
+F6, F7, F8 e F9 marcados como substituídos onde ainda apareciam como vigentes; F13 (`render` marcado "não implementado",
+nomes de comandos e gabarito corrigidos) e F21; F14 (árvore da 5.5 conforme o código, a antiga mantida e marcada);
+README com setup; C17. **Falta:** aprovação do glossário (F17, F10) e citá-lo nos documentos; "Em aberto" como tabela e
+revisão dos ⚠️ (F12, F18, só uma nota por enquanto); redundância (seção 4 da auditoria) e reordenar o histórico (F20);
+D14; árvore e comandos gerados por script (F14, anexo).
 
 - Aprovar e publicar `docs/glossario.md`; citá-lo no CLAUDE.md e no plano mestre.
 - Marcar como "substituída" as contradições do plano mestre: lookback de 60 a 90 s, FCPXML via OTIO, Remotion,

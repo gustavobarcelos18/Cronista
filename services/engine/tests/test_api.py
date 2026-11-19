@@ -192,7 +192,7 @@ def test_api_reexport_estados(settings: Settings, db: Session, monkeypatch: pyte
     gate, calls = threading.Event(), []
 
     def fake_export(
-        _db: object, session_id: int, _s: object, script: object, target_s: float, *_a: object
+        _db: object, session_id: int, _s: object, script: object, target_s: float, *_a: object, **_k: object
     ) -> SimpleNamespace:
         calls.append((session_id, script, target_s))
         gate.wait(5)
@@ -263,13 +263,13 @@ def test_api_painel_da_serie(settings: Settings, db: Session) -> None:
     from cronista.review.decisions import record_decision
 
     _seed(db)  # tem um marcador `novo_dia`
-    segs = [Segment(0, 30, "conquista", 0.9), Segment(60, 90, "morte_falha", 0.8)]
+    segs = [Segment(0, 30, "momento", 0.9), Segment(60, 90, "jogo", 0.8)]
     replace_events(db, 1, "relevance", "", segments_to_events(segs, RelevanceParams()))
     client = TestClient(create_app(settings))
     panel = client.get("/series").json()["projetos"][0]
     assert panel["total_min"] == 1.0 and panel["situacao"] == "abaixo_da_referencia"  # sem clímax no arco
     assert panel["sessoes"][0]["dias"] == 1
-    assert set(panel["por_classe_min"]) == {"conquista", "morte_falha"}
+    assert set(panel["por_classe_min"]) == {"momento", "jogo"}
 
     record_decision(db, 1, 60, "rejeitado")  # rejeitar baixa a estimativa
     assert client.get("/series").json()["projetos"][0]["total_min"] == 0.5
@@ -300,7 +300,7 @@ def test_painel_avisa_capitulos_curtos_e_recalcula_apos_revisao(settings: Settin
         1,
         "relevance",
         "",
-        segments_to_events([Segment(0, 16, "conquista", 0.9, markers=["1"])], RelevanceParams()),
+        segments_to_events([Segment(0, 16, "momento", 0.9, markers=["1"])], RelevanceParams()),
     )
     replace_events(
         db,
@@ -308,7 +308,7 @@ def test_painel_avisa_capitulos_curtos_e_recalcula_apos_revisao(settings: Settin
         "relevance",
         "",
         segments_to_events(
-            [Segment(0, 14, "conquista", 0.9), Segment(20, 30, "conquista", 0.9, markers=["2"])],
+            [Segment(0, 14, "momento", 0.9), Segment(20, 30, "momento", 0.9, markers=["2"])],
             RelevanceParams(),
         ),
     )

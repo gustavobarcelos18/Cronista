@@ -4,6 +4,8 @@ Plano de execução. Fonte de verdade do produto: [00-plano-mestre.md](00-plano-
 Decisões que alimentam esta fase: [histórico §36, §38 e §45](01-historico-de-decisoes.md). Padrões herdados da Fase 2:
 [fase-2-analise-de-audio.md](fase-2-analise-de-audio.md) (variante de artefato, `Evidence`/`event`, sinais `.npy`, portas, gate de GPU).
 
+**Status vigente: tabela única em [plano mestre §7](00-plano-mestre.md). O texto abaixo é o registro da época e pode estar superado.**
+
 Status (2026-11-17): **3A implementada** em `fase/3-video`: leitor de frames, sinais visuais, heurística de menu/loading/idle, câmera e cortes, seção de vídeo no relatório HTML (faixa de estados, 4 gráficos, miniaturas dos trechos mais longos) e `analyze --only audio|video` (histórico §47). `pausa` passou para a 3B (precisa de embeddings); `orbita` ainda não. **Pendente da 3A:** conferir os resultados reais contra o vídeo (olho do criador) e calibrar na 3C. **3B implementada** (contextos, `novelty_ctx`, benchmarks, B-roll com utilidade/clima/HUD, tipos de menu, HUD oculto e `idle` pela cena parada com HUD inteiro; histórico §48–§50). **Pendente da 3B:** conferir contextos e B-roll de olho em mais sessões e provar o HUD oculto com um trecho real (F1/modo diretor). 3C não começou.
 
 ## Objetivo e aceite

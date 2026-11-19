@@ -39,7 +39,7 @@ WAVs e masters da ingestão. Caminho de mão única: o que o Resolve aceita é o
   escolhida ouvindo, não por benchmark.
 - **Ducking** do jogo sob a voz ao vivo e sob os trechos de narração previstos no `roteiro.json` (sidechain calculado no
   app a partir dos intervalos, sem depender de plugin); stems nivelados entre si com folga.
-- **Loudness:** medir (BS.1770) e reportar; o alvo de −14 LUFS é conferido só na mixagem final (Resolve ou `cronista render`).
+- **Loudness:** medir (BS.1770) e reportar; o alvo de −14 LUFS é conferido só na mixagem final (Resolve; `cronista render` **não está implementado**).
 - A6/A7 recebem os stems crus **desativados** (desfazer a mixagem = trocar A1/A2 por A6/A7).
 - Aceite: medição de LUFS/pico dos stems em teste sintético; ducking reduz o jogo no intervalo e volta depois (rampas).
 
@@ -133,3 +133,6 @@ problemas, é reaproveitada sem regerar; se foi interrompida (sem manifesto), co
 versão nova. Os timelapses ficam em `<base>/timelapses`, compartilhados entre versões. Limite: a pausa vale entre
 etapas e renders, não no meio de um FFmpeg em andamento. Falta para o aceite: spike do Resolve (bloco D), mídia real
 e ouvir a mixagem.
+
+
+> **Nota de 2026-11-19 (10D, C17):** o kit de teste do Resolve que manda instalar na pasta `Utility` de Scripts está superado: o menu Scripts do gratuito 21.2 não lista essa pasta; vale o Console Lua (`integrations/resolve/ROTEIRO.md`, seção C). O relink usa URI absoluta e não há `marcadores.json`; vale o código.

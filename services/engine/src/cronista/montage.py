@@ -76,12 +76,15 @@ def load_source(db: Session, media: MediaFile) -> SourceFile:
     )
 
 
-def load_masters(db: Session, session: RecordingSession) -> tuple[dict[int, Path], list[str]]:
-    """Master de cada gravação da sessão. Gravação sem ingestão vira aviso (quem precisar dela a ignora);
-    só falha se nenhuma gravação estiver pronta."""
+def load_masters(
+    db: Session, session: RecordingSession, project_wide: bool = False
+) -> tuple[dict[int, Path], list[str]]:
+    """Master de cada gravação da sessão (ou de todas as do projeto, no vídeo da série). Gravação sem
+    ingestão vira aviso (quem precisar dela a ignora); só falha se nenhuma gravação estiver pronta."""
     masters: dict[int, Path] = {}
     notes: list[str] = []
-    for media in session.media_files:
+    sessions = list(session.project.sessions) if project_wide else [session]
+    for media in (m for s in sessions for m in s.media_files):
         try:
             masters[media.id] = load_source(db, media).master
         except SessionPlanError as exc:

@@ -9,11 +9,15 @@ por série, com duração-alvo de 30–50 min**, montado a partir de várias ses
 
 ## Fonte de verdade
 
-- `docs/00-plano-mestre.md`: requisitos, arquitetura, stack, fases, riscos e decisões. Leia antes de propor ou
+- `docs/00-plano-mestre.md`: requisitos, arquitetura, stack, fases, riscos e decisões. A tabela de status das fases fica
+  na seção 7 (única; README e fases apontam para ela). `docs/glossario.md` fixa um sentido por termo (aprovado em
+  2026-11-19). Leia antes de propor ou
   implementar qualquer coisa. Se uma ideia contradiz o plano, aponte a contradição em vez de seguir em silêncio.
 - `docs/01-historico-de-decisoes.md`: cada pergunta do planejamento e a decisão tomada.
 - `docs/fase-N-*.md`: plano de execução de cada fase, com tarefas, critérios de aceite e testes. Não depende de
   nenhuma skill instalada fora do repositório.
+- Substituição nunca apaga: marque o trecho antigo como `~~texto~~ [SUBSTITUÍDA por H §N, data]`.
+- Ao fim de cada fase, revise a lista "Em aberto" (seção 9) e a tabela de status.
 - Toda decisão nova vai para o plano mestre (seção relevante + seção 9) **e** para o histórico. Nunca apague
   informação já conversada; atualize ou marque como substituída.
 
@@ -50,7 +54,7 @@ por série, com duração-alvo de 30–50 min**, montado a partir de várias ses
 ## Stack
 
 Engine em Python 3.12 + uv (FastAPI, SQLite com SQLAlchemy + Alembic, FFmpeg, OTIO). Studio em Next.js + TypeScript
-com pnpm. Contratos em JSON Schema → Pydantic e TypeScript gerados. Estrutura do monorepo na seção 5.5 do plano.
+com pnpm. Contratos: **Pydantic é a fonte**; dele saem o JSON Schema e os tipos TypeScript gerados (D2; `pnpm gen:contracts`). Estrutura do monorepo na seção 5.5 do plano.
 
 ## Fluxo git
 

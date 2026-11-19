@@ -132,8 +132,8 @@ def client_with(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> TestClie
         assembled.append(session_id)
         return EditPlan(), SimpleNamespace(chapters=[])
 
-    monkeypatch.setattr("cronista.api.app.build_finishing", fake_build)
-    monkeypatch.setattr("cronista.api.app.assemble", fake_assemble)
+    monkeypatch.setattr("cronista.api.routes_finishing.build_finishing", fake_build)
+    monkeypatch.setattr("cronista.api.routes_finishing.assemble", fake_assemble)
     loader = lambda: (style("serie-x"), Library())  # noqa: E731
     app = create_app(settings, finishing_loader=loader)
     app.state.calls = calls
@@ -338,6 +338,6 @@ def test_decision_is_bound_to_the_moment_not_only_to_the_id(
         )
         return plan
 
-    monkeypatch.setattr("cronista.api.app.build_finishing", other_plan)
+    monkeypatch.setattr("cronista.api.routes_finishing.build_finishing", other_plan)
     item = next(i for i in client.get("/sessions/1/finishing").json()["items"] if i["id"] == "zoom-300")
     assert item["decision"] is None and item["effective_mode"] == "editavel"

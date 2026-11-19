@@ -142,9 +142,12 @@ def test_service_stores_events_once_and_keeps_variants_apart(
 
     first = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
     assert first.ok and not first.skipped
-    audio_events = {k: v for k, v in first.events.items() if "video_" not in k}
-    # fala, risada no jogo e risada no microfone (+ o detector de exclamação, que não achou nada)
-    assert sorted(audio_events.values()) == [0, 1, 1, 1]
+    audio_events = {k.split("::")[-1]: v for k, v in first.events.items() if "video_" not in k}
+    assert audio_events == {
+        "speech:fake-vad-fake-asr": 1,
+        "sound_events:game-fake-sed": 1,
+        "sound_events:mic-fake-sed": 1,
+    }
     again = analyze_session(db, session_id, settings, AlwaysFreeGate(), models)
     assert not again.files[Path(media.path).name].executed  # tudo em cache
     audio_only = select(func.count()).select_from(Event).where(Event.stage != "video_scenes")

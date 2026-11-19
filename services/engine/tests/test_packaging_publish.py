@@ -255,7 +255,7 @@ def test_cli_fluxo_status_decidir_e_pacote(
     settings: Settings, db: Session, session_id: int, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("CRONISTA_ENV", "test")
-    monkeypatch.setattr("cronista.cli.load_settings", lambda: settings)
+    monkeypatch.setattr("cronista.commands.common.load_settings", lambda: settings)
     keys = make_shorts(settings.data_dir / "shorts" / str(session_id), session_id, 3)
     runner = CliRunner()
     status = runner.invoke(app, ["shorts-status", str(session_id)])

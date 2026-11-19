@@ -128,18 +128,17 @@ def test_a13_open_journal_is_not_abandoned_while_obs_still_records(
     later = lambda: time.time() + 5 * 3600  # noqa: E731
 
     ingested: list[int] = []
-    monkeypatch.setattr(
-        watch,
-        "ingest_files",
-        lambda *a, **k: (
-            ingested.append(1) or SimpleNamespace(session_id=0, markers=MarkerReport(), ok=True, failures={})
-        ),
-    )
+
+    def fake_ingest(*_a: object, **_k: object) -> SimpleNamespace:
+        ingested.append(1)
+        return SimpleNamespace(session_id=0, markers=MarkerReport(), ok=True, failures={})
+
+    monkeypatch.setattr(watch, "ingest_files", fake_ingest)
 
     recording = _BusyGate(OBS_RECORDING_REASON)
-    assert watch.scan_once(db, settings, recording, tmp_path, "p", now=later) == []  # type: ignore[arg-type]
+    assert watch.scan_once(db, settings, recording, tmp_path, "p", now=later) == []
     assert ingested == []
 
     other = _BusyGate("jogo em tela cheia")  # outro motivo não prova que o OBS grava: vale o prazo
-    (result,) = watch.scan_once(db, settings, other, tmp_path, "p", now=later)  # type: ignore[arg-type]
+    (result,) = watch.scan_once(db, settings, other, tmp_path, "p", now=later)
     assert result.abandoned and ingested == [1]

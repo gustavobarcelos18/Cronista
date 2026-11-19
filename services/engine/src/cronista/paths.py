@@ -87,6 +87,11 @@ class SessionPaths:
         return self._sub("export", "stems")
 
 
+def series_story_dir(settings: Settings, project_id: int) -> Path:
+    """Pasta do story-pack da série: `data/story/serie-<projeto>` (não colide com o id de uma sessão)."""
+    return settings.data_dir / "story" / f"serie-{project_id}"
+
+
 def shorts_manifest_in(shorts_dir: Path, session_id: int) -> Path:
     """Manifesto dos Shorts dentro de uma pasta de Shorts já resolvida."""
     return shorts_dir / f"shorts-{session_id}.json"

@@ -19,7 +19,7 @@ from cronista.db.session import open_db
 from cronista.domain.frames import frame_to_seconds
 from cronista.domain.models import StageResult
 from cronista.logging_setup import setup_logging
-from cronista.paths import SessionPaths, review_csv
+from cronista.paths import SessionPaths, review_csv, series_story_dir
 from cronista.video.models import build_video_models
 
 
@@ -80,23 +80,41 @@ def register(app: typer.Typer) -> None:
 
     @app.command("story")
     def story(
-        session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+        session: Annotated[
+            int | None, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")
+        ] = None,
+        project: Annotated[
+            int | None,
+            typer.Option("--projeto", help="Vídeo da série: todas as sessões do projeto, com um alvo só"),
+        ] = None,
         target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
         out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/story/<sessão>)")] = None,
     ) -> None:
         """Capítulos, beats, objetivos e `story-pack.json` para o roteiro (Fases 5 e 5A)."""
-        from cronista.story.service import StoryError, build_story, write_pack
+        from cronista.story.service import StoryError, build_series_story, build_story, write_pack
+
+        if (session is None) == (project is None):
+            typer.echo("erro: informe a sessão ou --projeto (um dos dois)", err=True)
+            raise typer.Exit(2)
 
         settings = current_settings()
         setup_logging(settings.log_level)
         objectives = profile_objectives(settings)
         with open_db(settings.db_path) as db:
             try:
-                result = build_story(db, session, target_min * 60, objectives)
+                result = (
+                    build_series_story(db, project, target_min * 60, objectives)
+                    if project is not None
+                    else build_story(db, session or 0, target_min * 60, objectives)
+                )
             except StoryError as exc:
                 typer.echo(f"erro: {exc}", err=True)
                 raise typer.Exit(1) from exc
-        target = out or SessionPaths.of(settings, session).story_dir
+        target = out or (
+            series_story_dir(settings, project)
+            if project is not None
+            else SessionPaths.of(settings, session or 0).story_dir
+        )
         pack_path, voice_path = write_pack(target, result)
         for c in result.chapters:
             beats = ", ".join(f"{i.beat.value}" for i in c.items[:8])

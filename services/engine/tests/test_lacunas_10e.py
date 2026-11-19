@@ -79,3 +79,46 @@ def test_b20_panel_with_two_projects_keeps_each_series_separate(
     assert 0 < a.total_min < b.total_min  # cada série soma só o próprio material
     assert all(len(p.sessoes) == 1 for p in panel.projetos)
     assert b.sessoes[0].acumulado_min == b.total_min  # o acumulado não vaza de uma série para a outra
+
+
+# ------------------------------------------------------------------ B1 (10F)
+
+
+def _two_sessions(db: Session) -> Project:
+    project = Project(name="serie", game="g")
+    db.add(project)
+    db.commit()
+    for n in (1, 2):
+        session = RecordingSession(project_id=project.id, folder=f"f{n}")
+        db.add(session)
+        db.commit()
+        db.add(MediaFile(session_id=session.id, path=f"{n}.mp4"))
+        db.commit()
+    return project
+
+
+def test_b1_series_story_uses_one_target_and_one_chapter_across_sessions(
+    monkeypatch: pytest.MonkeyPatch, db: Session
+) -> None:
+    from cronista.story import service
+
+    project = _two_sessions(db)
+    monkeypatch.setattr(
+        service,
+        "load_effective_segments",
+        lambda _db, _media: [Segment(0, 600, "momento", 0.9, ["r"], [], {})],
+    )
+    series = service.build_series_story(db, project.id, 60)
+    assert [c.number for c in series.chapters] == [1]  # sem `novo_dia`, o dia atravessa as duas sessões
+    assert {i.span.file_id for c in series.chapters for i in c.items} == {1, 2}
+    assert sum(c.allocated_s for c in series.chapters) <= 60 + 1
+
+    per_session = [service.build_story(db, sid, 60) for sid in (1, 2)]
+    assert sum(c.allocated_s for r in per_session for c in r.chapters) > 60  # o problema que a série resolve
+
+
+def test_b1_series_story_rejects_unknown_project(db: Session) -> None:
+    from cronista.story.service import StoryError, build_series_story
+
+    with pytest.raises(StoryError, match="projeto 9 não existe"):
+        build_series_story(db, 9)

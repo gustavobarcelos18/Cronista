@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cronista.audio.events import load_active_events
-from cronista.db.models import Marker, Objective, RecordingSession
+from cronista.db.models import Marker, Objective, Project, RecordingSession
 from cronista.domain.evidence import AnalysisEvent
 from cronista.paths import SCRIPT, STORY_PACK, VOICE_PROFILE
 from cronista.relevance.engine import Segment
@@ -51,17 +51,54 @@ def build_story(
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
 ) -> StoryResult:
+    """História de **uma** sessão, com o alvo inteiro. Para o vídeo da série use `build_series_story`."""
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
-    project = session.project
+    return _build(db, session.project, [session], target_s, profile_objectives)
+
+
+def build_series_story(
+    db: Session,
+    project_id: int,
+    target_s: float = DEFAULT_TARGET_S,
+    profile_objectives: tuple[list[str], list[str]] = ([], []),
+) -> StoryResult:
+    """História do vídeo da série (plano 4.1): todas as sessões do projeto, em ordem, com **um** alvo.
+
+    Os capítulos só quebram em `novo_dia` ou na mudança de beat, então um dia que atravessa duas sessões
+    continua sendo um capítulo só. Os ids dos segmentos (`arquivo:início`) já são únicos entre sessões.
+    """
+    project = db.get(Project, project_id)
+    if project is None:
+        raise StoryError(f"projeto {project_id} não existe (veja `cronista status`)")
+    sessions = list(
+        db.scalars(
+            select(RecordingSession)
+            .where(RecordingSession.project_id == project_id)
+            .order_by(RecordingSession.id)
+        )
+    )
+    if not sessions:
+        raise StoryError(f"projeto {project_id} não tem sessões")
+    return _build(db, project, sessions, target_s, profile_objectives)
+
+
+def _build(
+    db: Session,
+    project: Project,
+    sessions: list[RecordingSession],
+    target_s: float,
+    profile_objectives: tuple[list[str], list[str]],
+) -> StoryResult:
     sync_profile_objectives(db, project.id, *profile_objectives)
 
     files: list[tuple[int, list[Segment]]] = []
     speech_by_file: dict[int, list[AnalysisEvent]] = {}
     kinds: dict[str, str] = {}
     discovery = DiscoveryReport()
-    for media in sorted(session.media_files, key=lambda m: m.ordinal):
+    ordered = [m for session in sessions for m in sorted(session.media_files, key=lambda m: m.ordinal)]
+    for media in ordered:
         segments = load_effective_segments(db, media.id)
         if not segments:
             continue
@@ -77,7 +114,7 @@ def build_story(
         # Os objetivos mudam a cada arquivo (o anterior pode propor um novo): lê de novo antes de cada um.
         known = [o.title for o in db.scalars(select(Objective).where(Objective.project_id == project.id))]
         part = discover(
-            db, project.id, session_id, media.id, speech, RuleExtractor(known), corroboration, failures
+            db, project.id, media.session_id, media.id, speech, RuleExtractor(known), corroboration, failures
         )
         discovery.confirmed += part.confirmed
         discovery.hypotheses += part.hypotheses

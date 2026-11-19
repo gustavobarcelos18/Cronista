@@ -42,6 +42,11 @@ vazio) e B20 (sessão sem `novo_dia` nem fala, painel com 2 projetos). A14, B20,
 pelos testes de regressão da 10A/10C. **Ainda não rodado:** `next build` e o CI no GitHub (só `tsc`, `eslint` e `vitest`
 passaram aqui). Próxima: 10F (narrativa por série).
 
+**Andamento da 10F (2026-11-19):** B1 em parte. `build_series_story(project_id)` (todas as sessões do projeto, um alvo só,
+dia contínuo entre sessões) e `cronista story --projeto N` (saída em `data/story/serie-<projeto>`). **Falta:** `montagem`,
+`acabamento`, `titulos`, as skills e o Studio ainda trabalham por sessão e leem a história de `build_story`; B15 (id de
+segmento estável + checagem de roteiro órfão) não foi feito.
+
 ## Divisão lógica do projeto
 
 | Bloco | Escopo | Tamanho aprox. | Plano |

@@ -34,28 +34,6 @@ vinha da 10B), C14, C15, D7, D9, D10, D11, D13 (só o engine único e a docstrin
   x/y do zoom: precisa da saliência da Fase 3, só `prod`) e os renomes públicos que dependem da aprovação do glossário
   (T4). Os comandos `montar` e `montagem` ficam como estão até lá.
 
-**Andamento da 10E (2026-11-19):** feitos E8 (CI do Studio em Ubuntu e Windows com `vitest` e `next build`; `ruff` e
-`mypy` não estrito em `integrations/`, com `integrations/mypy.ini`), E9 (Vitest + Testing Library: `lib/api.ts`,
-`Waveform`, que saiu de `revisao.tsx` para `waveform.tsx`, e os estados de erro da Revisão), D12 (`compare_metadata == []`
-e `downgrade base`), A14 (caixas MP4 sintéticas, `probe_chapters`/`probe_media` com JSON inválido, 2 faixas de áudio, WAV
-vazio) e B20 (sessão sem `novo_dia` nem fala, painel com 2 projetos). A14, B20, C18 e D15 já tinham boa parte coberta
-pelos testes de regressão da 10A/10C. **Ainda não rodado:** `next build` e o CI no GitHub (só `tsc`, `eslint` e `vitest`
-passaram aqui). Próxima: 10F (narrativa por série).
-
-**Andamento da 10F (2026-11-19): feita** (B1, B15; B2 já estava na 10A). O vídeo da série mora na **sessão âncora**
-(a última do projeto; histórico §62), então todos os comandos por sessão funcionam passando o id dela.
-- `build_series_story(project_id)`: todas as sessões, um alvo só, dia contínuo entre sessões.
-- `cronista story --projeto N`: grava o pacote na pasta da sessão âncora e imprime o número dela.
-- `cronista montagem --projeto N` (pacote em `data/export/montagem/serie-<projeto>`, FCPXML `serie-N-vK`) e
-  `cronista acabamento --projeto N` (`data/acabamento/serie-<projeto>`).
-- `titulos`, `titulos-import`, `thumbnails`, `shorts` e `publicar` usam o número da sessão âncora; as skills
-  `/roteirizar` e `/titular` dizem isso.
-- Studio: caixa "Vídeo da série" (só aparece com 2+ sessões no projeto); a API aceita `?serie=true` em
-  `/sessions/{âncora}/export` e `/finishing`.
-- B15 em versão reconciliadora: `validate_script` religa a fala ao segmento do mesmo arquivo que hoje contém o início do
-  id antigo (aviso) e, se não houver, acusa roteiro órfão (erro); o id continua `arquivo:início_s`, sem hash.
-- **Não verificado:** montagem/mixagem de série com mídia real e o Studio no navegador (só `tsc`, `eslint`, `vitest`).
-
 ## Divisão lógica do projeto
 
 | Bloco | Escopo | Tamanho aprox. | Plano |

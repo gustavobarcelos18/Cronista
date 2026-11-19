@@ -1489,29 +1489,6 @@ O que substitui o quê:
 
 Detalhes, local de cada achado e critérios de aceite estão nos planos.
 
-## 61. Glossário aprovado (2026-11-19)
-
-O criador aprovou `docs/glossario.md` (termos: Studio × Resolve Studio, faixa × trilha, segmento × trecho, os três
-sentidos de "pacote", perfil de jogo/voz/ambiente). Ressalva: o vocabulário de decisões **não** será unificado agora
-(`aprovado`/`rejeitado` nos Shorts, `aceito`/`removido` no acabamento, `aceito`/`rejeitado`/`ajustado` nos segmentos),
-porque exigiria migração de dados; fica como possibilidade sem urgência. Em conflito de vocabulário, vale o glossário.
-
-## 62. Vídeo da série na sessão âncora (2026-11-19)
-
-Para a 10F sem tabela nova nem migração, o vídeo único da série é ancorado na **última sessão do projeto**
-(`anchor_session`). `cronista story --projeto N` grava o story-pack na pasta dela; roteiro, títulos, thumbnails, Shorts
-e publicação seguem como comandos por sessão, chamados com o número da âncora. Montagem e acabamento ganham
-`--projeto N` (alvo único, dias contínuos), e o Studio/API aceitam `serie=true` na sessão âncora. Contrapartida: rodar
-`cronista story <âncora>` por sessão sobrescreve o pacote da série na mesma pasta. Alternativa descartada por ora: tabela
-`video` própria (mais limpa, mas exige migração e reescrita dos caminhos). B15 ficou como reconciliação de ids (religa a
-fala ao segmento que contém o início antigo e acusa roteiro órfão), não como hash estável.
-
-Revisão (`/code-review`, 2026-11-19): corrigidos o piso de capítulo que estourava o alvo com muitos capítulos (agora
-encolhe para `alvo / nº de capítulos`), os stems da série (iam para a pasta da sessão 0), a exportação em modo série
-com sessão que não é a âncora (422), o aviso de roteiro ausente na âncora, o aviso de pacote de outro escopo (`escopo.json`)
-e as thumbnails, que agora usam as gravações do projeto todo. **Limites conhecidos:** entrar uma sessão nova muda a
-âncora e deixa roteiro, título e decisões na âncora antiga (é preciso copiá-los); os Shorts continuam por sessão.
-
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

@@ -192,14 +192,6 @@ def test_story_pack_has_live_speech_and_gaps() -> None:
     json.dumps(pack)
 
 
-def test_story_pack_matches_the_exported_contract() -> None:
-    from cronista.story.models import StoryPack
-
-    pack = StoryPack.model_validate(make_pack())
-    assert pack.truncado is False
-    assert {b.classe for c in pack.capitulos for b in c.beats} <= {"dia", "momento"}
-
-
 def test_story_pack_truncates_when_too_big() -> None:
     segs = [seg(i * 60, i * 60 + 60, "momento", 0.5 + i / 1000) for i in range(30)]
     chapters = build_chapters([(1, segs)], {})

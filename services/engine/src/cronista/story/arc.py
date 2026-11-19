@@ -93,16 +93,12 @@ def assign_beats(chapter: Chapter) -> None:
 def allocate_time(chapters: Sequence[Chapter], target_s: float) -> None:
     """Reparte o tempo-alvo do vídeo entre os capítulos, proporcional ao material relevante de cada um.
 
-    O piso `MIN_CHAPTER_S` (que encolhe para `alvo / nº de capítulos` quando não cabe) e o teto (o material
-    real do capítulo, histórico §40: não "preencher tempo") entram na conta e o resto é redistribuído, então a
-    soma não passa do alvo por causa do piso. Se não há material
+    O piso `MIN_CHAPTER_S` e o teto (o material real do capítulo, histórico §40: não "preencher tempo") entram
+    na conta e o resto é redistribuído, então a soma não passa do alvo por causa do piso. Se não há material
     para o alvo, a soma fica abaixo dele.
     """
     if not chapters:
         return
-    floor = min(
-        MIN_CHAPTER_S, target_s / len(chapters)
-    )  # com capítulos demais o piso encolhe: o alvo vale mais
     fixed: dict[int, float] = {}
     while True:
         free = [n for n in range(len(chapters)) if n not in fixed]
@@ -111,9 +107,9 @@ def allocate_time(chapters: Sequence[Chapter], target_s: float) -> None:
         remaining = target_s - sum(fixed.values())
         weight = sum(chapters[n].product_s for n in free)
         share = {n: remaining * (chapters[n].product_s / weight if weight else 1 / len(free)) for n in free}
-        below = [n for n in free if share[n] < min(floor, chapters[n].product_s)]
+        below = [n for n in free if share[n] < min(MIN_CHAPTER_S, chapters[n].product_s)]
         if below:
-            fixed.update({n: min(floor, chapters[n].product_s) for n in below})
+            fixed.update({n: min(MIN_CHAPTER_S, chapters[n].product_s) for n in below})
             continue
         above = [n for n in free if share[n] > chapters[n].product_s]
         if above:

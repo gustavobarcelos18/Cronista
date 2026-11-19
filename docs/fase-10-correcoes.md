@@ -12,11 +12,11 @@ não falhar, o item é descartado.
 | Etapa | O quê | Status |
 |---|---|---|
 | 10A | Bugs de severidade alta e de regra | Concluída (B11 foi para a 10C) |
-| 10B | Fundação transversal (T1 a T4) | Feita (T4: glossário aprovado) |
-| 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`) |
-| 10D | Documentação | Em andamento (parte feita; ver abaixo) |
-| 10E | Testes e CI | Feita (falta rodar `next build` e o CI real) |
-| 10F | Narrativa por série | Feita (conferência com mídia real em `prod`) |
+| 10B | Fundação transversal (T1 a T4) | T1 a T3 feitas; T4 (glossário) aguarda aprovação |
+| 10C | Consolidação | Quase toda feita; faltam D8, D13, B17 e C8 |
+| 10D | Documentação | Não iniciada |
+| 10E | Testes e CI | Não iniciada |
+| 10F | Narrativa por série | Não iniciada |
 
 ## 10A. Bugs e regras (concluída)
 
@@ -34,7 +34,7 @@ E7 e E16. Registros relevantes:
 | T1 | `domain/frames`: `FPS`, conversões, `duration_frames`, `fcpxml_time`; `expected_fps` validado | Feita |
 | T2 | `media/ffmpeg`: `ffmpeg_cmd`, `run_ffmpeg`, `pipe_raw`, `grab_frame`, `video_args` | Feita |
 | T3 | `paths.SessionPaths`: pastas de sessão num só lugar | Feita |
-| T4 | `docs/glossario.md` e renomes públicos | Glossário aprovado em 2026-11-19; comandos renomeados com alias (10C); vocabulário de decisões **não** unificado (decisão do criador) |
+| T4 | `docs/glossario.md` e renomes públicos (comandos com alias, valores do banco com migração) | Proposta escrita; **aguarda aprovação do criador** |
 
 **Aceite:** só `media/ffmpeg.py` monta a linha base do FFmpeg; nenhuma outra definição de `FPS`; nenhum literal de pasta
 de sessão fora de `paths.py`.
@@ -52,17 +52,6 @@ de sessão fora de `paths.py`.
 - C8 (só o pico): o zoom centra no marcador do criador.
 - C12, C13, C14, C15: esqueleto único de FCPXML (`export/fcpxml_base.py`); FFmpeg e encoder únicos; `Track` único com a
   lane do FCPXML (`domain/tracks.py`).
-- B17: `StoryPack` (e `PackBeat`, `PackChapter`...) em `story/models.py`, validado ao montar o pacote e exportado nos
-  contratos; `classe` do trecho e do pacote é `Literal` (`SegmentClass`); `ExportStatus` é um só modelo Pydantic,
-  usado pelo engine e pela API (o tipo do Studio passou de `ExportStatusOut` a `ExportStatus`). `Segment.classe` do
-  engine segue `str`; o `Literal` vale nas fronteiras (API e pacote).
-- D8: `cli.py` só monta o `app`; os comandos ficam em `commands/` (`capture`, `narrative`, `assembly`,
-  `packaging`, `devtools`), com `current_settings()` e `profile_objectives()` em `commands/common.py`. Nomes e opções
-  não mudaram (comparados com a CLI anterior; `tests/test_cli_help.py`). Os testes que trocavam `cli.load_settings`
-  passaram a trocar `cronista.commands.common.load_settings`.
-- D13 (routers): `api/app.py` só monta o app; um `APIRouter` por domínio em `api/routes_*.py`, modelos em
-  `api/schemas.py` e estado comum em `api/context.py`. Os testes de acabamento passaram a fazer monkeypatch em
-  `cronista.api.routes_finishing`.
 - D7, D9, D10, D11, D13 (engine único): `valid_thumbnail_choice`; nomes `<objeto>-<verbo>` com aliases deprecados e
   `export` deprecado; opções tipadas; `ShortsError`; um engine SQLAlchemy por app.
 - E13, E14, E15: contratos sem títulos de campo; meta de 40 min numa constante; YAML só com o que muda por ambiente.
@@ -71,20 +60,15 @@ de sessão fora de `paths.py`.
 
 | Item | O quê | Observação |
 |---|---|---|
+| D8 | Dividir `cli.py` em sub-apps Typer, com helper de erro e `profile_objectives` | Os testes fazem monkeypatch em `cronista.cli`; precisam de ajuste |
+| D13 | Um `APIRouter` por domínio em `api/app.py` | Só reorganização |
+| B17 | `StoryPack` como modelo Pydantic exportado, tipos `Literal`, um só modelo de status | Muda os contratos gerados |
 | C8 | Foco x/y do zoom a partir da saliência da Fase 3 | Só em `prod` |
 
 **Aceite:** CLI e Studio mostram os mesmos números; a divisão do `cli.py` não muda nenhum nome de comando nem opção
 (teste de fumaça com `--help` de cada comando).
 
 ## 10D. Documentação (F1 a F8)
-
-**Feito (2026-11-19):** F15 (CLAUDE.md: Pydantic é a fonte dos contratos) e regra de substituição/revisão de fase; F11
-(tabela de status única em plano mestre §7, com ponteiros nas fases 1 a 3, no README e no cabeçalho do plano); F1, F3, F4,
-F6, F7, F8 e F9 marcados como substituídos onde ainda apareciam como vigentes; F13 (`render` marcado "não implementado",
-nomes de comandos e gabarito corrigidos) e F21; F14 (árvore da 5.5 conforme o código, a antiga mantida e marcada);
-README com setup; C17. Glossário aprovado e citado no CLAUDE.md, README e plano mestre (F17). **Falta:** "Em aberto" como tabela e
-revisão dos ⚠️ (F12, F18, só uma nota por enquanto); redundância (seção 4 da auditoria) e reordenar o histórico (F20);
-D14; árvore e comandos gerados por script (F14, anexo).
 
 - Aprovar e publicar `docs/glossario.md`; citá-lo no CLAUDE.md e no plano mestre.
 - Marcar como "substituída" as contradições do plano mestre: lookback de 60 a 90 s, FCPXML via OTIO, Remotion,

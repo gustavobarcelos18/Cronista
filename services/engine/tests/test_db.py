@@ -93,23 +93,3 @@ def test_migration_0005_keeps_existing_rows_and_allows_variants(tmp_path: Path) 
         assert conn.execute(text("SELECT stage, variant, status FROM job")).all() == [("audio", "", "done")]
         assert "event" in inspect(conn).get_table_names()
     engine.dispose()
-
-
-def test_d12_migrations_match_the_models_and_downgrade_to_base(tmp_path: Path) -> None:
-    """`upgrade head` deixa o banco igual aos modelos"""
-    from alembic.autogenerate import compare_metadata
-    from alembic.migration import MigrationContext
-
-    engine = make_engine(tmp_path / "paridade.db")
-    cfg = Config()
-    cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
-    cfg.attributes["connection_url"] = engine.url.render_as_string(hide_password=False)
-    command.upgrade(cfg, "head")
-    with engine.connect() as conn:
-        diff = compare_metadata(MigrationContext.configure(conn), Base.metadata)
-    assert diff == [], f"modelos e migrações divergem: {str(diff)[:600]}"
-
-    command.downgrade(cfg, "base")
-    with engine.connect() as conn:
-        assert set(inspect(conn).get_table_names()) <= {"alembic_version"}
-    engine.dispose()

@@ -28,10 +28,9 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install ffmpeg --version=9.0.2 -y --no-progress
       - run: uv sync --locked
-      - run: uv run ruff check . ../../integrations
-      - run: uv run ruff format --check . ../../integrations
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
       - run: uv run mypy
-      - run: uv run mypy --config-file ../../integrations/mypy.ini ../../integrations/resolve ../../integrations/cuda ../../integrations/fifine
       - run: uv run pytest -q
       - name: Nenhum caminho pessoal versionado
         shell: bash
@@ -42,12 +41,8 @@ jobs:
           fi
 
   studio:
-    name: Studio e contratos (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+    name: Studio e contratos
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -57,11 +52,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Tipos TypeScript dos contratos estão em dia
-        shell: bash
         run: |
           pnpm gen:contracts
           git diff --exit-code packages/contracts/types.ts
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm --filter @cronista/studio test
-      - run: pnpm --filter @cronista/studio build

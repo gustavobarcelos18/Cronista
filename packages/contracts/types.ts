@@ -1,11 +1,6 @@
 /* GERADO por pnpm gen a partir de schema.json. Não edite. */
 
 /**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "Beat".
- */
-export type Beat = "setup" | "conflito" | "falha" | "virada" | "conquista";
-/**
  * Efeitos que o acabamento pode aplicar, cada um com modo e orçamento próprios.
  *
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
@@ -37,17 +32,6 @@ export type EffectMode = "sugerir" | "editavel" | "renderizado";
  */
 export type MarkerKind =
   "momento" | "morte_falha" | "engracado" | "conquista" | "novo_dia" | "construcao" | "foto_progresso" | "cinematica";
-/**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "ObjKind".
- */
-export type ObjKind = "principal" | "secundario" | "subobjetivo" | "restricao";
-/**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "ObjState".
- */
-export type ObjState =
-  "proposto" | "em_andamento" | "concluido" | "falhou" | "abandonado" | "suspenso" | "retomado" | "incerto";
 
 export interface CronistaContracts {
   [k: string]: unknown;
@@ -98,17 +82,15 @@ export interface EventOut {
   variant: string;
 }
 /**
- * Estado da re-exportação de uma sessão; é também o contrato da API (`/sessions/{id}/export`).
- *
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "ExportStatus".
+ * via the `definition` "ExportStatusOut".
  */
-export interface ExportStatus {
+export interface ExportStatusOut {
   directory?: string | null;
   message?: string;
   problems?: string[];
   reused?: boolean;
-  state?: "idle" | "running" | "done" | "error";
+  state: "idle" | "running" | "done" | "error";
   version?: number | null;
   warnings?: string[];
 }
@@ -244,74 +226,6 @@ export interface MediaProbe {
   pix_fmt?: string | null;
   video_codec?: string | null;
   width?: number | null;
-}
-/**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "PackBeat".
- */
-export interface PackBeat {
-  arquivo_id: number;
-  beat: Beat;
-  classe: "descartavel" | "dia" | "momento" | "farm" | "conversa" | "jogo";
-  fala_ao_vivo: PackLiveSpeech[];
-  fim_s: number;
-  inicio_s: number;
-  lacunas: PackWindow[];
-  marcadores: string[];
-  nota: number;
-  razoes: string[];
-  segmento_id: string;
-}
-/**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "PackLiveSpeech".
- */
-export interface PackLiveSpeech {
-  fim_s: number;
-  inicio_s: number;
-  /**
-   * Ausente quando o pacote cortou a transcrição
-   */
-  texto?: string | null;
-}
-/**
- * Intervalo em segundos do arquivo de origem.
- *
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "PackWindow".
- */
-export interface PackWindow {
-  fim_s: number;
-  inicio_s: number;
-}
-/**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "PackChapter".
- */
-export interface PackChapter {
-  alocado_s: number;
-  beats: PackBeat[];
-  n: number;
-}
-/**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "PackObjective".
- */
-export interface PackObjective {
-  citacao: string;
-  confirmado: boolean;
-  estado: ObjState | "sem_estado";
-  id: number;
-  tipo: ObjKind;
-  titulo: string;
-}
-/**
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "PackProject".
- */
-export interface PackProject {
-  jogo?: string;
-  nome?: string;
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
@@ -469,7 +383,7 @@ export interface ScriptOut {
 export interface SegmentOut {
   adj_end_s?: number | null;
   adj_start_s?: number | null;
-  classe: "descartavel" | "dia" | "momento" | "farm" | "conversa" | "jogo";
+  classe: string;
   decision?: string | null;
   end_s: number;
   features: {
@@ -521,20 +435,6 @@ export interface StageResult {
   };
   files?: string[];
   warnings?: string[];
-}
-/**
- * `story-pack.json`: o recorte compacto que o roteirista recebe (Fase 5). Só fatos verificáveis.
- *
- * This interface was referenced by `CronistaContracts`'s JSON-Schema
- * via the `definition` "StoryPack".
- */
-export interface StoryPack {
-  alvo_s: number;
-  capitulos: PackChapter[];
-  instrucoes: string[];
-  objetivos: PackObjective[];
-  projeto: PackProject;
-  truncado?: boolean;
 }
 /**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema

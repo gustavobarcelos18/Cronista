@@ -18,7 +18,6 @@ import Feedback from "./feedback";
 import Painel from "./painel";
 import Progresso from "./progresso";
 import Roteiro from "./roteiro";
-import Waveform from "./waveform";
 
 type MediaFile = MediaFileOut;
 type Session = SessionOut;
@@ -44,7 +43,6 @@ export default function Revisao() {
   const [wave, setWave] = useState<WaveformOut | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decisaoVersao, setDecisaoVersao] = useState(0);
-  const [serie, setSerie] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -100,13 +98,6 @@ export default function Revisao() {
       setError("Ajuste cancelado: informe números em segundos.");
     }
   }
-
-  // Vídeo da série: um só vídeo com todas as sessões do projeto, ancorado na última sessão dele.
-  const projectSessions = sessions.filter((s) => s.project_id === projectId);
-  const serieDisponivel = projectId !== null && projectSessions.length > 1;
-  const anchorId = serieDisponivel ? Math.max(...projectSessions.map((s) => s.id)) : null;
-  const videoSessionId = serie && anchorId !== null ? anchorId : sessionId;
-  const videoSerie = serie && anchorId !== null;
 
   function seek(seconds: number) {
     if (video.current) {
@@ -173,23 +164,14 @@ export default function Revisao() {
                 </li>
               ))}
             </ol>
-            {serieDisponivel && (
-              <label>
-                <input type="checkbox" checked={serie} onChange={(e) => setSerie(e.target.checked)} /> Vídeo da
-                série (todas as sessões do projeto, um alvo só; roteiro e embalagem ficam na sessão{" "}
-                {anchorId})
-              </label>
-            )}
-            {videoSessionId !== null && (
-              // Um só pai com `key`: quando a sessão (ou o modo série) muda, os painéis remontam juntos.
-              <Fragment key={`${videoSessionId}-${videoSerie}`}>
-                <Roteiro sessionId={videoSessionId} />
+            {sessionId !== null && (
+              // Um só pai com `key`: quando a sessão muda, os quatro painéis remontam juntos.
+              <Fragment key={sessionId}>
+                <Roteiro sessionId={sessionId} />
                 {projectId !== null && <Aprendizado key={projectId} projectId={projectId} />}
-                {projectId !== null && (
-                  <Acabamento sessionId={videoSessionId} projectId={projectId} serie={videoSerie} />
-                )}
-                <Embalagem sessionId={videoSessionId} />
-                <Exportar sessionId={videoSessionId} serie={videoSerie} />
+                {projectId !== null && <Acabamento sessionId={sessionId} projectId={projectId} />}
+                <Embalagem sessionId={sessionId} />
+                <Exportar sessionId={sessionId} />
               </Fragment>
             )}
           </>
@@ -210,5 +192,53 @@ function SignalChips({ events }: { events: EventOut[] }) {
       {" · sinais: "}
       {[...counts].map(([kind, n]) => `${kind}${n > 1 ? ` ×${n}` : ""}`).join(", ")}
     </small>
+  );
+}
+
+const WAVE_H = 80;
+const FLOOR_DB = -60;
+
+function Waveform({
+  wave,
+  segments,
+  onSeek,
+}: {
+  wave: WaveformOut;
+  segments: Segment[];
+  onSeek: (seconds: number) => void;
+}) {
+  const n = Math.max(wave.game.length, wave.mic.length, 1);
+  const bar = (db: number) => Math.max(1, ((Math.min(0, Math.max(FLOOR_DB, db)) - FLOOR_DB) / -FLOOR_DB) * (WAVE_H / 2));
+  const x = (seconds: number) => (seconds / Math.max(wave.duration_s, 1)) * n;
+  return (
+    <svg
+      viewBox={`0 0 ${n} ${WAVE_H}`}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label="Energia do áudio (jogo em cima, microfone embaixo)"
+      style={{ width: "100%", height: WAVE_H, background: "#111", cursor: "pointer", display: "block" }}
+      onClick={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        onSeek(((e.clientX - r.left) / r.width) * wave.duration_s);
+      }}
+    >
+      {segments.map((g) => (
+        <rect
+          key={g.start_s}
+          x={x(g.start_s)}
+          width={Math.max(x(g.end_s) - x(g.start_s), 0.5)}
+          y={0}
+          height={WAVE_H}
+          fill={g.score >= 0.35 ? "#2a6" : "#555"}
+          opacity={0.25}
+        />
+      ))}
+      {wave.game.map((db, i) => (
+        <rect key={`g${i}`} x={i} width={1} y={WAVE_H / 2 - bar(db)} height={bar(db)} fill="#6cf" />
+      ))}
+      {wave.mic.map((db, i) => (
+        <rect key={`m${i}`} x={i} width={1} y={WAVE_H / 2} height={bar(db)} fill="#fc6" />
+      ))}
+    </svg>
   );
 }

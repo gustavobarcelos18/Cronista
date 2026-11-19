@@ -111,28 +111,24 @@ type Result = { data?: FinishingOut; error?: string };
 export default function Acabamento({
   sessionId,
   projectId,
-  serie = false,
 }: {
   sessionId: number;
   projectId: number;
-  /** Vídeo da série: `sessionId` é a sessão âncora e a prévia cobre o projeto inteiro. */
-  serie?: boolean;
 }) {
-  const query = serie ? "?serie=true" : "";
   const [data, setData] = useState<FinishingOut | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const fetchPreview = useCallback(async (): Promise<Result> => {
     try {
-      const res = await fetch(`${API}/sessions/${sessionId}/finishing${query}`);
+      const res = await fetch(`${API}/sessions/${sessionId}/finishing`);
       if (res.ok) return { data: (await res.json()) as FinishingOut };
       const body = (await res.json().catch(() => ({}))) as { detail?: string };
       return { error: body.detail ?? `erro ${res.status}` };
     } catch {
       return { error: "Engine fora do ar." };
     }
-  }, [sessionId, query]);
+  }, [sessionId]);
 
   const show = useCallback((r: Result) => {
     setData(r.data ?? null);
@@ -176,7 +172,7 @@ export default function Acabamento({
 
   function decide(item: FinishItemOut, decision: FinishDecisionIn["decision"]) {
     return send(
-      `${API}/sessions/${sessionId}/finishing/items/${item.id}/decision${query}`,
+      `${API}/sessions/${sessionId}/finishing/items/${item.id}/decision`,
       "POST",
       { decision },
       "Não registrou",

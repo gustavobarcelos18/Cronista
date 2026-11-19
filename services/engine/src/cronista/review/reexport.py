@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Literal
-
-from pydantic import BaseModel
 
 from cronista.config import Settings
 from cronista.db.models import RecordingSession
@@ -29,16 +28,15 @@ ProfileLoader = Callable[[], tuple[list[str], list[str]]]
 State = Literal["idle", "running", "done", "error"]
 
 
-class ExportStatus(BaseModel):
-    """Estado da re-exportação de uma sessão; é também o contrato da API (`/sessions/{id}/export`)."""
-
+@dataclass
+class ExportStatus:
     state: State = "idle"
     message: str = ""
     version: int | None = None
     reused: bool = False
     directory: str | None = None
-    problems: list[str] = []
-    warnings: list[str] = []
+    problems: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 class ReexportJobs:
@@ -51,31 +49,25 @@ class ReexportJobs:
         self._settings = settings
         self._finishing = finishing_loader
         self._profile = profile_loader or (lambda: ([], []))
-        self._status: dict[tuple[int, bool], ExportStatus] = {}
+        self._status: dict[int, ExportStatus] = {}
         self._lock = threading.Lock()
         self.last_thread: threading.Thread | None = None
 
-    def status(self, session_id: int, series: bool = False) -> ExportStatus:
+    def status(self, session_id: int) -> ExportStatus:
         with self._lock:
-            return self._status.get((session_id, series), ExportStatus())
+            return self._status.get(session_id, ExportStatus())
 
-    def start(self, session_id: int, target_s: float, series: bool = False) -> bool:
-        """Dispara a exportação; `False` se já há uma rodando para a sessão (ou para o vídeo da série).
-
-        Com `series`, `session_id` é a sessão âncora e a montagem cobre todas as sessões do projeto.
-        """
-        key = (session_id, series)
+    def start(self, session_id: int, target_s: float) -> bool:
+        """Dispara a exportação; `False` se já há uma rodando para a sessão."""
         with self._lock:
-            if self._status.get(key, ExportStatus()).state == "running":
+            if self._status.get(session_id, ExportStatus()).state == "running":
                 return False
-            self._status[key] = ExportStatus(state="running", message="exportando…")
-        self.last_thread = threading.Thread(
-            target=self._run, args=(session_id, target_s, series), daemon=True
-        )
+            self._status[session_id] = ExportStatus(state="running", message="exportando…")
+        self.last_thread = threading.Thread(target=self._run, args=(session_id, target_s), daemon=True)
         self.last_thread.start()
         return True
 
-    def _run(self, session_id: int, target_s: float, series: bool = False) -> None:
+    def _run(self, session_id: int, target_s: float) -> None:
         s = self._settings
         try:
             objetivos, regras = self._profile()
@@ -84,16 +76,16 @@ class ReexportJobs:
             loaded = self._finishing() if self._finishing else None
             with open_db(s.db_path) as db:
                 style = library = decisions = None
-                session = db.get(RecordingSession, session_id)
-                assert session is not None
                 if (
                     loaded is not None
                 ):  # acabamento configurado: ajustes e decisões do Studio entram no pacote
+                    session = db.get(RecordingSession, session_id)
+                    assert session is not None
                     style = with_overrides(loaded[0], current_settings(db, session.project_id))
                     library, decisions = loaded[1], current_item_decisions(db, session_id)
                 report = export_montagem(
                     db,
-                    None if series else session_id,
+                    session_id,
                     s,
                     script,
                     target_s,
@@ -103,7 +95,6 @@ class ReexportJobs:
                     style,
                     library,
                     decisions,
-                    project_id=session.project_id if series else None,
                 )
             result = ExportStatus(
                 state="done",
@@ -112,16 +103,9 @@ class ReexportJobs:
                 reused=report.reused,
                 directory=str(report.directory),
                 problems=report.problems,
-                warnings=[
-                    *report.warnings,
-                    *(
-                        [f"sem roteiro.json na sessão âncora {session_id}: o pacote sai sem narração"]
-                        if series and script is None
-                        else []
-                    ),
-                ],
+                warnings=report.warnings,
             )
         except Exception as exc:  # o job nunca derruba a API; o erro volta no estado
             result = ExportStatus(state="error", message=str(exc))
         with self._lock:
-            self._status[(session_id, series)] = result
+            self._status[session_id] = result

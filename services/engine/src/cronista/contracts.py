@@ -7,11 +7,12 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
-from cronista.api.schemas import (
+from cronista.api.app import (
     DecisionIn,
     EffectSettingIn,
     EffectSettingOut,
     EventOut,
+    ExportStatusOut,
     FeedbackIn,
     FeedbackOut,
     FinishDecisionIn,
@@ -33,8 +34,6 @@ from cronista.api.schemas import (
 from cronista.domain.models import MarkerKind, MediaProbe, StageResult
 from cronista.packaging.panel import PackagingOut, PublishOut
 from cronista.review.panel import ProjectPanelOut, SeriesPanelOut, SeriesRowOut
-from cronista.review.reexport import ExportStatus
-from cronista.story.models import StoryPack
 
 
 def _without_field_titles(node: object) -> object:
@@ -69,8 +68,7 @@ def build_schema() -> dict[str, object]:
         SeriesRowOut,
         ProjectPanelOut,
         SeriesPanelOut,
-        ExportStatus,
-        StoryPack,
+        ExportStatusOut,
         ScriptOut,
         EventOut,
         WaveformOut,

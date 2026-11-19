@@ -1,16 +1,5 @@
 {
   "$defs": {
-    "Beat": {
-      "enum": [
-        "setup",
-        "conflito",
-        "falha",
-        "virada",
-        "conquista"
-      ],
-      "title": "Beat",
-      "type": "string"
-    },
     "DecisionIn": {
       "properties": {
         "decision": {
@@ -184,8 +173,7 @@
       "title": "EventOut",
       "type": "object"
     },
-    "ExportStatus": {
-      "description": "Estado da re-exportação de uma sessão; é também o contrato da API (`/sessions/{id}/export`).",
+    "ExportStatusOut": {
       "properties": {
         "directory": {
           "anyOf": [
@@ -214,7 +202,6 @@
           "type": "boolean"
         },
         "state": {
-          "default": "idle",
           "enum": [
             "idle",
             "running",
@@ -242,7 +229,10 @@
           "type": "array"
         }
       },
-      "title": "ExportStatus",
+      "required": [
+        "state"
+      ],
+      "title": "ExportStatusOut",
       "type": "object"
     },
     "FeedbackIn": {
@@ -709,224 +699,6 @@
       "title": "MediaProbe",
       "type": "object"
     },
-    "ObjKind": {
-      "enum": [
-        "principal",
-        "secundario",
-        "subobjetivo",
-        "restricao"
-      ],
-      "title": "ObjKind",
-      "type": "string"
-    },
-    "ObjState": {
-      "enum": [
-        "proposto",
-        "em_andamento",
-        "concluido",
-        "falhou",
-        "abandonado",
-        "suspenso",
-        "retomado",
-        "incerto"
-      ],
-      "title": "ObjState",
-      "type": "string"
-    },
-    "PackBeat": {
-      "properties": {
-        "arquivo_id": {
-          "type": "integer"
-        },
-        "beat": {
-          "$ref": "#/$defs/Beat"
-        },
-        "classe": {
-          "enum": [
-            "descartavel",
-            "dia",
-            "momento",
-            "farm",
-            "conversa",
-            "jogo"
-          ],
-          "type": "string"
-        },
-        "fala_ao_vivo": {
-          "items": {
-            "$ref": "#/$defs/PackLiveSpeech"
-          },
-          "type": "array"
-        },
-        "fim_s": {
-          "type": "number"
-        },
-        "inicio_s": {
-          "type": "number"
-        },
-        "lacunas": {
-          "items": {
-            "$ref": "#/$defs/PackWindow"
-          },
-          "type": "array"
-        },
-        "marcadores": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "nota": {
-          "type": "number"
-        },
-        "razoes": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "segmento_id": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "segmento_id",
-        "arquivo_id",
-        "inicio_s",
-        "fim_s",
-        "beat",
-        "classe",
-        "nota",
-        "razoes",
-        "marcadores",
-        "fala_ao_vivo",
-        "lacunas"
-      ],
-      "title": "PackBeat",
-      "type": "object"
-    },
-    "PackChapter": {
-      "properties": {
-        "alocado_s": {
-          "type": "number"
-        },
-        "beats": {
-          "items": {
-            "$ref": "#/$defs/PackBeat"
-          },
-          "type": "array"
-        },
-        "n": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "n",
-        "alocado_s",
-        "beats"
-      ],
-      "title": "PackChapter",
-      "type": "object"
-    },
-    "PackLiveSpeech": {
-      "properties": {
-        "fim_s": {
-          "type": "number"
-        },
-        "inicio_s": {
-          "type": "number"
-        },
-        "texto": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Ausente quando o pacote cortou a transcrição"
-        }
-      },
-      "required": [
-        "inicio_s",
-        "fim_s"
-      ],
-      "title": "PackLiveSpeech",
-      "type": "object"
-    },
-    "PackObjective": {
-      "properties": {
-        "citacao": {
-          "type": "string"
-        },
-        "confirmado": {
-          "type": "boolean"
-        },
-        "estado": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ObjState"
-            },
-            {
-              "const": "sem_estado",
-              "type": "string"
-            }
-          ]
-        },
-        "id": {
-          "type": "integer"
-        },
-        "tipo": {
-          "$ref": "#/$defs/ObjKind"
-        },
-        "titulo": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "titulo",
-        "tipo",
-        "estado",
-        "citacao",
-        "confirmado"
-      ],
-      "title": "PackObjective",
-      "type": "object"
-    },
-    "PackProject": {
-      "properties": {
-        "jogo": {
-          "default": "",
-          "type": "string"
-        },
-        "nome": {
-          "default": "",
-          "type": "string"
-        }
-      },
-      "title": "PackProject",
-      "type": "object"
-    },
-    "PackWindow": {
-      "description": "Intervalo em segundos do arquivo de origem.",
-      "properties": {
-        "fim_s": {
-          "type": "number"
-        },
-        "inicio_s": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "inicio_s",
-        "fim_s"
-      ],
-      "title": "PackWindow",
-      "type": "object"
-    },
     "PackagingOut": {
       "properties": {
         "approved_shorts": {
@@ -1221,14 +993,6 @@
           "default": null
         },
         "classe": {
-          "enum": [
-            "descartavel",
-            "dia",
-            "momento",
-            "farm",
-            "conversa",
-            "jogo"
-          ],
           "type": "string"
         },
         "decision": {
@@ -1454,48 +1218,6 @@
         }
       },
       "title": "StageResult",
-      "type": "object"
-    },
-    "StoryPack": {
-      "description": "`story-pack.json`: o recorte compacto que o roteirista recebe (Fase 5). Só fatos verificáveis.",
-      "properties": {
-        "alvo_s": {
-          "type": "number"
-        },
-        "capitulos": {
-          "items": {
-            "$ref": "#/$defs/PackChapter"
-          },
-          "type": "array"
-        },
-        "instrucoes": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "objetivos": {
-          "items": {
-            "$ref": "#/$defs/PackObjective"
-          },
-          "type": "array"
-        },
-        "projeto": {
-          "$ref": "#/$defs/PackProject"
-        },
-        "truncado": {
-          "default": false,
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "projeto",
-        "alvo_s",
-        "objetivos",
-        "instrucoes",
-        "capitulos"
-      ],
-      "title": "StoryPack",
       "type": "object"
     },
     "ThinChapterOut": {

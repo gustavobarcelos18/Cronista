@@ -12,7 +12,6 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -77,10 +76,6 @@ class RelevanceParams:
     def lookback(self, kind: str) -> float:
         value = getattr(self, f"lookback_{kind}", None)
         return float(value) if isinstance(value, float) else DEFAULT_LOOKBACK_S
-
-
-SegmentClass = Literal["descartavel", "dia", "momento", "farm", "conversa", "jogo"]
-"""Classes de um trecho: único lugar que as lista (API, pacote da história e Studio usam este tipo)."""
 
 
 @dataclass

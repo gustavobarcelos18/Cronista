@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cronista.audio.events import load_active_events
-from cronista.db.models import Marker, Objective, Project, RecordingSession
+from cronista.db.models import Marker, Objective, RecordingSession
 from cronista.domain.evidence import AnalysisEvent
 from cronista.paths import SCRIPT, STORY_PACK, VOICE_PROFILE
 from cronista.relevance.engine import Segment
@@ -51,76 +51,17 @@ def build_story(
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
 ) -> StoryResult:
-    """História de **uma** sessão, com o alvo inteiro. Para o vídeo da série use `build_series_story`."""
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
-    return _build(db, session.project, [session], target_s, profile_objectives)
-
-
-def build_series_story(
-    db: Session,
-    project_id: int,
-    target_s: float = DEFAULT_TARGET_S,
-    profile_objectives: tuple[list[str], list[str]] = ([], []),
-) -> StoryResult:
-    """História do vídeo da série (plano 4.1): todas as sessões do projeto, em ordem, com **um** alvo.
-
-    Os capítulos só quebram em `novo_dia` ou na mudança de beat, então um dia que atravessa duas sessões
-    continua sendo um capítulo só. Os ids dos segmentos (`arquivo:início`) já são únicos entre sessões.
-    """
-    project = db.get(Project, project_id)
-    if project is None:
-        raise StoryError(f"projeto {project_id} não existe (veja `cronista status`)")
-    sessions = scope_sessions(db, None, project_id)
-    return _build(db, project, sessions, target_s, profile_objectives)
-
-
-def scope_sessions(db: Session, session_id: int | None, project_id: int | None) -> list[RecordingSession]:
-    """Sessões do escopo: uma sessão, ou todas as do projeto (vídeo da série), em ordem."""
-    if (session_id is None) == (project_id is None):
-        raise StoryError("informe a sessão ou o projeto (um dos dois)")
-    if project_id is not None:
-        sessions = list(
-            db.scalars(
-                select(RecordingSession)
-                .where(RecordingSession.project_id == project_id)
-                .order_by(RecordingSession.id)
-            )
-        )
-        if not sessions:
-            raise StoryError(f"projeto {project_id} não tem sessões")
-        return sessions
-    session = db.get(RecordingSession, session_id or 0)
-    if session is None:
-        raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
-    return [session]
-
-
-def anchor_session(db: Session, project_id: int) -> RecordingSession:
-    """Sessão âncora do vídeo da série: a última do projeto.
-
-    O vídeo único não tem tabela própria; o roteiro, os títulos, as thumbnails e os Shorts dele moram nas
-    pastas (e nas linhas) da sessão âncora, e todos os comandos por sessão funcionam passando o id dela.
-    """
-    return scope_sessions(db, None, project_id)[-1]
-
-
-def _build(
-    db: Session,
-    project: Project,
-    sessions: list[RecordingSession],
-    target_s: float,
-    profile_objectives: tuple[list[str], list[str]],
-) -> StoryResult:
+    project = session.project
     sync_profile_objectives(db, project.id, *profile_objectives)
 
     files: list[tuple[int, list[Segment]]] = []
     speech_by_file: dict[int, list[AnalysisEvent]] = {}
     kinds: dict[str, str] = {}
     discovery = DiscoveryReport()
-    ordered = [m for session in sessions for m in sorted(session.media_files, key=lambda m: m.ordinal)]
-    for media in ordered:
+    for media in sorted(session.media_files, key=lambda m: m.ordinal):
         segments = load_effective_segments(db, media.id)
         if not segments:
             continue
@@ -136,7 +77,7 @@ def _build(
         # Os objetivos mudam a cada arquivo (o anterior pode propor um novo): lê de novo antes de cada um.
         known = [o.title for o in db.scalars(select(Objective).where(Objective.project_id == project.id))]
         part = discover(
-            db, project.id, media.session_id, media.id, speech, RuleExtractor(known), corroboration, failures
+            db, project.id, session_id, media.id, speech, RuleExtractor(known), corroboration, failures
         )
         discovery.confirmed += part.confirmed
         discovery.hypotheses += part.hypotheses

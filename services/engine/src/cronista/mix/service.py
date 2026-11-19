@@ -13,6 +13,7 @@ from cronista.assembly.plan import EditPlan
 from cronista.assembly.service import build_assembly
 from cronista.audio.events import load_active_events
 from cronista.config import Settings
+from cronista.db.models import RecordingSession
 from cronista.domain.frames import FPS
 from cronista.media.ffmpeg import run_ffmpeg
 from cronista.mix.envelope import (
@@ -25,10 +26,10 @@ from cronista.mix.envelope import (
 from cronista.mix.loudness import Loudness, measure
 from cronista.mix.stems import render_stem
 from cronista.montage import SessionPlanError, load_source
-from cronista.paths import SessionPaths, series_package_base
+from cronista.paths import SessionPaths
 from cronista.pipeline.stage import StageError
 from cronista.story.models import Script
-from cronista.story.service import DEFAULT_TARGET_S, scope_sessions
+from cronista.story.service import DEFAULT_TARGET_S
 
 VOICE_CHAIN = (
     "highpass=f=80,afftdn=nr=12:nf=-30,acompressor=threshold=0.125:ratio=3:attack=5:release=120:makeup=2"
@@ -142,21 +143,21 @@ def mix_plan(
 
 def mix_session(
     db: Session,
-    session_id: int | None,
+    session_id: int,
     settings: Settings,
     script: Script | None = None,
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     out_dir: Path | None = None,
     plan: EditPlan | None = None,
-    project_id: int | None = None,
 ) -> MixReport:
-    sessions = scope_sessions(db, session_id, project_id)
-    plan = plan or build_assembly(db, session_id, settings, target_s, profile_objectives, None, project_id)
+    plan = plan or build_assembly(db, session_id, settings, target_s, profile_objectives)
+    session = db.get(RecordingSession, session_id)
+    assert session is not None
     game: dict[int, Path] = {}
     mic: dict[int, Path] = {}
     speech: dict[int, list[tuple[int, int]]] = {}
-    for media in (m for s in sessions for m in sorted(s.media_files, key=lambda m: m.ordinal)):
+    for media in session.media_files:
         source = load_source(db, media)
         if source.game_wav is None or source.mic_wav is None:
             raise SessionPlanError(
@@ -168,10 +169,5 @@ def mix_session(
             for e in load_active_events(db, media.id)
             if e.kind == "fala"
         ]
-    if out_dir is not None:
-        target = out_dir
-    elif project_id is not None:
-        target = series_package_base(settings, project_id) / "stems"
-    else:
-        target = SessionPaths.of(settings, session_id or 0).stems_dir
+    target = out_dir or SessionPaths.of(settings, session_id).stems_dir
     return mix_plan(plan, game, mic, speech, script, settings, target)

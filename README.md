@@ -13,7 +13,7 @@ fica no [plano mestre, seção 7](docs/00-plano-mestre.md); o resto aponta para 
 | [CLAUDE.md](CLAUDE.md) | Regras de produto que não se negociam e fluxo de trabalho |
 | [docs/00-plano-mestre.md](docs/00-plano-mestre.md) | Fonte de verdade: requisitos, arquitetura, stack, fases, riscos, decisões |
 | [docs/01-historico-de-decisoes.md](docs/01-historico-de-decisoes.md) | Cada pergunta do planejamento e a decisão tomada |
-| [docs/glossario.md](docs/glossario.md) | Um sentido por termo (proposta, aguardando aprovação) |
+| [docs/glossario.md](docs/glossario.md) | Um sentido por termo (aprovado) |
 | `docs/fase-N-*.md` | Plano de execução de cada fase |
 | [docs/auditoria/](docs/auditoria/00-indice.md) | Auditoria de 2026-11-18 que originou a Fase 10 |
 

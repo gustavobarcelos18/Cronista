@@ -6,6 +6,7 @@
 Criado em 2026-11-12 · Status das fases: tabela única na seção 7 (fases 1 a 9 mergeadas; Fase 10, correções da auditoria, em andamento). ~~Planejamento aprovado em linhas gerais; próxima etapa = detalhar a Fase 1~~ [SUBSTITUÍDA, 2026-11-19].
 
 Documentos relacionados:
+- [glossario.md](glossario.md): um sentido por termo (aprovado em 2026-11-19); em conflito de vocabulário, vale o glossário.
 - [01-historico-de-decisoes.md](01-historico-de-decisoes.md): cada pergunta feita durante o planejamento e a resposta/decisão tomada.
 
 ---

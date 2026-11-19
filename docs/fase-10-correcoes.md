@@ -12,7 +12,7 @@ não falhar, o item é descartado.
 | Etapa | O quê | Status |
 |---|---|---|
 | 10A | Bugs de severidade alta e de regra | Concluída (B11 foi para a 10C) |
-| 10B | Fundação transversal (T1 a T4) | T1 a T3 feitas; T4 (glossário) aguarda aprovação |
+| 10B | Fundação transversal (T1 a T4) | Feita (T4: glossário aprovado) |
 | 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`) |
 | 10D | Documentação | Em andamento (parte feita; ver abaixo) |
 | 10E | Testes e CI | Não iniciada |
@@ -34,7 +34,7 @@ E7 e E16. Registros relevantes:
 | T1 | `domain/frames`: `FPS`, conversões, `duration_frames`, `fcpxml_time`; `expected_fps` validado | Feita |
 | T2 | `media/ffmpeg`: `ffmpeg_cmd`, `run_ffmpeg`, `pipe_raw`, `grab_frame`, `video_args` | Feita |
 | T3 | `paths.SessionPaths`: pastas de sessão num só lugar | Feita |
-| T4 | `docs/glossario.md` e renomes públicos (comandos com alias, valores do banco com migração) | Proposta escrita; **aguarda aprovação do criador** |
+| T4 | `docs/glossario.md` e renomes públicos | Glossário aprovado em 2026-11-19; comandos renomeados com alias (10C); vocabulário de decisões **não** unificado (decisão do criador) |
 
 **Aceite:** só `media/ffmpeg.py` monta a linha base do FFmpeg; nenhuma outra definição de `FPS`; nenhum literal de pasta
 de sessão fora de `paths.py`.
@@ -82,7 +82,7 @@ de sessão fora de `paths.py`.
 (tabela de status única em plano mestre §7, com ponteiros nas fases 1 a 3, no README e no cabeçalho do plano); F1, F3, F4,
 F6, F7, F8 e F9 marcados como substituídos onde ainda apareciam como vigentes; F13 (`render` marcado "não implementado",
 nomes de comandos e gabarito corrigidos) e F21; F14 (árvore da 5.5 conforme o código, a antiga mantida e marcada);
-README com setup; C17. **Falta:** aprovação do glossário (F17, F10) e citá-lo nos documentos; "Em aberto" como tabela e
+README com setup; C17. Glossário aprovado e citado no CLAUDE.md, README e plano mestre (F17). **Falta:** "Em aberto" como tabela e
 revisão dos ⚠️ (F12, F18, só uma nota por enquanto); redundância (seção 4 da auditoria) e reordenar o histórico (F20);
 D14; árvore e comandos gerados por script (F14, anexo).
 

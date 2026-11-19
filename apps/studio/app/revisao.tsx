@@ -10,6 +10,7 @@ import type {
 } from "@cronista/contracts";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { API, getJson, send } from "../lib/api";
+import Ajuste from "./ajuste";
 import Acabamento from "./acabamento";
 import Aprendizado from "./aprendizado";
 import Embalagem from "./embalagem";
@@ -18,6 +19,7 @@ import Feedback from "./feedback";
 import Painel from "./painel";
 import Progresso from "./progresso";
 import Roteiro from "./roteiro";
+import Waveform from "./waveform";
 
 type MediaFile = MediaFileOut;
 type Session = SessionOut;
@@ -43,6 +45,8 @@ export default function Revisao() {
   const [wave, setWave] = useState<WaveformOut | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decisaoVersao, setDecisaoVersao] = useState(0);
+  const [serie, setSerie] = useState(false);
+  const [ajustando, setAjustando] = useState<number | null>(null); // start_s do trecho em ajuste
   const video = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -84,20 +88,12 @@ export default function Revisao() {
     setDecisaoVersao((versao) => versao + 1);
   }
 
-  function adjust(g: Segment) {
-    // Cancelar (null) ou deixar vazio não pode virar 0: aborta o ajuste inteiro.
-    const askedStart = prompt("Novo início (s do arquivo)", String(g.adj_start_s ?? g.start_s));
-    if (askedStart === null || askedStart.trim() === "") return;
-    const askedEnd = prompt("Novo fim (s do arquivo)", String(g.adj_end_s ?? g.end_s));
-    if (askedEnd === null || askedEnd.trim() === "") return;
-    const start = Number(askedStart.replace(",", "."));
-    const end = Number(askedEnd.replace(",", "."));
-    if (Number.isFinite(start) && Number.isFinite(end)) {
-      void decide(g, { decision: "ajustado", start_s: start, end_s: end });
-    } else {
-      setError("Ajuste cancelado: informe números em segundos.");
-    }
-  }
+  // Vídeo da série: um só vídeo com todas as sessões do projeto, ancorado na última sessão dele.
+  const projectSessions = sessions.filter((s) => s.project_id === projectId);
+  const serieDisponivel = projectId !== null && projectSessions.length > 1;
+  const anchorId = serieDisponivel ? Math.max(...projectSessions.map((s) => s.id)) : null;
+  const videoSessionId = serie && anchorId !== null ? anchorId : sessionId;
+  const videoSerie = serie && anchorId !== null;
 
   function seek(seconds: number) {
     if (video.current) {
@@ -114,9 +110,9 @@ export default function Revisao() {
         <Painel revisao={decisaoVersao} />
         {sessions.map((s) => (
           <section key={s.id}>
-            <h3>
+            <h2>
               {s.project} · sessão {s.id}
-            </h3>
+            </h2>
             <Progresso sessionId={s.id} />
             <ul>
               {s.files.map((f) => (
@@ -158,20 +154,40 @@ export default function Revisao() {
                   )}{" "}
                   <button onClick={() => void decide(g, { decision: "aceito" })}>Aceitar</button>
                   <button onClick={() => void decide(g, { decision: "rejeitado" })}>Rejeitar</button>
-                  <button onClick={() => adjust(g)}>Ajustar</button>
+                  <button onClick={() => setAjustando(g.start_s)}>Ajustar</button>
+                  {ajustando === g.start_s && (
+                    <Ajuste
+                      start={g.adj_start_s ?? g.start_s}
+                      end={g.adj_end_s ?? g.end_s}
+                      onCancel={() => setAjustando(null)}
+                      onSubmit={(start, end) => {
+                        setAjustando(null);
+                        void decide(g, { decision: "ajustado", start_s: start, end_s: end });
+                      }}
+                    />
+                  )}
                   <Feedback mediaId={media.id} segStart={g.start_s} />
                   <SignalChips events={events.filter((e) => e.start_s < g.end_s && e.end_s >= g.start_s)} />
                 </li>
               ))}
             </ol>
-            {sessionId !== null && (
-              // Um só pai com `key`: quando a sessão muda, os quatro painéis remontam juntos.
-              <Fragment key={sessionId}>
-                <Roteiro sessionId={sessionId} />
+            {serieDisponivel && (
+              <label>
+                <input type="checkbox" checked={serie} onChange={(e) => setSerie(e.target.checked)} /> Vídeo da
+                série (todas as sessões do projeto, um alvo só; roteiro e embalagem ficam na sessão{" "}
+                {anchorId})
+              </label>
+            )}
+            {videoSessionId !== null && (
+              // Um só pai com `key`: quando a sessão (ou o modo série) muda, os painéis remontam juntos.
+              <Fragment key={`${videoSessionId}-${videoSerie}`}>
+                <Roteiro sessionId={videoSessionId} />
                 {projectId !== null && <Aprendizado key={projectId} projectId={projectId} />}
-                {projectId !== null && <Acabamento sessionId={sessionId} projectId={projectId} />}
-                <Embalagem sessionId={sessionId} />
-                <Exportar sessionId={sessionId} />
+                {projectId !== null && (
+                  <Acabamento sessionId={videoSessionId} projectId={projectId} serie={videoSerie} />
+                )}
+                <Embalagem sessionId={videoSessionId} />
+                <Exportar sessionId={videoSessionId} serie={videoSerie} />
               </Fragment>
             )}
           </>
@@ -192,53 +208,5 @@ function SignalChips({ events }: { events: EventOut[] }) {
       {" · sinais: "}
       {[...counts].map(([kind, n]) => `${kind}${n > 1 ? ` ×${n}` : ""}`).join(", ")}
     </small>
-  );
-}
-
-const WAVE_H = 80;
-const FLOOR_DB = -60;
-
-function Waveform({
-  wave,
-  segments,
-  onSeek,
-}: {
-  wave: WaveformOut;
-  segments: Segment[];
-  onSeek: (seconds: number) => void;
-}) {
-  const n = Math.max(wave.game.length, wave.mic.length, 1);
-  const bar = (db: number) => Math.max(1, ((Math.min(0, Math.max(FLOOR_DB, db)) - FLOOR_DB) / -FLOOR_DB) * (WAVE_H / 2));
-  const x = (seconds: number) => (seconds / Math.max(wave.duration_s, 1)) * n;
-  return (
-    <svg
-      viewBox={`0 0 ${n} ${WAVE_H}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label="Energia do áudio (jogo em cima, microfone embaixo)"
-      style={{ width: "100%", height: WAVE_H, background: "#111", cursor: "pointer", display: "block" }}
-      onClick={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        onSeek(((e.clientX - r.left) / r.width) * wave.duration_s);
-      }}
-    >
-      {segments.map((g) => (
-        <rect
-          key={g.start_s}
-          x={x(g.start_s)}
-          width={Math.max(x(g.end_s) - x(g.start_s), 0.5)}
-          y={0}
-          height={WAVE_H}
-          fill={g.score >= 0.35 ? "#2a6" : "#555"}
-          opacity={0.25}
-        />
-      ))}
-      {wave.game.map((db, i) => (
-        <rect key={`g${i}`} x={i} width={1} y={WAVE_H / 2 - bar(db)} height={bar(db)} fill="#6cf" />
-      ))}
-      {wave.mic.map((db, i) => (
-        <rect key={`m${i}`} x={i} width={1} y={WAVE_H / 2} height={bar(db)} fill="#fc6" />
-      ))}
-    </svg>
   );
 }

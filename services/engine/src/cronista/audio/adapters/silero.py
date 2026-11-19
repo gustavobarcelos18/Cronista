@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from cronista.audio.adapters.audio_io import MODEL_RATE, iter_blocks, package_version
-from cronista.audio.ports import Pause, SpeechSpan
+from cronista.audio.ports import SpeechSpan
+from cronista.domain.types import Pause
 
 
 class SileroVad:

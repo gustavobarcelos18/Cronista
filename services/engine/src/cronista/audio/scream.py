@@ -19,8 +19,8 @@ from typing import Any
 import numpy as np
 import soundfile as sf
 
-from cronista.audio.ports import Pause, SoundEventSpan
-from cronista.audio.signals import FloatArray
+from cronista.audio.ports import SoundEventSpan
+from cronista.domain.types import FloatArray, Pause
 
 ANALYSIS_RATE = 16000
 

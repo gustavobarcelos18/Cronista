@@ -9,7 +9,7 @@ título para o vídeo da série.
 ## Regras que valem para toda a fase
 
 - **Sem facecam, sem IA generativa de imagem, sem voz sintética.** Shorts e thumbnails usam frames e áudio da própria gravação.
-- **Nada do Studio do Resolve:** reenquadramento, legenda e loudness saem do FFmpeg; thumbnails de FFmpeg/Pillow.
+- **Nada do Studio do Resolve:** reenquadramento, legenda e loudness saem do FFmpeg; thumbnails só de FFmpeg (sem Pillow, H §58).
 - **Identidade vem do brand kit** (paleta, fontes, loudness-alvo); nada de cor ou fonte fixa no código.
 - **Texto sem "cara de IA":** títulos e textos de thumbnail passam pela skill `/humanizar`; texto escrito pelo criador sempre
   ganha do sugerido.
@@ -37,14 +37,15 @@ título para o vídeo da série.
 - Aceite: testes das partes puras (legenda, layout, filtros, nome com hash, cancelamento sem arquivo parcial); em `prod`,
   `pytest -m media tests/test_shorts_render.py` e olhar 3 Shorts reais (legenda legível, nada sob a interface, loudness).
 
-### 9B — Thumbnails (`thumbnails/`; puro + FFmpeg/Pillow)
+### 9B — Thumbnails (`thumbnails/`; puro + só FFmpeg, sem Pillow, H §58)
 
 - **Modelo do canal ainda a definir com o criador** (plano 6.7 e "Em aberto" 4): o app entrega o **mecanismo** e um modelo
   declarativo em YAML dentro do brand kit (`thumbnail.yaml`: tamanho 1280×720, posição e tamanho do texto, moldura, selo de dia,
   filtros de cor), para o layout ser trocado sem mexer no código.
 - Candidatos a frame: picos do vídeo (maiores notas, chefes, antes/depois de construção), com nitidez e composição medidas por
   heurística simples (sem modelo); 2–3 variações por vídeo (frame, texto, posição).
-- Texto de 2–4 palavras, sugerido (humanizado) e editável no Studio.
+- Texto de 2–4 palavras, sugerido (humanizado) e ~~editável no Studio~~ [SUBSTITUÍDA por H §63, 2026-11-19: o texto vem
+  sugerido e não é editável no Studio; para outro texto, escolha outra variação].
 - Aceite: variações geradas de forma determinística a partir de uma montagem sintética; modelo carrega e valida (campo
   desconhecido, cor inválida e fonte ausente são recusados).
 - **Como ficou (2026-11-18):** pacote `thumbnails/` com `model.py` (modelo Pydantic `extra=forbid`; cores são papéis da paleta

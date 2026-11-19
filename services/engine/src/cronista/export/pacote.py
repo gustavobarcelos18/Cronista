@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from cronista.assembly.plan import EditPlan
 from cronista.assembly.service import assemble
 from cronista.config import Settings
-from cronista.db.models import Marker, RecordingSession
+from cronista.db.models import Marker
 from cronista.domain.frames import FPS, duration_frames
 from cronista.export.montagem import (
     ExportMedia,
@@ -41,10 +41,10 @@ from cronista.finishing.service import finish_from_edit_plan, marker_kinds_by_se
 from cronista.logging_setup import log_event
 from cronista.mix.service import MixReport, mix_session
 from cronista.montage import load_source
-from cronista.paths import SessionPaths
+from cronista.paths import SessionPaths, series_package_base
 from cronista.pipeline.gpu import GpuGate, wait_until_free
 from cronista.story.models import Script
-from cronista.story.service import DEFAULT_TARGET_S
+from cronista.story.service import DEFAULT_TARGET_S, scope_sessions
 
 PLAN_VERSION = 1
 LEIA_ME = """# Importar no DaVinci Resolve (gratuito)
@@ -138,7 +138,7 @@ def _sha(path: Path) -> str:
 
 def export_montagem(
     db: Session,
-    session_id: int,
+    session_id: int | None,
     settings: Settings,
     script: Script | None = None,
     target_s: float = DEFAULT_TARGET_S,
@@ -148,16 +148,24 @@ def export_montagem(
     style: ResolvedStyle | None = None,
     library: Library | None = None,
     finish_decisions: Mapping[str, str] | None = None,
+    project_id: int | None = None,
 ) -> PackageReport:
     """Com `style` (brand kit + série), o pacote leva também o plano de acabamento (Fase 8).
 
     `finish_decisions` são as decisões do criador no Studio por `id` de item (`aceito`/`removido`).
     """
-    base = out_base or SessionPaths.of(settings, session_id).package_base
-    plan, story = assemble(db, session_id, settings, target_s, profile_objectives)
+    sessions = scope_sessions(db, session_id, project_id)
+    session_ids = [s.id for s in sessions] if project_id is not None else [session_id or 0]
+    scope_label = f"serie-{project_id}" if project_id is not None else f"sessao-{session_id}"
+    base = out_base or (
+        series_package_base(settings, project_id)
+        if project_id is not None
+        else SessionPaths.of(settings, session_id or 0).package_base
+    )
+    plan, story = assemble(db, session_id, settings, target_s, profile_objectives, None, project_id)
     finish = (
         finish_from_edit_plan(
-            plan, marker_kinds_by_segment(story.chapters), style, library, marker_peaks(db, session_id)
+            plan, marker_kinds_by_segment(story.chapters), style, library, marker_peaks(db, session_ids)
         )
         if style is not None
         else None
@@ -173,7 +181,7 @@ def export_montagem(
     digest = input_hash(plan, script, finish, inputs)
     directory, version, done = _resume_target(base, digest)
     if done is not None:
-        log_event("montagem_reaproveitada", session_id=session_id, version=version)
+        log_event("montagem_reaproveitada", session_id=session_id, project_id=project_id, version=version)
         return done
     directory.mkdir(parents=True, exist_ok=True)
 
@@ -181,16 +189,22 @@ def export_montagem(
         if gate is not None:
             wait_until_free(gate, settings.gpu_poll_seconds, etapa=stage)
 
-    session = db.get(RecordingSession, session_id)
-    assert session is not None  # build_assembly já validou
-    sources = {m.id: load_source(db, m) for m in session.media_files}
+    sources = {m.id: load_source(db, m) for s in sessions for m in s.media_files}
     masters = {fid: s.master for fid, s in sources.items()}
 
     # Os timelapses ficam na base (não na versão): versões novas reaproveitam o que já foi renderizado.
     timelapses = render_timelapses(plan, masters, base / "timelapses", settings, gate)
     wait("mixagem")
     mix = mix_session(
-        db, session_id, settings, script, target_s, profile_objectives, directory / "stems", plan=plan
+        db,
+        session_id,
+        settings,
+        script,
+        target_s,
+        profile_objectives,
+        directory / "stems",
+        plan=plan,
+        project_id=project_id,
     )
     stems = {
         "A1": directory / "stems" / "A1-jogo.wav",
@@ -225,7 +239,7 @@ def export_montagem(
     )
 
     fcpxml = render_plan_fcpxml(
-        plan, media, f"sessao-{session_id}-v{version}", artifacts.layers if artifacts else None
+        plan, media, f"{scope_label}-v{version}", artifacts.layers if artifacts else None
     )
     fcpxml_path = directory / "montagem.fcpxml"
     fcpxml_path.write_text(fcpxml, encoding="utf-8")
@@ -236,7 +250,7 @@ def export_montagem(
 
     marks = [
         MarkerInput(m.media_file_id, m.media_frame, m.kind, m.marker_id)
-        for m in db.scalars(select(Marker).where(Marker.session_id == session_id))
+        for m in db.scalars(select(Marker).where(Marker.session_id.in_(session_ids)))
         if m.media_file_id is not None
     ]
     timeline_marks, skipped = timeline_markers(plan, marks)
@@ -273,6 +287,7 @@ def export_montagem(
         "versao": version,
         "versao_do_plano": PLAN_VERSION,
         "sessao": session_id,
+        "projeto": project_id,
         "entrada_hash": digest,
         "fps": FPS,
         "duracao_s": round(plan.total_s, 2),
@@ -288,7 +303,13 @@ def export_montagem(
     (directory / "manifesto.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8"
     )
-    log_event("montagem_exportada", session_id=session_id, version=version, path=str(directory))
+    log_event(
+        "montagem_exportada",
+        session_id=session_id,
+        project_id=project_id,
+        version=version,
+        path=str(directory),
+    )
     return PackageReport(
         directory, version, len(plan.v1), plan.total_s, len(timeline_marks), problems, warnings, mix
     )

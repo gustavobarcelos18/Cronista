@@ -3,6 +3,10 @@
 Registro, em ordem, de cada pergunta feita durante o planejamento (2026-11-12) e da resposta ou decisão tomada.
 O detalhe técnico de cada item está no [plano mestre](00-plano-mestre.md), na seção indicada.
 
+> **Nota de leitura (2026-11-19, F20):** as seções são numeradas por ordem de inclusão e o número nunca muda (os outros
+> documentos o citam). Por isso a data de uma seção pode ser anterior à da anterior (§59 é de 11-17 e vem depois do §58, de
+> 11-18). As decisões da 3C ficam no §50A, separadas do B-roll (§50).
+
 ---
 
 ## 1. Ideia inicial
@@ -1279,6 +1283,13 @@ Em `prod` (SigLIP base, `claude_teste.mp4`): 20 candidatos em ~35 s; buscas "a c
 
 Falta da 3B: conferir B-roll de olho, tipo de menu, `idle`, HUD oculto.
 
+*As decisões da Fase 3C (3C-1 a 3C-4), que ficavam aqui, passaram para o §50A.*
+
+## 50A. Fase 3C: perfis, gabarito visual, OCR do HUD e VLM (2026-11-17)
+
+Estas decisões estavam dentro do §50 (Fase 3B, B-roll) e foram separadas em 2026-11-19 (Fase 10D, F20), sem mudar o texto.
+A numeração fica como estava, para não quebrar as referências "§50" já escritas; o §50A vem logo depois do §50.
+
 **Fase 3C-2, perfis e plugabilidade (2026-11-17):** `cronista/profiles.py` com `GameProfile` (Pydantic; `extra=forbid`): `hud_regions` (retângulo relativo, leitura `text`/`number`/`icon`, `tag_theme`), `thresholds` por grupo (`screen`, `hud`, `idle`, validados contra os campos dos parâmetros do núcleo), `context_labels`, `camera_tools`, `objetivos`, `regras`. Perfil `generico` embutido (não acrescenta nada); `apply_thresholds` devolve cópia dos parâmetros. `profiles/exemplo.yaml` (Minecraft, só dados, valores ilustrativos) e `profiles/profile.schema.json` gerado (`python -m cronista.profiles`). **Teste de plugabilidade:** falha se qualquer módulo do núcleo (exceto `profiles.py` e a CLI) importar `cronista.profiles` ou citar um jogo ou perfil. Ainda **não ligado às etapas** (isso entra com a 3C-3/3C-5, via `Settings.profile`).
 
 **Fase 3C-1, gabarito visual e métricas (2026-11-17):** classe `hud_oculto` no gabarito; `cronista gabarito-ui <sessão> --visual` gera a página com os **candidatos visuais** (menu, loading, idle, hud_oculto) já com miniatura do meio do trecho (confirmar com ✓, corrigir bordas, apagar com ✕, marcar o que faltou); `cronista bench-video-quality <sessão> <gabarito.csv>` imprime por classe anotados, previstos, casados, precisão, revocação, erro médio de bordas, pares dentro da tolerância (padrão 2 s) e falsos a cada 30 min (`video/quality.py`, funções puras). Casamento guloso pelo maior encavalamento. Correções no caminho: `video_idle` não estava em `VIDEO_STAGES` (idle não aparecia no relatório nem nos candidatos); atalhos numéricos do anotador quebravam com 10 classes. **Linha de base ainda não medida:** falta o criador anotar o gabarito visual do `claude_teste.mp4` (28 menus e 1 idle candidatos; nenhum `loading`/`hud_oculto` detectado hoje).
@@ -1453,6 +1464,8 @@ reaproveitado acima de 2 MB avisa de novo.
 
 ## 59. Aviso de capítulos com pouco material no Studio (2026-11-17)
 
+*Ordem: a numeração segue a ordem de inclusão no histórico, não a data; este §59 é de 2026-11-17 e vem depois do §58 (2026-11-18).*
+
 O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos revisados, em ordem de sessão e arquivo
 por projeto. Capítulos podem atravessar sessões e aparecem no aviso quando têm menos de 30 s de material estimado,
 a referência existente da alocação narrativa. O Studio consulta o painel novamente após salvar uma decisão.
@@ -1488,6 +1501,75 @@ O que substitui o quê:
 - os itens 2 e 6 refinam §57 e §40/§59.
 
 Detalhes, local de cada achado e critérios de aceite estão nos planos.
+
+## 61. Glossário aprovado (2026-11-19)
+
+O criador aprovou `docs/glossario.md` (termos: Studio × Resolve Studio, faixa × trilha, segmento × trecho, os três
+sentidos de "pacote", perfil de jogo/voz/ambiente). Ressalva: o vocabulário de decisões **não** será unificado agora
+(`aprovado`/`rejeitado` nos Shorts, `aceito`/`removido` no acabamento, `aceito`/`rejeitado`/`ajustado` nos segmentos),
+porque exigiria migração de dados; fica como possibilidade sem urgência. Em conflito de vocabulário, vale o glossário.
+
+## 62. Vídeo da série na sessão âncora (2026-11-19)
+
+Para a 10F sem tabela nova nem migração, o vídeo único da série é ancorado na **última sessão do projeto**
+(`anchor_session`). `cronista story --projeto N` grava o story-pack na pasta dela; roteiro, títulos, thumbnails, Shorts
+e publicação seguem como comandos por sessão, chamados com o número da âncora. Montagem e acabamento ganham
+`--projeto N` (alvo único, dias contínuos), e o Studio/API aceitam `serie=true` na sessão âncora. Contrapartida: rodar
+`cronista story <âncora>` por sessão sobrescreve o pacote da série na mesma pasta. Alternativa descartada por ora: tabela
+`video` própria (mais limpa, mas exige migração e reescrita dos caminhos). B15 ficou como reconciliação de ids (religa a
+fala ao segmento que contém o início antigo e acusa roteiro órfão), não como hash estável.
+
+Revisão (`/code-review`, 2026-11-19): corrigidos o piso de capítulo que estourava o alvo com muitos capítulos (agora
+encolhe para `alvo / nº de capítulos`), os stems da série (iam para a pasta da sessão 0), a exportação em modo série
+com sessão que não é a âncora (422), o aviso de roteiro ausente na âncora, o aviso de pacote de outro escopo (`escopo.json`)
+e as thumbnails, que agora usam as gravações do projeto todo. **Limites conhecidos:** entrar uma sessão nova muda a
+âncora e deixa roteiro, título e decisões na âncora antiga (é preciso copiá-los); os Shorts continuam por sessão.
+
+## 63. Texto da thumbnail, A9 e A10 (2026-11-19)
+
+- **D14:** o texto editável da thumbnail (fase 9, 9B) fica **fora de escopo**: não existe endpoint nem campo no Studio, e o
+  criador escolheu não criá-los. O texto sai sugerido (2–4 palavras, humanizado) e quem quer outro texto escolhe outra
+  variação. A frase da fase 9 foi marcada como substituída.
+- **A9 feito:** `HOP_FRAMES` virou `AUDIO_SIGNAL_HOP` (6 quadros, 10 Hz) em `audio/signals` e `VIDEO_SAMPLE_HOP` (12 quadros,
+  5 por segundo) em `video/frames`; `FloatArray` (float32) e `Pause` passaram a existir só em `domain/types.py`. O campo
+  `hop_frames` dos sinais não mudou (é dado persistido).
+- **A10 adiado:** mover a infraestrutura genérica de sinais e eventos de `cronista.audio` para `cronista/analysis/` mexe em
+  muitos imports sem corrigir bug; fica como dívida técnica consciente, sem prazo.
+- **A13 e E17 feitos:** o serviço de observação não dá a gravação como abandonada enquanto o OBS grava; o Studio ganhou
+  teclado no waveform, `aria-label`, títulos em ordem e formulário inline de ajuste.
+
+## 64. Revisão dos ⚠️ e dos critérios sem número (2026-11-19, Fase 10D, F18)
+
+Os ⚠️ do plano mestre foram revisados um a um contra o que o spike do `prod` (§39), os benchmarks (§44, §49) e as fases
+já registraram. Cada um foi marcado no próprio texto: ~~⚠️~~ riscado com ✅/❌ e o ponteiro quando resolvido, ou ⚠️ com
+colchetes quando segue aberto ou parcial (a maioria só se resolve em `prod`, e consta como EA-1 na tabela "Em aberto").
+Os ⚠️ deste histórico **não foram alterados**: são o registro do que se pensava em cada data.
+
+- **Resolvidos ❌ (o plano de memória estava errado):** marcadores por FCPXML/EDL (só por script), scripting externo,
+  adaptador OTIO do FCPXML, script interno com interface própria, HEVC importado, DeepFilterNet no ambiente principal.
+- **Resolvidos ✅:** CUDA convivendo (torch e CTranslate2), hotkeys e obs-websocket no Python 3.12, capítulos nativos do
+  OBS, título nativo no FCPXML, faixas de áudio por WAVs extraídos.
+- **Critérios sem número:** "WER aceitável" (proposta ≤ 15%, fase 2), "alta precisão" (menu/loading ≥ 90% de precisão,
+  fase 3) e "top de candidatos" (85% dos momentos, fase 4, já no código) ficaram com a proposta e o resultado medido ao
+  lado. **Nenhum corte foi aprovado pelo criador**; seguem propostas até o benchmark final em `prod`.
+- **Medido nos benchmarks (com gabaritos pequenos):** `whisper-turbo` WER 1,1% e `large-v3` 3,1% (viés a favor do
+  turbo); tela: todos os VLMs acertaram 100% (teste saturado).
+
+## 65. Correções da revisão de código da Fase 10 (2026-11-19)
+
+O `/code-review` da branch achou 10 pontos; 4 foram confirmados e corrigidos, cada um com teste que o reproduzia:
+- **Limiar do perfil no arco e no painel:** `keep_score` (e o resto do grupo `relevance`) só valia em `relevance_session`;
+  story, painel e `/aprendizado` usavam o padrão. Os limiares do perfil agora vão em `Settings.relevance_overrides`
+  (campo que **não vem do YAML**, preenchido por `current_settings()`), para o núcleo não conhecer perfis.
+- **Marcadores no mesmo quadro** ficam dentro do próprio corte (para a frente e, no fim, para trás); sem quadro livre
+  viram aviso.
+- **Estado de objetivo:** a guarda de reexecução compara com a última linha da **mesma citação**, então um estado que
+  volta a ser o de antes (a evidência mudou e mudou de novo) é regravado, sem alternar entre citações diferentes (B7).
+- **Docstring solta** em `finishing/plan.py` removida.
+
+Os demais achados não procedem: a chave dos Shorts é a decisão D4 (§60) e as thumbnails do projeto todo são a correção da
+10F (§62). Não foram tratados: `pipe_raw` com bloco parcial, `session_id or 0` repetido e listas mutáveis em `ExportStatus`
+(sem falha hoje); o painel de embalagem que engole manifesto corrompido ficou **sem verificar**.
 
 ## Decisões em aberto
 

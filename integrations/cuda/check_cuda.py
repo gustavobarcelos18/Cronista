@@ -63,7 +63,11 @@ def run_probe(order: str) -> dict:
     proc = subprocess.run([sys.executable, "-c", PROBE, order], capture_output=True, text=True, check=False)
     lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("{")]
     if not lines:
-        return {"order": order, "ok": False, "error": f"sem saída (código {proc.returncode}): {proc.stderr[-600:]}"}
+        return {
+            "order": order,
+            "ok": False,
+            "error": f"sem saída (código {proc.returncode}): {proc.stderr[-600:]}",
+        }
     result = json.loads(lines[-1])
     result["seconds"] = round(time.monotonic() - t0, 1)
     return result

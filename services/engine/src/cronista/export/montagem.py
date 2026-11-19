@@ -22,7 +22,7 @@ vêm do Lua colado no Console, pois o FCPXML não carrega marcador (spike).
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from fractions import Fraction
 from pathlib import Path
@@ -234,7 +234,7 @@ def timeline_markers(
     plan: EditPlan, markers: Sequence[MarkerInput]
 ) -> tuple[list[TimelineMarker], list[str]]:
     """Marcadores levados para a timeline; o que caiu fora dos trechos usados vira aviso, não erro."""
-    out: list[TimelineMarker] = []
+    out: list[tuple[TimelineMarker, int, int]] = []  # (marcador, 1º quadro do corte, quadro depois do fim)
     skipped: list[str] = []
     v1 = [i for i in plan.items if i.track == Track.V1 and i.mode != Mode.TIMELAPSE]
     for m in sorted(markers, key=lambda x: (x.file_id, x.frame)):
@@ -242,27 +242,35 @@ def timeline_markers(
         if host is None:
             skipped.append(f"{m.kind}|{m.marker_id}: fora dos trechos da montagem")
             continue
-        out.append(
-            TimelineMarker(
-                frame=host.timeline_start + m.frame - host.in_frame,
-                color=MARKER_COLORS.get(m.kind, "Blue"),
-                name=MARKER_NAMES.get(m.kind, m.kind),
-                note=f"{m.kind}|{m.marker_id}; {host.beat}: {host.reason}",
-                custom=f"{m.kind}|{m.marker_id}",
-            )
+        start = host.timeline_start
+        marker = TimelineMarker(
+            frame=start + m.frame - host.in_frame,
+            color=MARKER_COLORS.get(m.kind, "Blue"),
+            name=MARKER_NAMES.get(m.kind, m.kind),
+            note=f"{m.kind}|{m.marker_id}; {host.beat}: {host.reason}",
+            custom=f"{m.kind}|{m.marker_id}",
         )
-    out.sort(key=lambda t: t.frame)
+        out.append((marker, start, start + host.out_frame - host.in_frame))
+    out.sort(key=lambda entry: entry[0].frame)
     # Dois marcadores no mesmo quadro: o `AddMarker` do Resolve recusa o segundo (de memória, a verificar em
-    # `prod`), então cada um ganha o próximo quadro livre.
+    # `prod`), então cada um ganha o quadro livre mais próximo **dentro do próprio corte**: para a frente e,
+    # se o corte acabar, para trás. Sem quadro livre no corte, vira aviso (nunca cai no corte vizinho).
     taken: set[int] = set()
     shifted: list[TimelineMarker] = []
-    for t in out:
-        frame = t.frame
-        while frame in taken:
-            frame += 1
+    for t, low, high in out:
+        frame = next((f for f in _nearby_frames(t.frame, low, high) if f not in taken), None)
+        if frame is None:
+            skipped.append(f"{t.custom}: sem quadro livre no corte")
+            continue
         taken.add(frame)
         shifted.append(replace(t, frame=frame) if frame != t.frame else t)
     return shifted, skipped
+
+
+def _nearby_frames(frame: int, low: int, high: int) -> Iterator[int]:
+    """`frame`, depois os seguintes até `high - 1`, depois os anteriores até `low`."""
+    yield from range(frame, high)
+    yield from range(frame - 1, low - 1, -1)
 
 
 def _lua_string(text: str) -> str:

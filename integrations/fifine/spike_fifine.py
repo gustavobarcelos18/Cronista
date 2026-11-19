@@ -17,10 +17,11 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import threading
 import time
 
-import hid  # type: ignore[import-not-found]
+import hid
 
 FIFINE_VID = 0x3142  # `VID_3142&PID_0C33` no Gerenciador de Dispositivos (SC3), conferido em 2026-11-16
 
@@ -47,7 +48,7 @@ def list_midi() -> None:
         import mido
 
         inputs = mido.get_input_names()
-    except Exception as exc:  # noqa: BLE001 - spike: qualquer falha vira informação
+    except Exception as exc:
         print(f"MIDI indisponível: {exc}")
         return
     print("MIDI entradas:", inputs or "nenhuma")
@@ -80,7 +81,7 @@ def listen_midi(stop: threading.Event, t0: float) -> None:
         import mido
 
         names = mido.get_input_names()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return
     ports = [mido.open_input(n) for n in names]
     for port in ports:
@@ -95,7 +96,9 @@ def listen_midi(stop: threading.Event, t0: float) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("mode", choices=["list", "listen"])
     parser.add_argument("--vid", type=lambda s: int(s, 16), default=FIFINE_VID, help="vendor id em hex")
     parser.add_argument("--seconds", type=float, default=120.0)
@@ -113,10 +116,8 @@ def main() -> None:
     for t in threads:
         t.start()
     print(f"\nAperte os botões da mesa agora ({args.seconds:.0f} s, Ctrl+C encerra)...")
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         time.sleep(args.seconds)
-    except KeyboardInterrupt:
-        pass
     stop.set()
     for t in threads:
         t.join(timeout=1)

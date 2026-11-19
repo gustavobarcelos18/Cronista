@@ -2,18 +2,22 @@
 
 App pessoal que transforma horas de gameplay gravada no OBS em uma timeline pré-montada no DaVinci Resolve
 gratuito + roteiro de narração, para vídeos de "100 dias" (e outros formatos narrativos). O produto é **um único vídeo
-por série, com duração-alvo de 30–50 min**, montado a partir de várias sessões de gravação de duração variável
+por série, com duração-alvo de 30–50 min** (plano §1), montado a partir de várias sessões de gravação de duração variável
 (3 h, 6 h, 10 h…). A duração é referência, não obrigação: um vídeo mais curto (ex.: 25 min) com arco narrativo completo
 (começo, meio, fim e clímax) está pronto para postar; qualidade vem antes de minutagem (histórico §40). Usuário único
 (o criador), mas estruturado para escalar.
 
 ## Fonte de verdade
 
-- `docs/00-plano-mestre.md`: requisitos, arquitetura, stack, fases, riscos e decisões. Leia antes de propor ou
+- `docs/00-plano-mestre.md`: requisitos, arquitetura, stack, fases, riscos e decisões. A tabela de status das fases fica
+  na seção 7 (única; README e fases apontam para ela). `docs/glossario.md` fixa um sentido por termo (aprovado em
+  2026-11-19). Leia antes de propor ou
   implementar qualquer coisa. Se uma ideia contradiz o plano, aponte a contradição em vez de seguir em silêncio.
 - `docs/01-historico-de-decisoes.md`: cada pergunta do planejamento e a decisão tomada.
 - `docs/fase-N-*.md`: plano de execução de cada fase, com tarefas, critérios de aceite e testes. Não depende de
   nenhuma skill instalada fora do repositório.
+- Substituição nunca apaga: marque o trecho antigo como `~~texto~~ [SUBSTITUÍDA por H §N, data]`.
+- Ao fim de cada fase, revise a lista "Em aberto" (seção 9) e a tabela de status.
 - Toda decisão nova vai para o plano mestre (seção relevante + seção 9) **e** para o histórico. Nunca apague
   informação já conversada; atualize ou marque como substituída.
 
@@ -32,7 +36,7 @@ por série, com duração-alvo de 30–50 min**, montado a partir de várias ses
   benchmark de roteiro da Fase 2; o fallback padrão continua sendo o `NullProvider`.
 - **Caminho de mão única** app → Resolve; efeitos sempre reversíveis (trilha acima do original).
 - Gravação: OBS em Hybrid MP4, H.264 8-bit SDR (NV12, Rec. 709), **60 fps exatos** (timeline e renders também),
-  faixa 1 = mix, 2 = jogo, 3 = microfone (fonte única `MIC` com RNNoise nas faixas 1 e 3; sem fonte crua, histórico §41).
+  faixa 1 = mix, 2 = jogo, 3 = microfone (fonte única `MIC` com RNNoise nas faixas 1 e 3; sem fonte crua, histórico §41; plano §2).
   Nunca analisar o mix. Sem facecam.
 - **Resolve gratuito:** nunca gerar nada que dependa de recurso do Studio (Speed Warp, Magic Mask, Super Scale,
   redução de ruído de vídeo etc.), porque deixa marca d'água. Limites e estratégia de render na seção 6.5 do plano.
@@ -50,7 +54,7 @@ por série, com duração-alvo de 30–50 min**, montado a partir de várias ses
 ## Stack
 
 Engine em Python 3.12 + uv (FastAPI, SQLite com SQLAlchemy + Alembic, FFmpeg, OTIO). Studio em Next.js + TypeScript
-com pnpm. Contratos em JSON Schema → Pydantic e TypeScript gerados. Estrutura do monorepo na seção 5.5 do plano.
+com pnpm. Contratos: **Pydantic é a fonte**; dele saem o JSON Schema e os tipos TypeScript gerados (D2; `pnpm gen:contracts`). Estrutura do monorepo na seção 5.5 do plano.
 
 ## Fluxo git
 

@@ -70,6 +70,7 @@ export default function Roteiro({ sessionId }: { sessionId: number }) {
             value={l.text}
             onChange={(e) => edit(i, e.target.value)}
             rows={2}
+            aria-label={`Texto da fala ${i + 1}`}
             style={{ width: "100%", display: "block" }}
           />
           <button onClick={() => remove(i)}>Remover</button>

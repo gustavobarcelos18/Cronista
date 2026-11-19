@@ -12,6 +12,7 @@ from cronista.audio.signals import SIGNALS_KEY, SignalMeta, load_signal, signal_
 from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 from cronista.domain.models import StageResult
+from cronista.domain.types import FloatArray
 from cronista.pipeline.stage import Stage, StageContext, StageError
 from cronista.video import frames as vframes
 from cronista.video.context_stages import BrollStage, ContextNoveltyStage, ContextsStage, EmbeddingsStage
@@ -20,7 +21,7 @@ from cronista.video.hud_text import HudTextStage
 from cronista.video.menus import MenuTypesStage
 from cronista.video.ports import VideoModels
 from cronista.video.screen_state import ScreenParams, detect
-from cronista.video.signals import SIGNAL_NAMES, FloatArray, SignalParams, block_signals
+from cronista.video.signals import SIGNAL_NAMES, SignalParams, block_signals
 from cronista.video.vlm import MenuNamesStage
 
 MODEL = "video-heuristica"
@@ -68,7 +69,7 @@ class VideoSignalsStage:
                 source_track="video",
                 version=self.version,
                 params=self.params(ctx.settings),
-                hop_frames=vframes.HOP_FRAMES,
+                hop_frames=vframes.VIDEO_SAMPLE_HOP,
                 model=MODEL,
             )
         return StageResult(
@@ -97,7 +98,7 @@ class VideoScenesStage:
             name: np.asarray(load_signal(metas[f"video.{name}"]).values) for name in SIGNAL_NAMES
         }
         digest = params_hash(self.params(ctx.settings))
-        hop = vframes.HOP_FRAMES
+        hop = vframes.VIDEO_SAMPLE_HOP
         events = [
             AnalysisEvent(
                 kind=span.kind,

@@ -87,7 +87,7 @@ def test_etapas_leem_o_proxy_e_geram_eventos(tmp_path: Path, settings: Settings)
         return StageContext(media_path=proxy, out_dir=out, settings=settings, inputs=inputs)
 
     signals = VideoSignalsStage().run(ctx("sig", {"proxy": StageResult(data={"proxy": str(proxy)})}))
-    assert signals.data["signals"]["video.motion"]["hop_frames"] == vframes.HOP_FRAMES
+    assert signals.data["signals"]["video.motion"]["hop_frames"] == vframes.VIDEO_SAMPLE_HOP
     lengths = {m["length"] for m in signals.data["signals"].values()}
     assert len(lengths) == 1 and abs(lengths.pop() - len(frames)) <= 1
 
@@ -100,7 +100,7 @@ def test_etapas_leem_o_proxy_e_geram_eventos(tmp_path: Path, settings: Settings)
     loading = next(e for e in events if e.kind == "loading")
     expected = next(t for t in truth if t.kind == "loading")
     assert abs(loading.evidence.start_frame / 60 - expected.start_s) <= 0.5
-    assert loading.evidence.end_frame % vframes.HOP_FRAMES == 0  # grade de quadros inteiros a 60 fps
+    assert loading.evidence.end_frame % vframes.VIDEO_SAMPLE_HOP == 0  # grade de quadros inteiros a 60 fps
 
 
 def test_proxy_ausente_e_erro_claro(tmp_path: Path, settings: Settings) -> None:

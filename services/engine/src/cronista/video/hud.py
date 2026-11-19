@@ -21,11 +21,11 @@ from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
+from cronista.domain.types import FloatArray
 from cronista.pipeline.stage import StageContext, StageError
 from cronista.video import frames as vframes
 
 Gray = npt.NDArray[np.uint8]
-FloatArray = npt.NDArray[np.float32]
 BoolArray = npt.NDArray[np.bool_]
 BLOCKED = frozenset({"menu", "loading", "pausa", "idle"})
 HAS_HUD_KEY = "has_hud"

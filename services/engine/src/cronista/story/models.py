@@ -10,6 +10,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from cronista.relevance.engine import SegmentClass
+
 
 class Beat(StrEnum):
     SETUP = "setup"
@@ -67,3 +69,59 @@ class Script(BaseModel):
     version: int = 1
     provider: str = "desconhecido"
     lines: list[ScriptLine] = Field(default_factory=list)
+
+
+class PackWindow(BaseModel):
+    """Intervalo em segundos do arquivo de origem."""
+
+    inicio_s: float
+    fim_s: float
+
+
+class PackLiveSpeech(PackWindow):
+    texto: str | None = Field(default=None, description="Ausente quando o pacote cortou a transcrição")
+
+
+class PackBeat(BaseModel):
+    segmento_id: str
+    arquivo_id: int
+    inicio_s: float
+    fim_s: float
+    beat: Beat
+    classe: SegmentClass
+    nota: float
+    razoes: list[str]
+    marcadores: list[str]
+    fala_ao_vivo: list[PackLiveSpeech]
+    lacunas: list[PackWindow]
+
+
+class PackChapter(BaseModel):
+    n: int
+    alocado_s: float
+    beats: list[PackBeat]
+
+
+class PackObjective(BaseModel):
+    id: int
+    titulo: str
+    tipo: ObjKind
+    estado: ObjState | Literal["sem_estado"]
+    citacao: str
+    confirmado: bool
+
+
+class PackProject(BaseModel):
+    nome: str = ""
+    jogo: str = ""
+
+
+class StoryPack(BaseModel):
+    """`story-pack.json`: o recorte compacto que o roteirista recebe (Fase 5). Só fatos verificáveis."""
+
+    projeto: PackProject
+    alvo_s: float
+    objetivos: list[PackObjective]
+    instrucoes: list[str]
+    capitulos: list[PackChapter]
+    truncado: bool = False

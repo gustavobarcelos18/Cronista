@@ -22,7 +22,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 from cronista.config import Settings
 from cronista.logging_setup import log_event
-from cronista.pipeline.gpu import AlwaysFreeGate, GpuGate, gate_reason, is_free_now
+from cronista.pipeline.gpu import (
+    OBS_RECORDING_REASON,
+    AlwaysFreeGate,
+    GpuGate,
+    gate_reason,
+    is_free_now,
+)
 from cronista.recorder.core import system_clock
 from cronista.recorder.obs import SimpleObsLink
 
@@ -92,7 +98,7 @@ class ObsRecordingGate:
         return not self._recording
 
     def reason(self) -> str | None:
-        return "OBS gravando" if self._recording else None
+        return OBS_RECORDING_REASON if self._recording else None
 
 
 def _shell_notification_state() -> int | None:

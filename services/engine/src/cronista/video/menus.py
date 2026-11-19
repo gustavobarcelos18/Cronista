@@ -18,10 +18,9 @@ from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
+from cronista.domain.types import FloatArray
 from cronista.pipeline.stage import StageContext
 from cronista.video.context_stages import EMBED_HOP, load_embeddings
-
-FloatArray = npt.NDArray[np.float32]
 
 
 @dataclass(frozen=True)

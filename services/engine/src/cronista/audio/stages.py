@@ -18,7 +18,7 @@ from cronista.audio.ports import (
     Transcriber,
 )
 from cronista.audio.scream import ScreamHeuristic
-from cronista.audio.signals import HOP_FRAMES, SIGNALS_KEY, SignalMeta, write_signal
+from cronista.audio.signals import AUDIO_SIGNAL_HOP, SIGNALS_KEY, SignalMeta, write_signal
 from cronista.config import Settings
 from cronista.domain.evidence import AnalysisEvent, Evidence, EvidenceSource, params_hash
 from cronista.domain.frames import seconds_to_frame
@@ -38,7 +38,7 @@ class AudioSignalsStage:
     uses_gpu = False
 
     def __init__(self, params: dsp.DspParams | None = None) -> None:
-        self.dsp = params or dsp.DspParams(hop_frames=HOP_FRAMES)
+        self.dsp = params or dsp.DspParams(hop_frames=AUDIO_SIGNAL_HOP)
 
     def params(self, settings: Settings) -> dict[str, Any]:
         return self.dsp.as_dict()

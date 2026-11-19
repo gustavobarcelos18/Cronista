@@ -30,6 +30,7 @@ from cronista.ingest.journal import find_journals, read_journal
 from cronista.ingest.service import ingest_files
 from cronista.logging_setup import log_event
 from cronista.pipeline import GpuGate
+from cronista.pipeline.gpu import OBS_RECORDING_REASON, gate_reason
 from cronista.recorder.files import SLACK
 
 AFTER_STOP_SLACK_S = 60.0
@@ -149,6 +150,11 @@ def _note_failure(
     failed[journal] = Failure(signature, now + min(retry_s * 2 ** (attempts - 1), MAX_RETRY_S), attempts)
 
 
+def _obs_still_recording(gate: GpuGate) -> bool:
+    """O gate (que consulta o `GetRecordStatus`) diz que o OBS está gravando agora."""
+    return not gate.is_free() and gate_reason(gate) == OBS_RECORDING_REASON
+
+
 def _process(
     db: Session,
     settings: Settings,
@@ -178,6 +184,8 @@ def _process(
     wait = settings.abandoned_after_hours * 3600 if abandoned else settings.settle_seconds
     if now() - newest < wait:
         return None
+    if abandoned and _obs_still_recording(gate):
+        return None  # `mtime` defasado (Windows): com o OBS gravando, não está abandonada (A13)
 
     result = Processed(journal, files=files, warnings=warnings, abandoned=abandoned)
     if abandoned:

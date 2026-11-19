@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -91,3 +91,54 @@ def test_a15_truncated_ffprobe_json_is_a_failure_not_a_crash(
     video.write_bytes(b"x")
     assert ffmpeg.probe_media(settings, video).interrupted is True
     assert ffmpeg.probe_chapters(settings, video) == []
+
+
+class _BusyGate:
+    """Gate ocupado por um motivo fixo."""
+
+    def __init__(self, reason: str) -> None:
+        self._reason = reason
+
+    def is_free(self) -> bool:
+        return False
+
+    def reason(self) -> str:
+        return self._reason
+
+
+def test_a13_open_journal_is_not_abandoned_while_obs_still_records(
+    db: Session, settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O `mtime` pode estar defasado no Windows: com o OBS ainda gravando, não é abandono."""
+    import os
+    import time
+
+    from cronista.ingest.journal import JournalWriter, Stamp
+    from cronista.pipeline.gpu import OBS_RECORDING_REASON
+
+    video = tmp_path / "longa.mp4"
+    video.write_bytes(b"x")
+    journal = tmp_path / "g1.markers.jsonl"
+    t0 = time.time() - 7200
+    with JournalWriter(journal) as writer:
+        writer.recording_started(str(video), Stamp(100.0, datetime.fromtimestamp(t0, tz=UTC)))
+    old = time.time() - 3600
+    for path in (journal, video):
+        os.utime(path, (old, old))
+    later = lambda: time.time() + 5 * 3600  # noqa: E731
+
+    ingested: list[int] = []
+
+    def fake_ingest(*_a: object, **_k: object) -> SimpleNamespace:
+        ingested.append(1)
+        return SimpleNamespace(session_id=0, markers=MarkerReport(), ok=True, failures={})
+
+    monkeypatch.setattr(watch, "ingest_files", fake_ingest)
+
+    recording = _BusyGate(OBS_RECORDING_REASON)
+    assert watch.scan_once(db, settings, recording, tmp_path, "p", now=later) == []
+    assert ingested == []
+
+    other = _BusyGate("jogo em tela cheia")  # outro motivo não prova que o OBS grava: vale o prazo
+    (result,) = watch.scan_once(db, settings, other, tmp_path, "p", now=later)
+    assert result.abandoned and ingested == [1]

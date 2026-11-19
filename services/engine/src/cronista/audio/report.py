@@ -14,11 +14,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cronista.audio.events import StoredEvent, load_stored_events
-from cronista.audio.signals import FloatArray, Signal, load_signal, signal_metas
+from cronista.audio.signals import Signal, load_signal, signal_metas
 from cronista.config import Settings
 from cronista.db.models import Artifact, Marker, MediaFile, RecordingSession
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
+from cronista.domain.types import FloatArray
 
 CHART_W, CHART_H, PAD_L, PAD_R, PAD_T, PAD_B = 1000, 96, 56, 12, 8, 20
 MAX_POINTS = 1200

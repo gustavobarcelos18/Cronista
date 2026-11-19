@@ -3,9 +3,10 @@
 > Nome provisório. Aplicação pessoal que transforma dezenas de horas de gameplay gravada no OBS em uma
 > **timeline pré-montada no DaVinci Resolve** + **roteiro de narração** para vídeos de "100 dias".
 
-Criado em 2026-11-12 · Status: planejamento aprovado em linhas gerais; próxima etapa = detalhar a Fase 1.
+Criado em 2026-11-12 · Status das fases: tabela única na seção 7 (fases 1 a 9 mergeadas; Fase 10, correções da auditoria, em andamento). ~~Planejamento aprovado em linhas gerais; próxima etapa = detalhar a Fase 1~~ [SUBSTITUÍDA, 2026-11-19].
 
 Documentos relacionados:
+- [glossario.md](glossario.md): um sentido por termo (aprovado em 2026-11-19); em conflito de vocabulário, vale o glossário.
 - [01-historico-de-decisoes.md](01-historico-de-decisoes.md): cada pergunta feita durante o planejamento e a resposta/decisão tomada.
 
 ---
@@ -18,14 +19,14 @@ Clone o repositório, abra o Claude Code na pasta e cole:
 Estou retomando o projeto Cronista (app pessoal de edição de gameplays de 100 dias).
 Leia docs/00-plano-mestre.md inteiro, que é a fonte de verdade de tudo que já decidimos,
 e docs/01-historico-de-decisoes.md para o contexto de cada decisão.
-Depois vamos responder as decisões em aberto (seção 9) e detalhar a Fase 1 em
-docs/fase-1-fundacao.md, com tarefas, critérios de aceite e testes.
+Depois veja o status das fases (seção 7) e as decisões em aberto (seção 9) e continue da fase em andamento
+(~~detalhar a Fase 1~~ [SUBSTITUÍDA, 2026-11-19]).
 ```
 
 Checklist do PC de casa:
 - [ ] DaVinci Resolve (gratuito), Python 3.12 + uv, Node.js LTS + pnpm, FFmpeg, Ollama, Git
 - [ ] Drivers NVIDIA/CUDA da RTX 3060 atualizados
-- [ ] OBS 30.2 ou mais novo (⚠️ de memória: versão mínima para Hybrid MP4 com marcadores; confirmar na Fase 1), com o
+- [ ] OBS 30.2 ou mais novo (~~⚠️~~ **[✅ no OBS 33.0.1 do `prod` o Hybrid MP4 com capítulos funciona, H §39; a versão mínima exata segue de memória]** de memória: versão mínima para Hybrid MP4 com marcadores; confirmar na Fase 1), com o
       servidor obs-websocket ativado (Ferramentas → Configurações do servidor WebSocket) para o gravador de marcadores
 - [ ] OBS com faixas de áudio separadas (seção 2)
 - [ ] Responder as decisões em aberto (seção 9)
@@ -117,7 +118,7 @@ O áudio original fica sempre dentro do vídeo (o master guarda as três faixas)
 cópias de trabalho para a análise e o waveform (~0,7 GB/h por faixa, ~35 GB para jogo + microfone em 25 h): ficam no
 cache do SSD e podem ser apagados e regenerados do master. Se o spike exigir WAVs na timeline do Resolve (seção 6.3),
 os usados passam a ficar no HD, junto dos masters. Uma sessão de mais de ~6,2 h passa do limite de 4 GB do WAV comum;
-a extração grava RF64 nesse caso (`-rf64 auto`, histórico §27). ⚠️ Conferir na Fase 2 que as bibliotecas de análise
+a extração grava RF64 nesse caso (`-rf64 auto`, histórico §27). ⚠️ **[parcial: `soundfile` (libsndfile 1.2.2) lê RF64 (H §43); falta testar um WAV acima de 4 GB, em `prod`]** Conferir na Fase 2 que as bibliotecas de análise
 leem RF64 (de memória: libsndfile/`soundfile` lê).
 
 **Stems processados são sempre WAVs.** A partir da Fase 6, as trilhas A1 e A2 recebem stems com ducking e cadeia de
@@ -134,7 +135,7 @@ outra: a divisão continua de uma sessão para a seguinte, até o próximo `Novo
   Cronista usa como fonte primária do tempo dos marcadores (ver seção 4). Se a gravação cair, o arquivo fica
   fragmentado e não finalizado; a ingestão faz um remux sem recodificar (`ffmpeg -map 0 -c copy`) antes de usar.
   O `-map 0` é obrigatório: sem ele o FFmpeg copia só um vídeo e uma faixa de áudio, e as faixas 2 e 3 se perdem.
-  ⚠️ Confirmar no spike que o Resolve abre o arquivo remuxado.
+  ⚠️ **[aberta: o remux após queda não foi testado no Resolve, H §39; EA-1]** Confirmar no spike que o Resolve abre o arquivo remuxado.
 - **60 fps exatos** (decidido): Vídeo → FPS comuns → 60, nunca 59,94. A timeline do Resolve, os timelapses, as
   cartelas e tudo que o app renderizar usam 60 fps, para os cortes não derivarem.
 - **Vídeo 8-bit SDR** (o Resolve gratuito não lida bem com 10-bit/HDR, seção 6.5): encoder NVENC **H.264**,
@@ -190,7 +191,7 @@ Volume absoluto não serve como sinal. A estratégia tem quatro camadas:
 ## 4. Marcadores por hotkey
 
 **Um toque já basta.** Ele quer dizer "aqui teve algo". Normalmente você aperta *depois* do acontecimento, então
-o sistema olha para trás (janela padrão de 60–90 s, ajustável no perfil) e encontra os limites reais do momento
+o sistema olha para trás (janela padrão de ~~60–90 s~~ [SUBSTITUÍDA por H §51: 25/20/30 s por tipo de momento, ajustável no grupo `relevance` do perfil]) e encontra os limites reais do momento
 usando mudança de cena, picos de áudio e fala.
 
 Hotkeys sugeridas (obrigatórias: `Momento` e `Novo dia`; as demais são opcionais):
@@ -234,17 +235,17 @@ Os dois registros são feitos pelo mesmo programa (opção A, abaixo). A redund�
 não fica em nenhum dos dois (dúvida em aberto, seção 9, item 9).
 
 Testes com fixtures sintéticas cobrem: gravação simples, com pausas, com divisão de arquivo e com queda (arquivo sem
-`recording_stopped`). Um erro de algumas centenas de ms não importa, porque o lookback de 60–90 s absorve.
+`recording_stopped`). Um erro de algumas centenas de ms não importa, porque o lookback (~~60–90 s~~ [SUBSTITUÍDA por H §51: 25/20/30 s]) absorve.
 A versão mínima do OBS e o nome exato da API de marcadores serão confirmados na Fase 1.
 
-**Quem cria o marcador (decidido: opção A).** ⚠️ De memória: o OBS 30.2+ tem uma hotkey nativa ("Adicionar marcador
+**Quem cria o marcador (decidido: opção A).** ~~⚠️~~ **[✅ confirmado no OBS 33.0.1: os capítulos nativos entram sem tipo e viram `Momento` com aviso, H §39]** De memória: o OBS 30.2+ tem uma hotkey nativa ("Adicionar marcador
 de capítulo") que funciona sem instalar nada, mas é **uma tecla só e não guarda o tipo**: todo toque viraria
 `Momento`, e o `Novo dia` ficaria indistinguível. Para ter o tipo, algo precisa criar o marcador com nome:
 - **A (escolhida): programa do Cronista ao lado do OBS, via obs-websocket.** Cria o marcador do OBS com nome
-  (requisição `CreateRecordChapter`, parâmetro opcional `chapterName`: **confirmada no protocolo oficial, obs-websocket 5.5.0 = OBS 30.2+**, só Hybrid MP4; ⚠️ comportamento com o OBS real a validar na 1C), escreve o diário a partir dos eventos de
+  (requisição `CreateRecordChapter`, parâmetro opcional `chapterName`: **confirmada no protocolo oficial, obs-websocket 5.5.0 = OBS 30.2+**, só Hybrid MP4; ⚠️ **[aberta: a gravação com o gravador no OBS real segue por fazer em `prod`, H §39]** comportamento com o OBS real a validar na 1C), escreve o diário a partir dos eventos de
   gravação, pausa e troca de arquivo do próprio OBS, sabe se há uma construção aberta e escuta num lugar só as hotkeys
   globais, as teclas F13–F24 e a FIFINE (MIDI/HID). Precisa estar aberto durante a gravação.
-- **B: script Lua dentro do OBS.** Não exige instalar nada. ⚠️ Confirmar se a função de marcador com nome está
+- **B: script Lua dentro do OBS.** Não exige instalar nada. ~~⚠️~~ **[irrelevante: a opção A foi a escolhida (H §20); a B nunca foi pesquisada]** Confirmar se a função de marcador com nome está
   exposta ao Lua. A FIFINE ficaria à parte. (Script Python dentro do OBS foi descartado: exige uma versão específica
   do Python instalada e configurada no OBS, e não há certeza de que a função de marcador esteja exposta.)
 - **C: só a hotkey nativa.** Zero instalação; tipos e divisões de dia seriam marcados depois, no Studio. Quebra a regra de
@@ -262,7 +263,7 @@ Studio ou no Resolve, onde também se define o número de cada dia. Por isso nã
 cartelas/contador de dias saem editáveis (seção 6.3).
 `Construção ▶` sem o `■` correspondente é fechada no fim da sessão, com aviso.
 
-**Jogo rodando como administrador.** ⚠️ De memória: se o jogo roda elevado (ou o anti-cheat bloqueia teclas), um
+**Jogo rodando como administrador.** ⚠️ **[aberta: depende dos jogos da série em `prod`]** De memória: se o jogo roda elevado (ou o anti-cheat bloqueia teclas), um
 programa sem elevação não recebe as hotkeys. Saídas: rodar o OBS/programa de marcadores também como administrador ou
 usar um dispositivo físico (FIFINE via MIDI/HID, macropad). Verificar no PC de casa com os jogos da série.
 
@@ -334,19 +335,19 @@ livre. Como o pipeline é retomável, pausar não perde trabalho.
 | Banco | SQLite (SQLAlchemy + Alembic) | Zero infraestrutura; migração para Postgres sem reescrever |
 | Contratos | Pydantic (fonte) → JSON Schema/OpenAPI (FastAPI) → tipos TypeScript gerados. *Substitui a direção "JSON Schema → Pydantic" anterior (decisão D2, histórico §26)* | Uma fonte de verdade entre engine e UI; o Pydantic já é a fonte no engine (seção 6.1) |
 | UI | **Next.js + React + TypeScript** | Stack que você já domina; player com waveform e timeline |
-| Export | OpenTimelineIO → FCPXML (+ EDL de reserva) + SRT | Importa no Resolve **gratuito** (não depende da API do Studio) |
+| Export | ~~OpenTimelineIO → FCPXML (+ EDL de reserva)~~ [SUBSTITUÍDA por H §39: FCPXML 1.9 escrito à mão em `export/fcpxml_base.py`, marcadores pela Lua do Console; OTIO só no teste de leitura] + SRT | Importa no Resolve **gratuito** (não depende da API do Studio) |
 
 > Versões e modelos exatos serão confirmados com benchmark na Fase 2. O que vale aqui é a *categoria* da ferramenta.
 >
 > Frameworks de ML padronizados em **PyTorch + ONNX Runtime**, para evitar um segundo framework de GPU com CUDA
 > próprio no Windows. Por isso o OCR é RapidOCR (ONNX) e não PaddleOCR. O DeepFilterNet está sem atualização desde
-> 2023 e pode não instalar com Python 3.12 e PyTorch recentes (⚠️ verificar); como ele só entra se melhorar o WER, a
+> 2023 e pode não instalar com Python 3.12 e PyTorch recentes (~~⚠️~~ **[❌ resolvido: instala (0.5.6), mas rebaixa o NumPy do projeto para 1.26; não entra no ambiente principal, H §44]** verificar); como ele só entra se melhorar o WER, a
 > falta dele não bloqueia a análise. A faixa 3 já sai com RNNoise do OBS (histórico §41); a cadeia de voz da mixagem
 > pode ainda precisar de redução de ruído e não depende dele: ver a alternativa na seção 6.4.
 >
 > **Exceção aceita: CTranslate2.** O faster-whisper roda sobre o CTranslate2, que traz dependências de CUDA próprias
 > (cuBLAS/cuDNN), fora do par PyTorch + ONNX Runtime. A exceção é aceita porque o faster-whisper é a melhor opção
-> de transcrição para 12 GB, e trocá-lo custaria mais do que isolar a dependência. ⚠️ De memória: confirmar na Fase 1
+> de transcrição para 12 GB, e trocá-lo custaria mais do que isolar a dependência. ~~⚠️~~ **[✅ resolvido: torch 2.11 e ctranslate2 4.9 convivem nas duas ordens de importação, cuDNN 9.19 (H §39); limite: o teste importa o torch antes]** De memória: confirmar na Fase 1
 > as versões de cuBLAS/cuDNN que o CTranslate2 exige e se elas convivem com as do PyTorch no mesmo ambiente; se
 > conflitarem, a transcrição roda num processo/ambiente separado.
 >
@@ -384,6 +385,31 @@ Timeline (versão exportável: clipes, velocidades/timelapse, marcadores, legend
 
 ### 5.5 Estrutura do repositório
 
+**Árvore atual (2026-11-19, conferida no código; a fonte é o repositório, esta lista é só um mapa).**
+
+```
+raiz/
+├─ apps/studio/                  # Next.js: revisão, acabamento e embalagem
+├─ services/engine/src/cronista/ # pacote Python
+│  ├─ domain/ pipeline/ db/ media/ paths.py config.py     # modelos, etapas, banco, FFmpeg único, pastas de sessão
+│  ├─ ingest/ recorder/ preview/ watch.py gates.py         # OBS, marcadores, prévia, GpuGate
+│  ├─ audio/ video/ profiles.py                            # análise de áudio e vídeo; perfis de jogo (YAML)
+│  ├─ relevance/ review/ story/ montage.py                 # relevância, revisão, narrativa, montagem
+│  ├─ assembly/ mix/ finishing/ export/                    # plano de montagem, mixagem, acabamento, FCPXML/SRT
+│  ├─ shorts/ thumbnails/ packaging/                       # embalagem (Fase 9)
+│  ├─ api/                                                 # FastAPI: routes_*.py, schemas.py, context.py
+│  ├─ commands/ cli.py                                     # CLI: um módulo por domínio, `cli.py` só registra
+│  └─ devtools/ gabarito.py bench_report.py contracts.py   # fixtures, kit do Resolve, gabarito, contratos
+├─ packages/contracts/ packages/brand-kit/                 # schema.json e types.ts (gerados); brand kit
+├─ integrations/{obs,resolve,fifine,cuda}/                 # gravador/guia do OBS, Lua do Resolve, testes de máquina
+├─ profiles/  config/  .claude/skills/  docs/              # perfis YAML, dev/prod, skills, documentação
+└─ data/ (fora do git)           # story/, packaging/, shorts/, montagem/, acabamento/, export/ por sessão (ver `paths.py`)
+```
+
+A lista completa de pacotes e de comandos é gerada do código em [anexo-gerado.md](anexo-gerado.md)
+(`python -m cronista.devtools.anexo`; o teste `test_anexo_gerado` falha se ela ficar defasada). Esta árvore é só um mapa. *Árvore do planejamento inicial (2026-11-12; `vision/`, `profiles/`,
+`adapters/`, `vfx-templates/` e `game-mods/` **não existem**: [SUBSTITUÍDA pela árvore acima]):*
+
 ```
 Editor_De_Video/                 # raiz do repositório (o pacote Python se chama `cronista`)
 ├─ apps/
@@ -408,7 +434,7 @@ Editor_De_Video/                 # raiz do repositório (o pacote Python se cham
 ├─ packages/
 │  ├─ contracts/                 # JSON Schemas → tipos gerados
 │  ├─ brand-kit/                 # configuração e assets do brand kit (versionados; Git LFS se crescerem)
-│  └─ vfx-templates/             # Remotion (overlays)
+│  └─ vfx-templates/             # ~~Remotion~~ [SUBSTITUÍDA por H §57(18); nunca criada]
 ├─ integrations/
 │  ├─ obs/                       # gravador de marcadores (opção A: programa ao lado do OBS via obs-websocket, seção 4) + guia do OBS
 │  ├─ resolve/                   # script interno do DaVinci Resolve
@@ -571,7 +597,7 @@ basta desativar A1/A2 e ativar A6/A7.
 
 A numeração das trilhas é fixa. Trilhas ainda sem conteúdo (A3 sempre; V2, V4, A4 e A5 antes da Fase 8) são criadas
 vazias, para as demais não mudarem de número. A única exceção são A6/A7, que ficam no fim e só existem quando há stem
-processado. ⚠️ De memória: o FCPXML não tem trilhas, e sim "lanes", e é o Resolve que decide em qual trilha cada clipe
+processado. ⚠️ **[parcial: as lanes -1 e -2 (A1 e A2) importaram, H §39; V2, V4, A4 e A5 sem conferência, EA-1]** De memória: o FCPXML não tem trilhas, e sim "lanes", e é o Resolve que decide em qual trilha cada clipe
 cai; se o FCPXML não garantir o layout nem criar trilhas vazias, o script interno (Rota B) cria e organiza. Item do
 spike (seção 6.5).
 
@@ -580,23 +606,23 @@ Timeline em **60 fps exatos**, igual à gravação (seção 2).
 Cartelas e contador de dias: como o número que aparece na tela é decidido na edição (seção 4), eles não podem sair
 gravados na imagem. Duas formas, a escolher no spike: (1) título editável no Resolve (Text+/macro do Fusion, gratuito)
 criado pelo FCPXML ou pelo script interno; (2) PNG/MOV com transparência que o app regenera depois do ajuste dos dias
-no Studio. ⚠️ Não se sabe se o FCPXML cria título editável no Resolve gratuito.
+no Studio. ~~⚠️~~ **[✅ resolvido em parte: o título nativo entra como "Texto - Dia 1" na V2, H §39; falta conferir se a edição do texto funciona de fato]** Não se sabe se o FCPXML cria título editável no Resolve gratuito.
 A opção 2 depende do Studio, que só chega na Fase 7. Na Fase 6 vale a opção 1; se o spike reprovar o título editável,
 os números vêm de um arquivo de dias do projeto, editado à mão, que o app lê para regenerar as cartelas.
-As cartelas de template Remotion da Fase 8 (seção 6.4) são a opção 2: imagem renderizada, sempre regenerada pelo app a
+As cartelas de template ~~Remotion~~ [SUBSTITUÍDA por H §57(18): sem Remotion; cartelas por FFmpeg] da Fase 8 (seção 6.4) são a opção 2: imagem renderizada, sempre regenerada pelo app a
 partir dos dias ajustados no Studio, nunca com número fixo. O título editável da opção 1 continua disponível.
 
-⚠️ As faixas de áudio estão todas dentro do mesmo MP4. Ainda não se sabe se o Resolve respeita, vindo do FCPXML, qual
+~~⚠️~~ **[✅ resolvido pelo desenho: o app referencia WAVs extraídos (`game.wav`, `mic.wav`), H §39; qual faixa do MP4 cai em cada trilha do kit nunca foi conferida de ouvido]** As faixas de áudio estão todas dentro do mesmo MP4. Ainda não se sabe se o Resolve respeita, vindo do FCPXML, qual
 faixa embutida vai para qual trilha (faixa 2 → A1, faixa 3 → A2). Se não respeitar, o app passa a referenciar os
 WAVs extraídos de cada faixa na ingestão, alinhados ao vídeo pelo tempo do arquivo. Teste no spike (seção 6.5).
 Esse teste decide só as faixas cruas (o FCPXML mínimo da Fase 1 e as trilhas A6/A7): os stems processados de A1/A2
 são sempre WAVs (seção 2).
 
 Marcadores coloridos: tipo do momento, fala sugerida e **sugestões de edição** (zoom aqui, efeito sonoro, freeze-frame + texto, meme).
-⚠️ O FCPXML não tem campo de cor de marcador, então a cor vem por outro caminho: EDL de marcadores no formato do
+~~⚠️~~ **[❌ resolvido: nenhuma posição no FCPXML vira marcador e o Resolve gratuito 21.2 não importa marcadores por EDL; só por script (Console Lua, `AddMarker`), H §39]** O FCPXML não tem campo de cor de marcador, então a cor vem por outro caminho: EDL de marcadores no formato do
 Resolve ou script interno (Rota B), conforme o spike (seção 6.5).
 ~~Piadas visuais ficam como sugestão, não como efeito aplicado: feitas automaticamente, são o que mais denuncia vídeo feito por IA.~~
-**Substituída em 2026-11-16 (histórico §40):** música, SFX, SFX de meme e piadas visuais são escolhidos e posicionados
+**Substituída em 2026-11-16 (histórico §40), e em parte de novo por H §57(3)(19): humor e impacto (meme, piada visual) nascem só como `sugerir`.** Música, SFX, SFX de meme e piadas visuais são escolhidos e posicionados
 automaticamente pelo Cronista (modo `aplicar editável`), sempre dentro do orçamento de efeitos por minuto (seção 6.4). O risco
 de "cara de IA" que motivou a regra anterior continua valendo e é coberto pelo orçamento e pela revisão do primeiro corte.
 
@@ -618,7 +644,7 @@ Cada efeito tem três modos, configuráveis por projeto:
 | Música | Biblioteca local sem direitos autorais, com tags de humor/BPM; escolha por clima do capítulo, cortes no beat, ducking | Média-alta |
 | Zoom/punch-in | Em picos (grito, morte, risada), centrado na região de ação (saliência), com easing | Alta |
 | Cor | LUT de "look" por série + normalização de exposição entre sessões | Alta (games quase não precisam) |
-| VFX com template | **Remotion** (React/TSX) gerando overlays com transparência: contador de mortes, cartelas de dia, freeze-frame + texto, barra de progresso; shake em explosões; SFX de meme da sua biblioteca | Média — exige orçamento por minuto para não ficar repetitivo |
+| VFX com template | ~~**Remotion**~~ [SUBSTITUÍDA por H §57(18): FFmpeg] (React/TSX) gerando overlays com transparência: contador de mortes, cartelas de dia, freeze-frame + texto, barra de progresso; shake em explosões; SFX de meme da sua biblioteca | Média — exige orçamento por minuto para não ficar repetitivo |
 
 Regras anti-"cara de template": limite de efeitos por minuto, variação entre presets, intensidade ligada à nota do momento
 (uma morte boba ganha um zoom leve; a morte para um chefe ganha o pacote completo) e revisão no Studio.
@@ -632,15 +658,15 @@ polir quando o primeiro corte já estiver bom e o Studio permitir controlar os e
 Detalhes da mixagem:
 - **Redução de ruído da voz não depende do benchmark de WER.** A faixa 3 (com RNNoise do OBS, histórico §41) é a que
   vira a trilha A2 do vídeo; se o RNNoise do OBS não bastar, a cadeia de voz limpa mais. Ferramenta escolhida na Fase 6, ouvindo o
-  resultado: DeepFilterNet, se instalar; senão, os filtros do próprio FFmpeg (⚠️ de memória: `arnndn`, que é RNNoise,
+  resultado: DeepFilterNet, se instalar; senão, os filtros do próprio FFmpeg (~~⚠️~~ **[resolvido: a cadeia de voz usa `highpass`, `afftdn` e `acompressor` (`mix/service.py`); `arnndn` não foi adotado]** de memória: `arnndn`, que é RNNoise,
   e `afftdn`). O benchmark da Fase 2 decide só se a limpeza entra **antes da transcrição**.
 - **Ducking sob a narração complementar.** A narração da trilha A3 é gravada depois, no Resolve, justamente onde não
   há fala ao vivo. Para o jogo não ficar em volume cheio ali, o stem de A1 também é abaixado nos trechos em que o
   roteiro (SRT) prevê narração. Se a narração gravada sair muito diferente do previsto, o criador desfaz ativando o
-  stem cru (A6) ou ajusta no Fairlight. ⚠️ A confirmar com o criador (seção 9, item 9).
+  stem cru (A6) ou ajusta no Fairlight. ⚠️ **[padrão adotado (pré-aplicado); falta a confirmação do criador, EA-26]** A confirmar com o criador (seção 9, item 9).
 - **−14 LUFS vale para a mixagem final, não para cada stem.** Os stems de A1 e A2 saem nivelados entre si, com folga.
   O loudness integrado é medido e ajustado no render final, quando narração, música e SFX já estão somados: no
-  Resolve (medidor de loudness do Fairlight) ou no `cronista render` (filtro `loudnorm` do FFmpeg).
+  Resolve (medidor de loudness do Fairlight) ou no `cronista render` (**não implementado**, sem fase definida; filtro `loudnorm` do FFmpeg).
 
 **Kit de identidade do canal (brand kit):** uma única configuração versionada, consumida por VFX, cartelas, shorts e
 thumbnails, para o canal ter identidade visual **e** sonora:
@@ -650,7 +676,7 @@ thumbnails, para o canal ter identidade visual **e** sonora:
   arquivos de áudio e vídeo (funcionam no Resolve gratuito, sem marca d'água). O app mantém um inventário com tags, origem e
   licença de cada item; os arquivos ficam fora do git e o caminho em `config/*.local.yaml`. Pacote de terceiros só entra com
   a licença registrada.
-- Música: Biblioteca de Áudio do YouTube ou música gerada por IA, como complemento da biblioteca pessoal. ⚠️ Antes de monetizar, verificar a licença de uso
+- Música: Biblioteca de Áudio do YouTube ou música gerada por IA, como complemento da biblioteca pessoal. ⚠️ **[aberta, EA-12]** Antes de monetizar, verificar a licença de uso
   comercial de cada gerador de IA; vários planos gratuitos e alguns modelos locais proíbem uso comercial.
 
 ## 6.5 Integração com o DaVinci Resolve gratuito
@@ -659,7 +685,7 @@ Status: parcialmente verificado. Em 2026-11-12 o criador pesquisou as limitaçõ
 fontes públicas (página oficial do Resolve 20, Toolfarm, CineD, Motion Array, Artlist e fórum da Blackmagic).
 A pesquisa confirma os limites de saída, codec e recursos; **não cobre** importação de FCPXML nem a API de scripts,
 que continuam para o spike prático no PC de casa. ✅ = confirmado pela pesquisa · ☑️ = alta confiança, não
-verificado · ⚠️ = testar no spike.
+verificado · ⚠️ = testar no spike. **[F18, 2026-11-19: ~~⚠️~~ riscado = resolvido, com ✅/❌ e o ponteiro; ⚠️ com colchetes = ainda aberto ou parcial.]**
 
 **Confirmado pela pesquisa (impacto no projeto):**
 - ✅ Saída até UHD (3840×2160) a 60 fps, **sem marca d'água** e sem limite de tempo de uso. Vale também na vertical
@@ -690,21 +716,21 @@ As fontes são a documentação oficial e o teste prático:
   tocar e renderizar um HEVC 8-bit).
 
 - ☑️ Importar timeline de FCPXML/EDL/AAF (e OTIO nas versões recentes): cortes, várias trilhas, velocidade constante, marcadores.
-- ⚠️ Transformações (zoom/posição), opacidade, transições, volume e **keyframes** via FCPXML: suporte parcial.
+- ~~⚠️~~ **[✅ resolvido em parte: zoom com keyframes, velocidade e transição importam, H §39; o conteúdo fino não foi inspecionado]** Transformações (zoom/posição), opacidade, transições, volume e **keyframes** via FCPXML: suporte parcial.
 - ☑️ Scripts Python/Lua **rodando de dentro do Resolve** (menu Workspace → Scripts e console).
-  ⚠️ Scripts *externos* (o app controlando o Resolve de fora) costumam ser exclusivos do Studio.
+  ~~⚠️~~ **[❌ confirmado: o scripting externo é bloqueado no gratuito (`scriptapp` devolve nulo), H §39]** Scripts *externos* (o app controlando o Resolve de fora) costumam ser exclusivos do Studio.
 - ☑️ API de scripts: criar projeto, importar mídia, `ImportTimelineFromFile`, `AppendToTimeline`, `AddMarker` (cor, nome, nota),
   `SetProperty` (zoom/pan/crop **estáticos**), cor do clipe, LUT, fila de render. A API não cria keyframes.
 - ☑️ LUTs, color page e importação de legendas SRT.
-- ⚠️ Decodificação de H.264/HEVC por GPU no Windows: a pesquisa só fala de *encoding*. Se o gratuito também não
+- ⚠️ **[aberta em `prod`, EA-1]** Decodificação de H.264/HEVC por GPU no Windows: a pesquisa só fala de *encoding*. Se o gratuito também não
   decodificar pela GPU, a timeline com as gravações do OBS fica pesada (daí a mídia intermediária abaixo).
-- ⚠️ HEVC (H.265) 8-bit no Windows: a própria pesquisa recomenda confirmar nas notas de versão; por isso o padrão é H.264.
-- ⚠️ **Cor dos marcadores:** o FCPXML não carrega cor. Alternativas no gratuito: importar marcadores por EDL no formato
+- ~~⚠️~~ **[❌ resolvido: o Resolve recusa o HEVC importado pelo FCPXML (`02f`), H §39; o padrão H.264 se confirma]** HEVC (H.265) 8-bit no Windows: a própria pesquisa recomenda confirmar nas notas de versão; por isso o padrão é H.264.
+- ~~⚠️~~ **[❌ resolvido: só por script, H §39]** **Cor dos marcadores:** o FCPXML não carrega cor. Alternativas no gratuito: importar marcadores por EDL no formato
   do próprio Resolve (de memória: menu de importação de marcadores de timeline a partir de EDL, com linhas
   `|C:ResolveColorBlue |M:nome |D:duração`) ou criar pelo script interno (`AddMarker` com cor).
-- ⚠️ **Faixas de áudio embutidas:** se o FCPXML consegue mandar a faixa 2 do MP4 para A1 e a faixa 3 para A2. Se não,
+- ~~⚠️~~ **[✅ resolvido pelo desenho: WAVs extraídos, H §39]** **Faixas de áudio embutidas:** se o FCPXML consegue mandar a faixa 2 do MP4 para A1 e a faixa 3 para A2. Se não,
   usar os WAVs extraídos de cada faixa (seção 6.3).
-- ⚠️ **Hybrid MP4 após queda:** se o Resolve abre o arquivo remuxado sem recodificar (seção 2).
+- ⚠️ **[aberta em `prod`, EA-1]** **Hybrid MP4 após queda:** se o Resolve abre o arquivo remuxado sem recodificar (seção 2).
 
 **Resultado do spike no PC de casa (2026-11-16, Resolve 21.2.1.0006 gratuito, interface em português; histórico §39):**
 - ✅ **Importação de FCPXML 1.9** (menu Arquivo → Importar → Linha de Tempo, ou `ImportTimelineFromFile`): cortes,
@@ -717,7 +743,7 @@ As fontes são a documentação oficial e o teste prático:
   microfone na A2, 1:57:06). Nesta janela de importação o código de tempo inicial vem `01:00:00:00` por padrão.
 - ✅ **Overlay com alfa** (ProRes 4444): fica na trilha acima, transparente, sem fundo preto.
 - ✅ **Áudio:** o FCPXML do kit cria 3 trilhas (A1–A3); o canal `enabled="0"` chega como clipe desativado (A1 cinza com
-  "M"). ⚠️ Qual faixa do MP4 caiu em cada trilha ainda não foi conferido de ouvido.
+  "M"). ⚠️ **[aberta em `prod`]** Qual faixa do MP4 caiu em cada trilha ainda não foi conferido de ouvido.
 - ❌ **Marcadores pelo FCPXML:** nenhum chega como marcador de timeline, nem dentro do clipe, nem na `<sequence>`, nem
   num `<gap>` (painel Marcadores vazio). O Resolve gratuito 21.2 **não tem importação de marcadores por EDL** nos menus
   Arquivo, Marcar e Linha de Tempo. ✅ `AddMarker` pelo script interno funciona (cor, nome e nota). Conclusão:
@@ -730,13 +756,13 @@ As fontes são a documentação oficial e o teste prático:
   `loadfile` nem `require`: o código vai **colado numa linha**. Scripts na pasta `Scripts\Utility` **não aparecem** no
   menu Scripts, mesmo após reiniciar. `ImportTimelineFromFile`, `AddMarker`, `CreateProject` (nome inédito) e
   `SetSettings` funcionam por esse Console; `ImportMedia` com dicionário devolve vazio. `SetLUT` devolveu `false`.
-- ⚠️ **Ainda sem resposta:** relink (A5), FCPXML do próprio app (A16), HEVC importado à mão, tons de áudio por trilha,
+- ⚠️ **Ainda sem resposta** **[F18: o FCPXML do próprio app (A16) foi resolvido ainda em 2026-11-16, importou; o resto segue em EA-1]:** relink (A5), FCPXML do próprio app (A16), HEVC importado à mão, tons de áudio por trilha,
   cartela editável de fato, LUT, desempenho e render (bloco D do roteiro), ProRes na página Entrega.
 - **Editor:** nada do que falhou impede o produto. Trocar o Resolve não se justifica; plano B, se um bloqueio futuro
   surgir: Kdenlive (de memória, não verificado: gratuito, projeto em XML do MLT, sem marca d'água).
 
 **Estratégia:**
-- **Rota A (base):** o app gera FCPXML/OTIO + SRT e você importa pelo menu File → Import.
+- **Rota A (base):** o app gera FCPXML (~~/OTIO~~ [SUBSTITUÍDA por H §39]) + SRT e você importa pelo menu File → Import.
 - **Rota B (quase um clique):** *rebaixada em 2026-11-16 (ver resultado do spike acima)*: o gratuito não lista scripts
   no menu; o script interno é um Lua de uma linha **colado no Console**, e fica reservado aos **marcadores coloridos**
   (e, opcionalmente, criar projeto e importar). Na versão original: script interno do Cronista instalado na pasta de
@@ -748,10 +774,10 @@ As fontes são a documentação oficial e o teste prático:
   decodificação por GPU.
 - **Render final (encoding sem GPU no gratuito)**, em duas rotas, escolhidas pela medição do spike:
   1. *Direto no Resolve pela CPU* (H.264): mais simples. Serve se o vídeo de 30–50 min renderizar em tempo aceitável.
-  2. *Resolve exporta um intermediário (DNxHR SQ ou ProRes 422) e o app codifica com NVENC* (`cronista render`):
+  2. *Resolve exporta um intermediário (DNxHR SQ ou ProRes 422) e o app codifica com NVENC* (`cronista render`, **não implementado**):
      usa a RTX 3060 e deixa o render bem mais rápido. Custo: o intermediário ocupa ~65–110 GB por render de 30–50 min
-     (⚠️ de memória: DNxHR SQ em 1080p60 ≈ 290 Mbps; conferir no spike)
-     (vai para o HD e é apagado após o upload). ⚠️ De memória: o Resolve no Windows lê ProRes, mas historicamente
+     (⚠️ **[aberta em `prod`, EA-1]** de memória: DNxHR SQ em 1080p60 ≈ 290 Mbps; conferir no spike)
+     (vai para o HD e é apagado após o upload). ⚠️ **[aberta em `prod`, EA-1]** De memória: o Resolve no Windows lê ProRes, mas historicamente
      não exporta; até o spike confirmar, o intermediário padrão é DNxHR.
 - Antes de cogitar o Studio (US$ 295), medir as duas rotas. O plano não depende de nenhum recurso do Studio.
 
@@ -780,10 +806,10 @@ for instalado, e obrigatoriamente antes da Fase 6):
 - Se o desempenho for ruim, gerar mídia intermediária só dos trechos usados.
 - Conferir em quais trilhas o Resolve põe os clipes do FCPXML (layout V1–V5 / A1–A7 da seção 6.3) e se dá para criar
   trilhas vazias (A3, A4); se não, o script interno cria e organiza.
-- Gerar o FCPXML de teste pelo mesmo caminho que o app vai usar (OTIO → FCPXML; a 1B já tem esse caminho em `cronista export`, medições no histórico §30). ⚠️ De memória: o adaptador FCPXML do
+- Gerar o FCPXML de teste pelo mesmo caminho que o app vai usar (OTIO → FCPXML; a 1B já tem esse caminho em `cronista export`, medições no histórico §30). ~~⚠️~~ **[❌ resolvido: o adaptador gerou um arquivo que o Resolve recusou e depois travou; o app escreve o FCPXML 1.9 à mão, H §39]** De memória: o adaptador FCPXML do
   OTIO é um plugin à parte e limitado; se ele não cobrir títulos, keyframes, clipes desativados e áudio por faixa, o
   app escreve o FCPXML direto.
-- Rodar o script interno sem janela própria. ⚠️ De memória: versões recentes do gratuito (19.1+) teriam restringido
+- Rodar o script interno sem janela própria. ~~⚠️~~ **[❌ resolvido: o script roda só pelo Console, em Lua, colado numa linha; nada aparece no menu Scripts, H §39]** De memória: versões recentes do gratuito (19.1+) teriam restringido
   a interface gráfica de scripts; conferir no `README.txt`.
 
 ## 6.6 Shorts (todas as plataformas)
@@ -826,7 +852,7 @@ mantido, drama artificial e narrativa desconexa. Cada um vira item da revisão d
 - **Fim:** direto, logo após a conquista ou o desfecho principal, sem retrospectiva desnecessária. Se o desfecho real foi um
   fracasso, o fracasso é preservado: o último beat da seção 5.4 pode ser `falha`.
 - **Fracasso e dificuldade:** montagem de tentativas que mostra a evolução (vários intentos contra um chefe, por exemplo).
-  ⚠️ Depende de reconhecer tentativas pela 5A (`falhou`, `retoma`); viabilidade não comprovada.
+  ⚠️ **[aberta: a viabilidade só se prova com uma série real, `prod`]** Depende de reconhecer tentativas pela 5A (`falhou`, `retoma`); viabilidade não comprovada.
 - **Imprevistos fora do objetivo:** o impacto é avaliado e um pequeno arco só se cria quando merece.
 - **Fala longa de estratégia que mudou:** mantém as partes relevantes da fala ao vivo e a narração complementa, incluindo a
   mudança de estratégia. Exige selecionar trechos de uma fala, não só cortar silêncio (Fases 4 e 6).
@@ -846,6 +872,24 @@ mantido, drama artificial e narrativa desconexa. Cada um vira item da revisão d
 
 ## 7. Fases
 
+### Status das fases (fonte única; README, CLAUDE.md e `docs/fase-N-*.md` apontam para cá)
+
+Atualizado em 2026-11-19. "Conferência em `prod`" = o que só o PC de casa (GPU, OBS, Resolve) confirma.
+
+| Fase | Status | PR | Pendência |
+|---|---|---|---|
+| 1 Fundação | Mergeada | #3, #4 e seguintes | Resolve, FIFINE e gravação real em `prod` |
+| 2 Áudio | Mergeada (2A, 2B, 2C) | #7, #9, #10 | Gabarito real e benchmark de roteiro local (`prod`) |
+| 3 Vídeo e perfis | Mergeada (3A a 3C) | #11 a #13 | Conferir contextos e HUD oculto em sessões reais |
+| 4 Relevância | Mergeada | #16 | Calibrar com decisões reais |
+| 5 e 5A Narrativa e objetivos | Mergeada | #15 | Roteiro por série feito na 10F; conferir com mídia real em `prod` |
+| 6 Montagem e exportação | Mergeada | #18, #19 | Importar o pacote no Resolve gratuito (`prod`) |
+| 7 Studio | Mergeada | #20, #21 | Uso real |
+| 8 Acabamento | Mergeada | #22 | Conferência em `prod` |
+| 9 Embalagem | Mergeada | #23 | Conferência em `prod` |
+| 10 Correções da auditoria | 10A a 10F feitas; resta C8, só em `prod` (`fase/10-correcoes`) | | Ver `docs/fase-10-correcoes.md` |
+
+
 Cada fase vira um plano de execução próprio (`docs/fase-N-*.md`), com tarefas, critérios de aceite e testes.
 Só se avança com os critérios da fase anterior cumpridos.
 
@@ -859,7 +903,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Orquestrador de pipeline com cache por hash, jobs persistidos, retomada e logs estruturados; projeto incremental por
   sessão; política de GPU (pausa com o OBS gravando ou jogo em tela cheia, seção 4.1).
 - Gravador de marcadores (opção A da seção 4: programa ao lado do OBS via obs-websocket) com diário `.markers.jsonl`
-  e `Novo dia` sem número; guia de configuração do OBS (Hybrid MP4, 60 fps exatos, H.264 8-bit, microfone em duas fontes, jogo como
+  e `Novo dia` sem número; guia de configuração do OBS (Hybrid MP4, 60 fps exatos, H.264 8-bit, microfone em ~~duas fontes~~ [SUBSTITUÍDA por H §41: fonte única `MIC` com RNNoise], jogo como
   administrador).
 - Spike do dispositivo de marcação (FIFINE SC3: HID/MIDI ou marcador por áudio; senão, alternativas).
 - **Kit de teste do Resolve gratuito** (seção 6.5): FCPXML de exemplo (corte, velocidade, zoom com keyframe,
@@ -890,7 +934,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - Microfone: (DeepFilterNet, se aprovado no benchmark) → Silero VAD → faster-whisper (com timestamps por palavra) → picos relativos. Risada e grito vêm do classificador de eventos sonoros, que roda também no microfone (seção 3).
 - Jogo: classificação de eventos sonoros, baseline adaptativo por sessão (o recorte por contexto visual entra na Fase 3), novidade espectral, detector de periodicidade (rotina).
 - Saída: sinais e eventos de áudio no banco + relatório HTML da sessão (gráfico de sinais × tempo).
-- ✅ Aceite: no gabarito, teclado e respiração **não** geram eventos; fala transcrita com WER aceitável; trechos rítmicos detectados como rotina.
+- ✅ Aceite: no gabarito, teclado e respiração **não** geram eventos; fala transcrita com WER aceitável **[F18: proposta de corte WER ≤ 15%, não aprovada (`fase-2-analise-de-audio.md`, tarefa 5); medido: `whisper-turbo` 1,1% e `large-v3` 3,1%, gabarito de 287 s com viés a favor do turbo, `docs/benchmarks/02-fala.md`]**; trechos rítmicos detectados como rotina.
 
 ### Fase 3 — Análise de vídeo e perfis de jogo
 > **Plano de execução em [fase-3-analise-de-video.md](fase-3-analise-de-video.md)** (3A frames/cenas/sinais, 3B embeddings/contexto/B-roll, 3C perfis/OCR/VLM/qualidade; histórico §45). A 3C depende do gabarito.
@@ -902,7 +946,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 - **Perfil genérico universal** como padrão + perfis de jogo declarativos (YAML) opcionais; interface `GameAdapter`
   para leitores de mods, se algum dia valer a pena.
 - VLM local descrevendo apenas trechos candidatos.
-- ✅ Aceite: menus/loading/idle detectados com alta precisão no gabarito **sem nenhum perfil de jogo**; perfil plugável
+- ✅ Aceite: menus/loading/idle detectados com alta precisão **[F18: proposta de corte, não aprovada: precisão ≥ 90% e revocação ≥ 80% em `menu`/`loading`, precisão ≥ 80% em `idle`; `docs/fase-3-analise-de-video.md`, "Números de corte"]** no gabarito **sem nenhum perfil de jogo**; perfil plugável
   sem tocar no núcleo.
 
 ### Fase 4 — Motor de relevância
@@ -979,7 +1023,7 @@ Só se avança com os critérios da fase anterior cumpridos.
 ### Fase 6 — Montagem e exportação
 - Montagem automática: cortes, montagem inteligente como padrão (timelapse como opção por trecho), B-roll (V3), transições de capítulo com cartelas (no formato 100 dias, "Dia N")
   editáveis (seção 6.3), ritmo de referência.
-- Exportação OTIO → FCPXML (+ EDL), marcadores coloridos por tipo (EDL de marcadores ou Rota B, conforme o spike),
+- Exportação ~~OTIO → FCPXML (+ EDL)~~ [SUBSTITUÍDA por H §39: FCPXML à mão], marcadores coloridos por tipo (~~EDL de marcadores ou~~ Rota B, Lua do Console; o spike decidiu),
   SRT do roteiro, relink para os masters do HD, faixas de áudio mapeadas em A1/A2 (ou WAVs extraídos).
 - Candidatos a Shorts (seção 6.6: até 13 s, gancho nos 3 primeiros segundos).
 - Mixagem automática básica: ducking (sob a voz ao vivo e sob os trechos de narração previstos no roteiro) + stems
@@ -1013,7 +1057,7 @@ Plano de execução em [fase-8-acabamento.md](fase-8-acabamento.md) (8A brand ki
 - Modos sugerir / editável / renderizado por efeito, controlados no Studio (painel de acabamento: modo, máximo por minuto e
   nota mínima por efeito, prévia por momento, aceitar/tirar, tudo só por inserção); orçamento de efeitos por minuto.
 - Exportação: zoom e shake na V2 (lane 1), contador na V4 (lane 3), música na A4 (lane -4) e SFX na A5 (lane -5), sempre
-  acima do original; LUT por Lua (`SetLUT`) e `manifesto.json` com o como desfazer cada efeito. ⚠️ Lanes, keyframes de
+  acima do original; LUT por Lua (`SetLUT`) e `manifesto.json` com o como desfazer cada efeito. ⚠️ **[parcial: `SetLUT` devolveu `false` no spike (H §39) e o LUT passou a `sugerir` (H §60); lanes e keyframes dos efeitos seguem sem conferência, EA-1]** Lanes, keyframes de
   `adjust-transform`, `SetLUT` e o alfa do ProRes 4444 dependem de conferência no Resolve (seção 6.5).
 - **Legendas pontuais no vídeo longo** (Q25) — *adiadas para depois da Fase 8*: só falas e momentos importantes, com animação
   de palavras e reações, a partir dos timestamps por palavra do Whisper (Fase 2) e como overlay (V4). Não confundir com a trilha "Legendas" da seção 6.3
@@ -1057,7 +1101,14 @@ histórico §58).
 
 ## 9. Decisões
 
+> **Guia de leitura (F20, 2026-11-19):** a lista cresce por inclusão, não por data, e os blocos não foram reordenados
+> para não quebrar as referências cruzadas. Ordem cronológica dos blocos: **2026-11-16** (D1–D4; 1B: marcadores, serviço,
+> `GpuGate`, FCPXML mínimo; spike do Resolve, histórico §39; microfone, §41; visão narrativa, §36, §37 e §40);
+> **2026-11-17** (Fase 3B e 3C, §48–§50A; Fases 4 a 6); **2026-11-18** (Fases 7 a 9 e auditoria, §60);
+> **2026-11-19** (Fase 10: §61–§63). O status mais recente de cada pergunta está na tabela "Em aberto", no fim da seção.
+
 **Já decididas:**
+- Glossário aprovado em 2026-11-19, sem unificar o vocabulário de decisões (histórico §61).
 - Sistema universal, sem jogo de calibração específico.
 - Só a voz do criador nas gravações.
 - Nome "Cronista" mantido (o nome não é prioridade).
@@ -1093,7 +1144,7 @@ histórico §58).
 - **Microfone sem a fonte crua (2026-11-16, histórico §41):** o `MIC_RAW` foi descartado; fonte única `MIC` com RNNoise
   nas faixas 1 (mix) e 3 (microfone). Faixas: 1 = mix, 2 = jogo, 3 = microfone (com RNNoise). O código não muda
   (`AUDIO_TRACKS`); a detecção de teclado e respiração depende do benchmark da Fase 2 (seções 2 e 3).
-- **Spike do Resolve gratuito 21.2 (2026-11-16, histórico §39):** FCPXML importa pelo menu; marcadores só por script
+- **Spike do Resolve gratuito 21.2 (2026-11-16, histórico §39; fonte única do resultado: seção 6.5):** FCPXML importa pelo menu; marcadores só por script
   (Lua colado no Console, único que o gratuito aceita); legenda SRT pelo menu Importar → Legenda, com fala vazia em 0 s;
   scripting externo bloqueado; HEVC recusado (o projeto usa H.264). O Resolve fica como editor (seção 6.5).
 - Marcador = "aconteceu algo aqui" (ponto no tempo dentro do arquivo); os capítulos do vídeo vêm só de `Novo dia`
@@ -1103,8 +1154,9 @@ histórico §58).
   dia é definido na edição. `Construção ▶/■` é uma tecla só, que alterna (seção 4).
 - A contagem de dias aparece na tela, mas o número final e a divisão são decididos na edição; `Novo dia` é proposta,
   e cartelas/contador saem editáveis (seções 4 e 6.3).
-- Gravação e timeline em 60 fps exatos; microfone em uma fonte só no OBS, com RNNoise, nas faixas 1 e 3 (seção 2,
-  histórico §41). *Substitui* "duas fontes, RNNoise só na do mix".
+- Gravação e timeline em 60 fps exatos (seção 2). ~~Microfone em uma fonte só no OBS, com RNNoise, nas faixas 1 e 3
+  (seção 2, histórico §41). *Substitui* "duas fontes, RNNoise só na do mix".~~ [DUPLICADA em 2026-11-19 (F20): vale o item
+  "Microfone sem a fonte crua" acima.]
 - Processamento automático ao fim da gravação, com pausa enquanto o OBS grava ou um jogo em tela cheia está aberto (seção 4.1).
 - ML em PyTorch + ONNX Runtime; OCR com RapidOCR em frames do master; DeepFilterNet só se melhorar o WER (seção 5.2).
 - Exceção aceita: o CTranslate2 (base do faster-whisper) traz CUDA próprio; se conflitar com o PyTorch, a
@@ -1113,7 +1165,8 @@ histórico §58).
 - Classificador de eventos sonoros: **AST/AudioSet** é o primeiro candidato (resolução de 2,5 s); PANNs, BEATs e CLAP
   continuam candidatos da 2C. Transcrição com `large-v3-turbo` em `int8_float16` (histórico §44).
 - Trilhas da timeline: V1 gameplay, V2 efeitos renderizados, V3 B-roll, V4 overlays, V5 cartelas; A1 jogo, A2 voz
-  ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados (seção 6.3).
+  ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados. **A tabela da seção 6.3 é a fonte
+  única** (F20): esta linha é só um resumo e não deve ser atualizada separadamente.
 - CI em Ubuntu e Windows; configuração versionada sem caminhos pessoais + `*.local.yaml` fora do git (seção 5.6).
 - **Fase 3B (2026-11-17, histórico §48–§50):** contextos visuais por embedding (SigLIP 2 base nos contextos, large só na busca de B-roll); **B-roll** com nota de **utilidade** (nunca beleza), tags, **clima** (bonito, sombrio, perigoso, calmo) e estado do HUD; sob a narração o B-roll **alterna**, sempre casando com o assunto, e sem tomada à altura o app **sugere gravar** (ferramenta do jogo em `camera_tools` do perfil, 3C); **tipos de menu** por embedding centrado na média (sem nome; nomear é do VLM/criador, peso é da Fase 4); **HUD oculto** universal por gabarito estável da sessão (experimental, não validado com HUD escondido); **`idle`** = cena parada com o HUD inteiro à vista (substitui a heurística da 3A, removida; 1 acerto no `claude_teste`, recalibrar na 3C).
 - ~~Benchmark da Fase 1 só de desempenho~~: **substituído** (histórico §36): benchmarks de desempenho e de qualidade (WER, precisão) ocorrem na Fase 2; a 1C não faz benchmark de modelos (seções 6.1 e 7).
@@ -1140,8 +1193,9 @@ histórico §58).
   faixas cruas (seções 2 e 6.3).
 - Numeração de trilhas fixa: trilhas sem conteúdo são criadas vazias; só A6/A7 são condicionais (seção 6.3).
 - Perfil de jogo: pesos aprendidos com o feedback + campos manuais opcionais (HUD, lookback, rótulos ignorados) (seção 3).
-- Cartelas: título editável na Fase 6; as de template Remotion (Fase 8) são regeneradas pelo app, nunca com número
-  fixo (seções 6.3 e 6.4).
+- ~~Cartelas: título editável na Fase 6; as de template Remotion (Fase 8) são regeneradas pelo app, nunca com número
+  fixo (seções 6.3 e 6.4).~~ [DUPLICADA em 2026-11-19 (F20): vale o item "Cartelas na Fase 6" acima e a seção 6.3; o
+  Remotion foi substituído por FFmpeg, histórico §57.]
 - Os dois registros do marcador (OBS + diário) vêm do mesmo programa: a redundância não cobre a falha dele (seção 4).
 - Arquivo 10-bit na ingestão: avisa e converte para 8-bit (seções 2 e 6.5).
 - O app nunca chama a API do Claude; só o Claude Code, por skill manual ou `claude -p` (seção 1).
@@ -1149,7 +1203,7 @@ histórico §58).
   da Fase 1 equivale a 1A + 1B; a 1C bloqueia a Fase 2 (benchmark e gabarito) e o spike do Resolve antes da Fase 6
   ([fase-1-fundacao.md](fase-1-fundacao.md)).
 - **D1:** gravador de marcadores em Python, processo separado do engine; o engine (serviço sempre aberto) dispara o
-  processamento ao observar `recording_stopped` no diário (seções 4 e 4.1). ⚠️ Confirmar na 1B as bibliotecas de
+  processamento ao observar `recording_stopped` no diário (seções 4 e 4.1). ~~⚠️~~ **[✅ resolvido: `pynput` 1.8.2 e `simpleobsws` 1.4.3 rodam no Python 3.12, H §31]** Confirmar na 1B as bibliotecas de
   hotkey global e de obs-websocket para Python 3.12.
 - **D2:** contratos Pydantic → JSON Schema/OpenAPI → TypeScript gerado; a seção 5.2 foi atualizada.
 - **D3:** gabarito em CSV (`inicio, fim, classe, nota`) + script de validação e prévia; o Studio não é necessário.
@@ -1164,9 +1218,9 @@ histórico §58).
 - Primeira sessão do projeto sem `Novo dia`: abre um dia implícito no início, sem número.
 - Marcadores na ingestão: passo idempotente da sessão (não etapa com cache por arquivo); `Construção ▶/■` pareada pela ordem dos toques, com `■` sintético se ficar aberta; dia implícito como marcador sintético (histórico §28).
 - **Auditoria de 2026-11-18 e Fase 10 de correções (histórico §60; planos em `docs/auditoria/`):**
-  - **Lacuna registrada:** narrativa, montagem, acabamento e títulos ainda trabalham **por sessão** (alvo inteiro em
-    cada sessão). Isso contradiz a seção 4.1 até a sub-etapa 10F, que implementa a história por série (`build_series_story`,
-    alvo único, dias contínuos entre sessões).
+  - ~~**Lacuna registrada:** narrativa, montagem, acabamento e títulos trabalham **por sessão** (alvo inteiro em
+    cada sessão).~~ [SUBSTITUÍDA por H §62, 2026-11-19: a 10F implementou a história por série (`build_series_story`,
+    alvo único, dias contínuos entre sessões); o vídeo da série mora na sessão âncora, a última do projeto.]
   - **LUT:** padrão `sugerir` até a conferência em `prod` mostrar que o `SetLUT` funciona no Resolve gratuito. Volta a
     `editavel` só depois disso.
   - **Detector de grito** (`ScreamHeuristic`, reprovado no §46): atrás da flag `audio.scream_enabled`, desligada por padrão.
@@ -1183,8 +1237,9 @@ histórico §58).
   entre vários (missão, desafio, sobrevivência por regras) e continua preservado, com `Novo dia` e cartelas "Dia N" (seções 4, 5.4, 6.3).
 - **Montagem inteligente como preferência editorial** (seção 6.3). Timelapse é uma das opções, escolhida por trecho.
 - **Fase 5A** (objetivos, subobjetivos, estados e evidências), entre a Fase 4 e a Fase 5 (seção 7).
-- **Benchmarks de modelos na Fase 2**, não na 1C. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE, GpuGate,
-  gravação real com o microfone ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).
+- ~~**Benchmarks de modelos na Fase 2**, não na 1C. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE, GpuGate,
+  gravação real com o microfone ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).~~
+  [DUPLICADA em 2026-11-19 (F20): vale o item "Benchmark da Fase 1 só de desempenho ... substituído" acima, e as seções 6.1 e 7.]
 
 **Lacunas técnicas identificadas (2026-11-16) e fase de correção:**
 1. **Tempo do marcador em float de segundos** (`marker.media_time_s`) → guardar em **quadros inteiros a 60 fps**. Fase: **1B, antes do merge** (o modelo do marcador é entregue pela 1B).
@@ -1213,11 +1268,54 @@ alterar a ordem do roadmap.
   minuto (seções 6.3 e 6.4); (5) a biblioteca pessoal de arquivos de áudio e vídeo é a fonte prioritária (seção 6.4);
   (6) só modelos abertos locais; (7) Q27: o feedback ajusta a edição atual e registra a preferência (Fase 7).
 
+- **Decisões da Fase 10 (2026-11-19, histórico §63):** o texto da thumbnail não é editável no Studio (fora de escopo; D14);
+  A9 feito (nomes dos passos de amostragem e tipos comuns em `domain/types.py`); A10 (mover a infraestrutura de sinais para
+  `cronista/analysis/`) adiado.
+
 **Status da Fase 1 (2026-11-16):** 1A integrada à `main` (PR #1). 1B com código completo no `dev` (histórico §28–34); `/code-review` feito e 10 achados corrigidos (§35); PR #3 integrado à `main` com CI verde; a
 tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadros` (histórico §38), a integrar.
 1C pendente (PC de casa). A Fase 2 só começa com 1B e 1C cumpridas.
 
-**Em aberto:**
+**Em aberto** (tabela de 2026-11-19, Fase 10D, F12; revisada ao fim de cada fase). Status: *Decidida*, *Parcial*, *Aberta*,
+*Superada*. A lista original, com o texto integral, fica logo abaixo e **está substituída por esta tabela**. Referências
+"H §N" são seções do [histórico](01-historico-de-decisoes.md). Os status vêm do texto já registrado nos documentos; onde
+não havia decisão registrada, o item consta como *Aberta*.
+
+| Id | Pergunta | Prazo | Status | Onde |
+|---|---|---|---|---|
+| EA-1 | Decodificação por GPU, HEVC e tempo de render no Resolve gratuito (seção 6.5). FCPXML e marcadores já respondidos | `prod` | Parcial | H §39; seção 6.5 |
+| EA-2 | FIFINE SC3 como dispositivo de marcação | — | Decidida: descartada | H §39; seção 4 |
+| EA-3 | Gravar a gameplay de teste (~30 min) e anotar o gabarito | `prod` (1C, Fase 2) | Aberta | `docs/gabarito.md` |
+| EA-4 | Layout do modelo de thumbnail do canal | antes de usar a 9B em série real | Aberta (criador) | H §58; seção 6.7 |
+| EA-5 | Identidade visual e sonora do canal (paleta, fontes, vinheta, sons recorrentes) | antes da série real | Aberta (criador); o brand kit (Fase 8) já recebe os valores | seção 6.4 |
+| EA-6 | Quem cria o marcador com tipo e dia no OBS | — | Decidida: programa ao lado do OBS (opção A) | H §20, §31; seção 4 |
+| EA-7 | Fase 1.5 só com marcadores; dividir a Fase 1; D1–D3 | — | Decidida (não criar; 1A/1B/1C) | H §18, §19 |
+| EA-8 | Contratos via OpenAPI | — | Decidida: Pydantic → JSON Schema → TypeScript (D2) | H §26; CLAUDE.md |
+| EA-9 | Gabarito com dois gêneros; critérios de aceite sem número ("WER aceitável", "alta precisão", "top de candidatos") | Fase 10D (F18) | Aberta | H §18, §21; `docs/gabarito.md` |
+| EA-10 | Backup e política do PC do trabalho | sem fase | Parcial: backup do que é pequeno decidido; política e `StorageBackend` sem fase | seção 5.6 |
+| EA-11 | Retenção × relink: liberar os masters quebra o projeto do Resolve | sem fase | Aberta | seção 5.6 |
+| EA-12 | Termos de uso do `claude -p` automatizado; licenças dos modelos; macros do Fusion | antes de automatizar | Aberta (Remotion: decidido não usar) | H §18, §57; fase 8 |
+| EA-13 | Faixa 2 com "Captura de áudio de aplicativo" no OBS (hoje o áudio do desktop pega notificações, Discord, música) | `prod` | Aberta | H §19 |
+| EA-14 | Pausar pela carga da GPU ou por tela cheia: qual vale com os jogos da série | `prod` (1C) | Parcial: os dois existem, padrão OBS + tela cheia | H §33 |
+| EA-15 | Importar o teste também como `.otio` no spike | — | Superada: o FCPXML é escrito à mão (H §39) | H §39 |
+| EA-16 | Construção aberta em `Construção ▶` continua na sessão seguinte (dia que atravessa sessões)? | `prod` (uso real) | Aberta; dentro da sessão já é tratada | H §21, §31 |
+| EA-17 | Fala ao vivo num trecho de farm que vira timelapse: descartar, cortar normal ou manter por cima? | antes de usar o timelapse em série real | Aberta (sem decisão registrada) | seção 6.4; fase 6 |
+| EA-18 | Fases 7 e 9 dependem de uma série inteira gravada (~25 h) e de um vídeo publicado | `prod` | Em andamento: código mergeado; falta uso real | seção 7 |
+| EA-19 | Voice Isolation e Dialogue Leveler do Fairlight são exclusivos do Studio? (a seção 6.5 diz "Fairlight completo" com ✅) | `prod` | Aberta: conferir antes de afirmar "Fairlight completo" | seção 6.5; H §21 |
+| EA-20 | Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público? | antes de tornar o repositório público | Aberta (criador) | H §21 |
+| EA-21 | Marcar `novo_dia` e os tipos com teclado de 60% (sem F13–F24), com uma ou duas teclas | vencido: "antes da Fase 3", que já foi mergeada | Aberta; hoje só a tecla nativa do OBS, sem tipo | H §41 |
+| EA-22 | Para que serve o mix com RNNoise (`MIC_RAW`) | — | Decidida: fonte única `MIC`, com RNNoise, nas faixas 1 e 3 | H §41 |
+| EA-23 | Saber que o toque foi registrado com o jogo em tela cheia; programa de marcadores fechado | `prod` (1C) | Parcial: som por tipo, aviso de toque perdido e reassunção do diário; falta teste em tela cheia e com o programa fechado | H §31 |
+| EA-24 | Marcador que existe só no arquivo e não no diário | — | Decidida: `Momento` com aviso | seção 4 |
+| EA-25 | `Cinemática` e `Foto de progresso`: a tomada é antes ou depois do toque? (lookback) | — | Parcial: lookback por tipo e ajustável pelo perfil (25/20/30 s); conferir os dois tipos | H §22, §51, §60 |
+| EA-26 | Ducking do jogo sob a narração: pré-aplicado pelo app ou deixado para o Fairlight | confirmar com o criador | Decidida como padrão (pré-aplicado, seção 6.4); falta a confirmação do criador | seção 6.4; Fase 6 |
+| EA-27 | Origem dos arquivos para as métricas de ritmo de criadores de referência (baixar do YouTube fere os termos de uso) | sem fase | Aberta | H §22; seção 6 |
+| EA-28 | `cronista render`, mídia intermediária DNxHR, extração das métricas de ritmo, `StorageBackend` e retenção sem fase definida | sem fase | Aberta (`render` não implementado) | H §22; seção 6.5 |
+| EA-29 | Direção dos contratos; ferramenta do gabarito (D2, D3) | — | Decidida (Pydantic → JSON Schema → TypeScript; CSV + script) | H §26 |
+| EA-30 | Marcador por áudio da FIFINE no pad do microfone (iria para a trilha A2) | — | Decidida: sai da lista com a FIFINE (EA-2) | H §22, §39 |
+
+**Lista original (substituída pela tabela acima, mantida como registro):**
+
 1. Verificar na prática os itens ☑️/⚠️ da seção 6.5 (FCPXML, scripts, decodificação por GPU, HEVC e tempo de render),
    com o Resolve instalado no PC de casa. Os limites gerais do gratuito já foram confirmados pela pesquisa do criador.
 2. Testar se a FIFINE SC3 serve como dispositivo de marcação (seção 4).
@@ -1246,7 +1344,7 @@ tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadr
    - Fala ao vivo durante um trecho de farm que vira timelapse: descartar, cortar normal ou manter por cima?
    - Critérios de aceite sem número: "WER aceitável" (Fase 2), "alta precisão" (Fase 3), "top de candidatos" (Fase 4).
    - Fases 7 e 9 dependem de uma série inteira gravada (~25 h) e de um vídeo publicado.
-   - ⚠️ De memória: Voice Isolation (e talvez Dialogue Leveler) do Fairlight seriam exclusivos do Studio; conferir
+   - ⚠️ **[aberta, EA-19]** De memória: Voice Isolation (e talvez Dialogue Leveler) do Fairlight seriam exclusivos do Studio; conferir
      antes de afirmar "Fairlight completo" (seção 6.5).
    - Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público?
 9. Dúvidas levantadas na quarta revisão (histórico §22), sem resposta ainda:
@@ -1274,11 +1372,11 @@ tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadr
      (a voz do vídeo final) e precisa ser removido na mixagem. Vale a pena, ou essa opção sai da lista?
    - ~~Ferramenta de anotação do gabarito~~: **decidido** (D3), CSV + script de validação.
 10. Dúvidas levantadas na quinta revisão (histórico §24), sem resposta ainda:
-   - ⚠️ O adaptador FCPXML do OTIO dá conta de títulos, keyframes, clipes desativados e áudio por faixa, ou o app
+   - ~~⚠️~~ **[❌ resolvido: abandonado, H §39]** O adaptador FCPXML do OTIO dá conta de títulos, keyframes, clipes desativados e áudio por faixa, ou o app
      escreve o FCPXML direto? (spike, seção 6.5) **Parcialmente medido na 1B (histórico §30):** cobre tempos em
      quadros, cortes e áudio em lanes; falta medir o resto (títulos, keyframes, desativados) e a importação real.
-   - ⚠️ O FCPXML garante o layout fixo de trilhas e cria trilhas vazias, ou isso fica com o script interno? (spike)
-   - ⚠️ O script interno (Rota B) funciona no gratuito recente sem interface gráfica própria? (spike)
+   - ⚠️ **[parcial: A1 e A2 por lanes -1 e -2 importaram; criar trilhas vazias segue aberto, EA-1]** O FCPXML garante o layout fixo de trilhas e cria trilhas vazias, ou isso fica com o script interno? (spike)
+   - ~~⚠️~~ **[✅ resolvido: funciona só pelo Console, em Lua, sem janela própria, H §39]** O script interno (Rota B) funciona no gratuito recente sem interface gráfica própria? (spike)
    - Timelapse de farm na Fase 6: o áudio do jogo é removido e a música só chega na Fase 8. Fica em silêncio até lá
      ou mantém o áudio do jogo baixo?
    - Shorts 9:16 a partir de 1080p: o recorte tem só 608 px de largura e é ampliado ~1,8×. Aceitar a perda, usar

@@ -12,8 +12,9 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
+from cronista.domain.types import FloatArray
+
 BoolArray = npt.NDArray[np.bool_]
-FloatArray = npt.NDArray[np.float32]
 
 
 @dataclass(frozen=True)

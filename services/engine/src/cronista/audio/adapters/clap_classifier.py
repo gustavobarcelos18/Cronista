@@ -17,7 +17,8 @@ import numpy as np
 
 from cronista.audio.adapters.ast_classifier import merge_slices
 from cronista.audio.adapters.audio_io import MODEL_RATE, duration_s, package_version, read_segment
-from cronista.audio.ports import Pause, SoundEventSpan
+from cronista.audio.ports import SoundEventSpan
+from cronista.domain.types import Pause
 
 CLAP_RATE = 48000
 

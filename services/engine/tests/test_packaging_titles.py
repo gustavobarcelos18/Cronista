@@ -282,7 +282,7 @@ def test_cli_flow_pack_import_choose(
 ) -> None:
     from cronista import cli
 
-    monkeypatch.setattr(cli, "load_settings", lambda: settings)
+    monkeypatch.setattr("cronista.commands.common.load_settings", lambda: settings)
     runner = CliRunner()
     story_dir = settings.data_dir / "story" / str(session_id)
     story_dir.mkdir(parents=True)

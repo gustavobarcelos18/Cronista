@@ -105,7 +105,7 @@ def test_cli_analyze_and_report(
     with open_db(settings.db_path) as db:
         assert ingest_folder(db, fixture_folders["normal"], settings, AlwaysFreeGate()).ok
         session_id = db.scalars(select(RecordingSession.id)).one()
-    monkeypatch.setattr(cli, "load_settings", lambda: settings)
+    monkeypatch.setattr("cronista.commands.common.load_settings", lambda: settings)
     runner = CliRunner()
 
     result = runner.invoke(cli.app, ["analyze", str(session_id)])

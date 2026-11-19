@@ -34,6 +34,7 @@ export default function Feedback({ mediaId, segStart }: { mediaId: number; segSt
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={2}
+        aria-label="Comentário sobre este trecho"
         placeholder="O que está errado ou certo neste trecho?"
         style={{ width: "100%" }}
       />

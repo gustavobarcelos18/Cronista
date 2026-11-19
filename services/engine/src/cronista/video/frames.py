@@ -18,7 +18,7 @@ from cronista.media.ffmpeg import grab_frame, pipe_raw
 from cronista.pipeline.stage import StageError
 
 SAMPLE_FPS = 5
-HOP_FRAMES = FPS // SAMPLE_FPS
+VIDEO_SAMPLE_HOP = FPS // SAMPLE_FPS
 """Quadros a 60 fps entre duas amostras: 12 (5 por segundo)."""
 
 WIDTH, HEIGHT = 160, 90

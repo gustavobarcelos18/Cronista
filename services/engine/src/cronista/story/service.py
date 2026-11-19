@@ -72,15 +72,7 @@ def build_series_story(
     project = db.get(Project, project_id)
     if project is None:
         raise StoryError(f"projeto {project_id} não existe (veja `cronista status`)")
-    sessions = list(
-        db.scalars(
-            select(RecordingSession)
-            .where(RecordingSession.project_id == project_id)
-            .order_by(RecordingSession.id)
-        )
-    )
-    if not sessions:
-        raise StoryError(f"projeto {project_id} não tem sessões")
+    sessions = scope_sessions(db, None, project_id)
     return _build(db, project, sessions, target_s, profile_objectives)
 
 

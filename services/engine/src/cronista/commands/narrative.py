@@ -121,7 +121,16 @@ def register(app: typer.Typer) -> None:
             with open_db(settings.db_path) as db:
                 anchor_id = anchor_session(db, project).id
         target = out or SessionPaths.of(settings, anchor_id).story_dir
+        scope_file = target / "escopo.json"
+        scope = "serie" if project is not None else "sessao"
+        if scope_file.is_file() and json.loads(scope_file.read_text(encoding="utf-8")).get("escopo") != scope:
+            typer.echo(
+                "aviso: esta pasta tinha o pacote de outro escopo (sessão x série); o roteiro.json antigo "
+                "pode não bater com o novo pacote (rode roteiro-import de novo)",
+                err=True,
+            )
         pack_path, voice_path = write_pack(target, result)
+        scope_file.write_text(json.dumps({"escopo": scope, "projeto": project}), encoding="utf-8")
         for c in result.chapters:
             beats = ", ".join(f"{i.beat.value}" for i in c.items[:8])
             typer.echo(

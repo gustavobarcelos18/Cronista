@@ -112,7 +112,14 @@ class ReexportJobs:
                 reused=report.reused,
                 directory=str(report.directory),
                 problems=report.problems,
-                warnings=report.warnings,
+                warnings=[
+                    *report.warnings,
+                    *(
+                        [f"sem roteiro.json na sessão âncora {session_id}: o pacote sai sem narração"]
+                        if series and script is None
+                        else []
+                    ),
+                ],
             )
         except Exception as exc:  # o job nunca derruba a API; o erro volta no estado
             result = ExportStatus(state="error", message=str(exc))

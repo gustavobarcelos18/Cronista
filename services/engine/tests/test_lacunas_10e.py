@@ -157,3 +157,11 @@ def test_b1_reexport_jobs_keep_session_and_series_status_apart(settings: Setting
     jobs._status[(3, True)] = jobs.status(3, True).model_copy(update={"state": "done"})
     assert jobs.status(3, True).state == "done"
     assert jobs.status(3).state == "idle"  # o vídeo da série não sobrescreve o estado da sessão
+
+
+def test_b2_allocation_floor_shrinks_when_there_are_too_many_chapters() -> None:
+    segs = [Segment(i * 100, i * 100 + 60, "jogo", 0.8, ["r"], [f"m{i}"], {}) for i in range(100)]
+    chapters = build_chapters([(1, segs)], {f"m{i}": "novo_dia" for i in range(100)})
+    assert len(chapters) == 100  # 100 x 30 s de piso passariam de 10 min
+    allocate_time(chapters, 600)
+    assert sum(c.allocated_s for c in chapters) <= 600 + len(chapters) * 0.05

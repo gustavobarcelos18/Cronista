@@ -35,7 +35,7 @@ from cronista.finishing.service import assembly_fingerprint, build_finishing
 from cronista.montage import SessionPlanError
 from cronista.review.panel import TARGET_MIN
 from cronista.review.reexport import ExportStatus
-from cronista.story.service import StoryError, StoryResult
+from cronista.story.service import StoryError, StoryResult, anchor_session
 
 MAX_CACHED_ASSEMBLIES = 8
 """Montagens guardadas na prévia do acabamento (uma por sessão e alvo de duração)."""
@@ -57,8 +57,11 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
         Com `serie=true`, `session_id` é a sessão âncora e o vídeo cobre todas as sessões do projeto.
         """
         with ctx.connect() as db:
-            if db.get(RecordingSession, session_id) is None:
+            session = db.get(RecordingSession, session_id)
+            if session is None:
                 raise HTTPException(404, "sessão não encontrada")
+            if serie and anchor_session(db, session.project_id).id != session_id:
+                raise HTTPException(422, "no vídeo da série use a sessão âncora (a última do projeto)")
         if not ctx.jobs.start(session_id, target_min * 60, serie):
             raise HTTPException(409, "já há uma exportação em andamento")
         return ctx.jobs.status(session_id, serie)

@@ -1506,6 +1506,12 @@ e publicação seguem como comandos por sessão, chamados com o número da ânco
 `video` própria (mais limpa, mas exige migração e reescrita dos caminhos). B15 ficou como reconciliação de ids (religa a
 fala ao segmento que contém o início antigo e acusa roteiro órfão), não como hash estável.
 
+Revisão (`/code-review`, 2026-11-19): corrigidos o piso de capítulo que estourava o alvo com muitos capítulos (agora
+encolhe para `alvo / nº de capítulos`), os stems da série (iam para a pasta da sessão 0), a exportação em modo série
+com sessão que não é a âncora (422), o aviso de roteiro ausente na âncora, o aviso de pacote de outro escopo (`escopo.json`)
+e as thumbnails, que agora usam as gravações do projeto todo. **Limites conhecidos:** entrar uma sessão nova muda a
+âncora e deixa roteiro, título e decisões na âncora antiga (é preciso copiá-los); os Shorts continuam por sessão.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

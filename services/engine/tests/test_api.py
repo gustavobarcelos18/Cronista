@@ -33,6 +33,53 @@ def test_api_le_sessoes_e_marcadores(settings: Settings, db: Session) -> None:
     assert client.get("/sessions/1/markers").json()[0]["media_frame"] == 60
     assert client.get("/sessions/1/jobs").json() == []
     assert client.get("/sessions/99").status_code == 404
+    for path in ("jobs", "markers", "export", "finishing", "progress", "progress/stream"):
+        assert client.get(f"/sessions/99/{path}").status_code == 404, path
+
+
+def test_escopo_da_serie_exige_ancora_em_todo_o_fluxo(settings: Settings, db: Session) -> None:
+    _seed(db)
+    db.add(RecordingSession(project_id=1, folder="segunda"))
+    db.commit()
+    client = TestClient(create_app(settings))
+    for path in ("export", "finishing"):
+        assert client.get(f"/sessions/1/{path}?serie=true").status_code == 422
+        assert client.get(f"/sessions/2/{path}?serie=true").status_code == 200
+    response = client.post("/sessions/1/finishing/items/x/decision?serie=true", json={"decision": "aceito"})
+    assert response.status_code == 422
+
+
+def test_painel_reconhece_arco_completo_e_preserva_horas_gravadas(settings: Settings, db: Session) -> None:
+    from cronista.audio.events import replace_events
+    from cronista.relevance.engine import RelevanceParams, Segment
+    from cronista.relevance.service import segments_to_events
+    from cronista.story.arc import arc_complete
+    from cronista.story.service import build_series_story
+
+    _seed(db)
+    session = RecordingSession(project_id=1, folder="segunda")
+    media = MediaFile(session=session, path="b.mp4", ordinal=0)
+    db.add(media)
+    db.flush()
+    # Um id de marcador pode aparecer em arquivos diferentes com sentidos diferentes.
+    for sid, fid, kind in [(1, 1, "morte_falha"), (session.id, media.id, "conquista")]:
+        db.add(Marker(session_id=sid, media_file_id=fid, marker_id="2", kind=kind, media_frame=1800))
+    db.commit()
+    middle = Segment(30, 90, "momento", 0.9, markers=["2"])
+    for fid, segs in [(1, [Segment(0, 30, "jogo", 0.8), middle]), (media.id, [middle])]:
+        replace_events(db, fid, "relevance", "", segments_to_events(segs, RelevanceParams()))
+    assert arc_complete(build_series_story(db, 1).chapters)
+    client = TestClient(create_app(settings))
+    before = client.get("/series").json()["projetos"][0]
+    assert before["situacao"] == "curto_ok"
+    path = f"/media/{media.id}/segments"
+    assert client.get(path).json()[0]["kept"] is True
+    decision = client.post(path + "/30/decision", json={"decision": "rejeitado"})
+    assert decision.is_success and decision.json()["kept"] is False
+    assert client.get(path).json()[0] == decision.json()
+    after = client.get("/series").json()["projetos"][0]
+    assert after["situacao"] == "abaixo_da_referencia"
+    assert before["sessoes"][1]["gravado_h"] == after["sessoes"][1]["gravado_h"] > 0
 
 
 def test_api_segmentos_e_video(settings: Settings, db: Session, tmp_path: Path) -> None:
@@ -118,6 +165,10 @@ def test_api_decisoes_so_insercao(settings: Settings, db: Session) -> None:
     assert client.get("/media/1/segments").json()[0]["decision"] == "ajustado"
     rows = db.query(SegmentDecision).order_by(SegmentDecision.id).all()
     assert [r.decision for r in rows] == ["rejeitado", "ajustado"] and rows[1].replaces_id == rows[0].id
+    assert client.post(url, json={"decision": "ajustado", "start_s": 12.1, "end_s": 12.4}).status_code == 422
+    rounded = client.post(url, json={"decision": "ajustado", "start_s": 12.8, "end_s": 18.2}).json()
+    assert (rounded["adj_start_s"], rounded["adj_end_s"]) == (13, 18)
+    assert client.get("/media/1/segments").json()[0] == rounded
 
 
 def test_segmentos_efetivos_aplicam_decisoes(db: Session) -> None:

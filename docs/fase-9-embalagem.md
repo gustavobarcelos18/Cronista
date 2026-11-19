@@ -51,14 +51,14 @@ título para o vídeo da série.
 - **Como ficou (2026-11-18):** pacote `thumbnails/` com `model.py` (modelo Pydantic `extra=forbid`; cores são papéis da paleta
   ou `#RRGGBB`; 16:9 obrigatório; `thumbnail.yaml` + `thumbnail.schema.json` no brand kit, sem o arquivo vale o modelo
   padrão), `frames.py` (puro, numpy), `render.py` (FFmpeg) e `service.py` (banco e disco). Fluxo:
-  `cronista thumbnails <sessão> [--texto "..."]… [--dia N] [--variacoes 1-3]` lê o `story-pack.json`, amostra 5 instantes em
+  `cronista thumbnails <sessão> [--texto "..."]… [--dia N] [--variacoes 2-3]` lê o `story-pack.json`, amostra 5 instantes em
   cada um dos 8 beats de maior nota (segmentos longos só em volta do meio, 60 s), mede cada frame (480×270 em cinza, via
   FFmpeg) e escolhe os melhores (um por segmento, nunca dois a menos de 20 s no mesmo arquivo). Nota do frame = 60% a nota do
   momento + 40% a qualidade (nitidez por Laplaciano, contraste, exposição que zera a nota de tela preta ou estourada, e
   composição pela posição do centro de massa das bordas em relação aos pontos de terço). Variação N = N-ésimo frame + N-ésimo
   texto + N-ésima posição (`text.positions`), cada lista volta ao começo. Saída: `data/packaging/<sessão>/thumbnails/*.jpg`
   (nome com hash do filtro, da moldura e da qualidade; reaproveitado se existe) + `thumbnails.json` (manifesto). JPEG tenta
-  `-q:v` 3, 6 e 10 até caber em 2 MB (limite do YouTube); só a versão que coube fica. `cronista thumbnail-escolher <sessão>
+  `-q:v` 3, 6 e 10 até caber em 2 MB (limite do YouTube); só a versão que coube fica. `cronista thumbnails-escolher <sessão>
   --variacao N` registra a escolha (tabela `thumbnail_choice`, migração 0013, só inserção; vale a última linha).
 - **Texto da thumbnail:** o `/titular` também escreve `thumbnail_texts` em `titulos.json` (2 a 4 palavras, até 28 caracteres;
   vazio, repetido, fora do tamanho ou com clichê são erros; texto de IA é aviso). O `--texto` do criador ganha do sugerido e só
@@ -78,7 +78,7 @@ título para o vídeo da série.
   `cronista titulos <sessão>` recorta o `story-pack.json` em `titulo-pack.json` (objetivo confirmado, arco por capítulo, abertura,
   desfecho e os 6 momentos de maior nota; sem número de dia) → skill `/titular` (que chama `/humanizar`) escreve `titulos.json` →
   `cronista titulos-import <sessão> titulos.json` valida e guarda (a versão anterior vira `titulos.v<N>.json`) →
-  `cronista titulo-escolher <sessão> --sugestao N [--texto "..."]` registra a escolha na tabela `title_choice` (migração 0012,
+  `cronista titulos-escolher <sessão> --sugestao N [--texto "..."]` registra a escolha na tabela `title_choice` (migração 0012,
   só inserção: `sugerido`, `editado` ou `proprio`; vale a última linha).
 - **Validação das sugestões:** 3 a 5 títulos; vazio, repetido, acima de 70 caracteres ou com clichê de isca de clique ("você não
   vai acreditar", "mudou tudo", "chocante", caixa alta, "!!", "o que aconteceu depois") são **erros** (nada é gravado); sinais de
@@ -97,7 +97,7 @@ título para o vídeo da série.
   API e o painel `apps/studio/app/embalagem.tsx` (montado na tela de revisão, abaixo do acabamento).
   - **Aprovação dos Shorts** na tabela `short_decision` (migração 0014), só inserção: `aprovado`, `rejeitado` ou `padrao` (volta a
     pendente); vale a última linha por Short. A chave do Short é `<arquivo>-<quadro inicial>`. Aprovar exige o MP4 renderizado.
-    CLI: `cronista shorts-status <sessão>` (lista chave, decisão e MP4) e `cronista short-decidir <sessão> <chave> [--decisao]`.
+    CLI: `cronista shorts-status <sessão>` (lista chave, decisão e MP4) e `cronista shorts-decidir <sessão> <chave> --decisao <aprovado|rejeitado|padrao>`.
   - **Pasta de publicação** (`cronista pacote-publicacao <sessão> [--video arquivo] [--out pasta]`, padrão
     `data/packaging/<sessão>/publicacao/`): `titulo.txt`, `thumbnail.jpg`, `short-01.mp4`… (só os aprovados, na ordem da nota, com
     os arquivos do pacote anterior trocados), o vídeo da série se vier em `--video` (senão mantém o da vez anterior) e um

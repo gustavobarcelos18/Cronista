@@ -8,7 +8,6 @@ import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from cronista.api.context import ApiContext
 from cronista.api.schemas import (
@@ -19,13 +18,15 @@ from cronista.api.schemas import (
 )
 from cronista.audio.events import load_stored_events
 from cronista.audio.signals import load_signal, signal_metas
-from cronista.db.models import Artifact, MediaFile
+from cronista.db.models import Artifact, MediaFile, SegmentDecision
 from cronista.domain.frames import FPS
 from cronista.domain.models import StageResult
-from cronista.montage import SessionPlanError, load_source
+from cronista.montage import recorded_duration
+from cronista.relevance.engine import Segment, is_kept
 from cronista.relevance.service import STAGE as RELEVANCE_STAGE
 from cronista.relevance.service import load_segments
 from cronista.review.decisions import current_decisions, decision_for, record_decision
+from cronista.review.learning import params_for_project
 
 
 def _envelope(values: np.ndarray, points: int) -> list[float]:
@@ -35,44 +36,29 @@ def _envelope(values: np.ndarray, points: int) -> list[float]:
     return [round(float(b.max()), 1) for b in buckets]
 
 
-def _media_duration(db: Session, media_id: int) -> float | None:
-    media = db.get(MediaFile, media_id)
-    try:
-        return load_source(db, media).duration_s if media else None
-    except SessionPlanError:
-        return None  # ainda não ingerido: sem duração para conferir
-
-
 def media_router(ctx: ApiContext) -> APIRouter:
     router = APIRouter()
 
     @router.get("/media/{media_id}/segments", response_model=list[SegmentOut])
     def media_segments(media_id: int) -> list[SegmentOut]:
         with ctx.connect() as db:
-            if db.get(MediaFile, media_id) is None:
+            media = db.get(MediaFile, media_id)
+            if media is None:
                 raise HTTPException(404, "arquivo não encontrado")
             decisions = current_decisions(db, media_id)
+            threshold = params_for_project(
+                db, media.session.project_id, ctx.settings.relevance_overrides
+            ).keep_score
             return [
-                SegmentOut(
-                    start_s=g.start_s,
-                    end_s=g.end_s,
-                    classe=g.classe,
-                    score=g.score,
-                    razoes=g.razoes,
-                    markers=g.markers,
-                    features=g.features,
-                    decision=d.decision if (d := decision_for(decisions, g)) else None,
-                    adj_start_s=d.start_s if d else None,
-                    adj_end_s=d.end_s if d else None,
-                )
-                for g in load_segments(db, media_id)
+                _segment_out(g, decision_for(decisions, g), threshold) for g in load_segments(db, media_id)
             ]
 
     @router.post("/media/{media_id}/segments/{seg_start_s}/decision", response_model=SegmentOut)
     def decide_segment(media_id: int, seg_start_s: int, body: DecisionIn) -> SegmentOut:
         """Aceita, rejeita ou ajusta os limites de um segmento. Só insere (histórico preservado)."""
         with ctx.connect() as db:
-            if db.get(MediaFile, media_id) is None:
+            media = db.get(MediaFile, media_id)
+            if media is None:
                 raise HTTPException(404, "arquivo não encontrado")
             seg = next((g for g in load_segments(db, media_id) if g.start_s == seg_start_s), None)
             if seg is None:
@@ -86,22 +72,14 @@ def media_router(ctx: ApiContext) -> APIRouter:
                     body.start_s,
                     body.end_s,
                     seg_end_s=seg.end_s,
-                    duration_s=_media_duration(db, media_id),
+                    duration_s=recorded_duration(db, media),
                 )
             except ValueError as e:
                 raise HTTPException(422, str(e)) from e
-            return SegmentOut(
-                start_s=seg.start_s,
-                end_s=seg.end_s,
-                classe=seg.classe,
-                score=seg.score,
-                razoes=seg.razoes,
-                markers=seg.markers,
-                features=seg.features,
-                decision=d.decision,
-                adj_start_s=d.start_s,
-                adj_end_s=d.end_s,
-            )
+            threshold = params_for_project(
+                db, media.session.project_id, ctx.settings.relevance_overrides
+            ).keep_score
+            return _segment_out(seg, d, threshold)
 
     @router.get("/media/{media_id}/events", response_model=list[EventOut])
     def media_events(media_id: int) -> list[EventOut]:
@@ -171,3 +149,23 @@ def media_router(ctx: ApiContext) -> APIRouter:
         return FileResponse(master, media_type="video/mp4")
 
     return router
+
+
+def _segment_out(seg: Segment, row: SegmentDecision | None, threshold: float) -> SegmentOut:
+    start = round(row.start_s) if row and row.start_s is not None else None
+    end = round(row.end_s) if row and row.end_s is not None else None
+    decision = row.decision if row else None
+    valid_window = decision != "ajustado" or (start is not None and end is not None and start < end)
+    return SegmentOut(
+        start_s=seg.start_s,
+        end_s=seg.end_s,
+        classe=seg.classe,
+        score=seg.score,
+        razoes=seg.razoes,
+        markers=seg.markers,
+        features=seg.features,
+        kept=is_kept(seg, threshold) and decision != "rejeitado" and valid_window,
+        decision=decision,
+        adj_start_s=start,
+        adj_end_s=end,
+    )

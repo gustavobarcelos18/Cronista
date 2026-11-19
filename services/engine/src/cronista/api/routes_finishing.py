@@ -35,7 +35,7 @@ from cronista.finishing.service import assembly_fingerprint, build_finishing
 from cronista.montage import SessionPlanError
 from cronista.review.panel import TARGET_MIN
 from cronista.review.reexport import ExportStatus
-from cronista.story.service import StoryError, StoryResult, anchor_session
+from cronista.story.service import MAX_TARGET_MIN, StoryError, StoryResult, anchor_session
 
 MAX_CACHED_ASSEMBLIES = 8
 """Montagens guardadas na prévia do acabamento (uma por sessão e alvo de duração)."""
@@ -44,24 +44,30 @@ MAX_CACHED_ASSEMBLIES = 8
 def finishing_router(ctx: ApiContext) -> APIRouter:
     router = APIRouter()
 
+    def video_session(db: Session, session_id: int, series: bool) -> RecordingSession:
+        session = ctx.require_session(db, session_id)
+        if series and anchor_session(db, session.project_id).id != session_id:
+            raise HTTPException(422, "no vídeo da série use a sessão âncora (a última do projeto)")
+        return session
+
     @router.get("/sessions/{session_id}/export", response_model=ExportStatus)
     def export_status(session_id: int, serie: bool = Query(False)) -> ExportStatus:
+        with ctx.connect() as db:
+            video_session(db, session_id, serie)
         return ctx.jobs.status(session_id, serie)
 
     @router.post("/sessions/{session_id}/export", response_model=ExportStatus, status_code=202)
     def start_export(
-        session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240), serie: bool = Query(False)
+        session_id: int,
+        target_min: float = Query(TARGET_MIN, gt=0, le=MAX_TARGET_MIN),
+        serie: bool = Query(False),
     ) -> ExportStatus:
         """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou.
 
         Com `serie=true`, `session_id` é a sessão âncora e o vídeo cobre todas as sessões do projeto.
         """
         with ctx.connect() as db:
-            session = db.get(RecordingSession, session_id)
-            if session is None:
-                raise HTTPException(404, "sessão não encontrada")
-            if serie and anchor_session(db, session.project_id).id != session_id:
-                raise HTTPException(422, "no vídeo da série use a sessão âncora (a última do projeto)")
+            video_session(db, session_id, serie)
         if not ctx.jobs.start(session_id, target_min * 60, serie):
             raise HTTPException(409, "já há uma exportação em andamento")
         return ctx.jobs.status(session_id, serie)
@@ -115,17 +121,17 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
 
     @router.get("/sessions/{session_id}/finishing", response_model=FinishingOut)
     def finishing_preview(
-        session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240), serie: bool = Query(False)
+        session_id: int,
+        target_min: float = Query(TARGET_MIN, gt=0, le=MAX_TARGET_MIN),
+        serie: bool = Query(False),
     ) -> FinishingOut:
         """Prévia do acabamento: o que o plano aplicaria em cada momento, com seus ajustes e decisões."""
-        loaded = ctx.finishing_loader() if ctx.finishing_loader else None
-        if loaded is None:
-            return FinishingOut(enabled=False)
-        base, library = loaded
         with ctx.connect() as db:
-            session = db.get(RecordingSession, session_id)
-            if session is None:
-                raise HTTPException(404, "sessão não encontrada")
+            session = video_session(db, session_id, serie)
+            loaded = ctx.finishing_loader() if ctx.finishing_loader else None
+            if loaded is None:
+                return FinishingOut(enabled=False)
+            base, library = loaded
             overrides = current_settings(db, session.project_id)
             decisions = current_item_decisions(db, session_id)
             style = with_overrides(base, overrides)
@@ -181,7 +187,7 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
         session_id: int,
         item_id: str,
         body: FinishDecisionIn,
-        target_min: float = Query(TARGET_MIN, gt=0, le=240),
+        target_min: float = Query(TARGET_MIN, gt=0, le=MAX_TARGET_MIN),
         serie: bool = Query(False),
     ) -> FinishDecisionIn:
         """Aceita uma sugestão (vira editável), tira um efeito ou volta ao padrão. Só insere.
@@ -189,13 +195,11 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
         O item precisa existir no plano atual (mesmo alvo de duração da prévia): a decisão fica presa a ele e
         ao momento, então não vale para outro efeito que um dia caia no mesmo `id`.
         """
-        loaded = ctx.finishing_loader() if ctx.finishing_loader else None
-        if loaded is None:
-            raise HTTPException(409, "acabamento não configurado (brand kit ausente)")
         with ctx.connect() as db:
-            session = db.get(RecordingSession, session_id)
-            if session is None:
-                raise HTTPException(404, "sessão não encontrada")
+            session = video_session(db, session_id, serie)
+            loaded = ctx.finishing_loader() if ctx.finishing_loader else None
+            if loaded is None:
+                raise HTTPException(409, "acabamento não configurado (brand kit ausente)")
             style = with_overrides(loaded[0], current_settings(db, session.project_id))
             try:
                 plan = _finish_plan(db, session_id, target_min * 60, style, loaded[1], serie)

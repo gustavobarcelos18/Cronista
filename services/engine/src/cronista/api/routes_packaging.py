@@ -101,6 +101,8 @@ def packaging_router(ctx: ApiContext) -> APIRouter:
     @router.get("/sessions/{session_id}/packaging/thumbnails/{name}")
     def packaging_thumbnail_image(session_id: int, name: str) -> FileResponse:
         """JPEG de uma variação; só serve nomes do manifesto (nada fora da pasta de thumbnails)."""
+        with ctx.connect() as db:
+            ctx.require_session(db, session_id)
         folder = _packaging_folders(session_id)[0]
         try:
             allowed = {str(e["arquivo"]) for e in load_manifest(folder)}
@@ -114,6 +116,8 @@ def packaging_router(ctx: ApiContext) -> APIRouter:
     @router.get("/sessions/{session_id}/packaging/shorts/{key}/video")
     def packaging_short_video(session_id: int, key: str) -> FileResponse:
         """MP4 de um Short renderizado (o FileResponse atende `Range`, então o player pode buscar)."""
+        with ctx.connect() as db:
+            ctx.require_session(db, session_id)
         try:
             entries = list_shorts(_packaging_folders(session_id)[1], session_id)
         except PublishError as exc:

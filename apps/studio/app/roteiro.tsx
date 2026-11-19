@@ -13,13 +13,7 @@ export default function Roteiro({ sessionId }: { sessionId: number }) {
   useEffect(() => {
     getJson<ScriptOut>(`/sessions/${sessionId}/script`)
       .then((out) => setScript(out.script))
-      .catch((e: Error) =>
-        setStatus(
-          e instanceof ApiError && e.status === 404
-            ? "Roteiro ainda não importado (`cronista roteiro-import`)."
-            : e.message,
-        ),
-      );
+      .catch((e: Error) => setStatus(e.message));
   }, [sessionId]);
 
   function edit(index: number, text: string) {
@@ -44,7 +38,9 @@ export default function Roteiro({ sessionId }: { sessionId: number }) {
     } catch (e) {
       const body = e instanceof ApiError ? (e.body as { detail?: { errors?: string[]; message?: string } } | null) : null;
       const detail = body?.detail;
-      const fromBody = detail && typeof detail === "object" ? (detail.errors ?? (detail.message ? [detail.message] : null)) : null;
+      const fromBody = detail && typeof detail === "object"
+        ? (detail.errors?.length ? detail.errors : detail.message ? [detail.message] : null)
+        : null;
       setErrors(fromBody ?? [e instanceof Error ? e.message : "erro ao salvar"]);
       setStatus("Não salvo.");
       return;

@@ -28,7 +28,7 @@ WAVs e masters da ingestão. Caminho de mão única: o que o Resolve aceita é o
   morto da fala do criador; cortes J/L pelos limites da fala.
 - **Montagem inteligente como padrão** (início/objetivo, marcos, descoberta, consequência); trecho repetitivo e sem valor
   narrativo vira `timelapse` (4×–50×) por trecho.
-- **Timelapse pré-renderizado** com FFmpeg (NVENC em `prod`, libx264 em `dev`), sem áudio do jogo, sem recurso do Studio.
+- **Timelapse pré-renderizado** com FFmpeg (NVENC em `prod`, libx264 em `dev`), sem áudio do jogo, sem recurso do Resolve Studio.
 - **B-roll em V3** a partir dos candidatos da 3B; **cartelas** de capítulo (V5) com o número do dia só como sugestão.
 - Aceite: determinístico (mesma entrada → mesmo plano); invariantes testadas (sem sobreposição em V1, quadros inteiros,
   total ≈ orçamento, nenhum corte dentro de palavra).

@@ -3,7 +3,7 @@
 > Nome provisório. Aplicação pessoal que transforma dezenas de horas de gameplay gravada no OBS em uma
 > **timeline pré-montada no DaVinci Resolve** + **roteiro de narração** para vídeos de "100 dias".
 
-Criado em 2026-11-12 · Status das fases: tabela única na seção 7 (fases 1 a 9 mergeadas; Fase 10, correções da auditoria, em andamento). ~~Planejamento aprovado em linhas gerais; próxima etapa = detalhar a Fase 1~~ [SUBSTITUÍDA, 2026-11-19].
+Criado em 2026-11-12 · Andamento e pendências das fases na tabela da seção 7. ~~Planejamento aprovado em linhas gerais; próxima etapa = detalhar a Fase 1~~ [SUBSTITUÍDA, 2026-11-19].
 
 Documentos relacionados:
 - [glossario.md](glossario.md): um sentido por termo (aprovado em 2026-11-19); em conflito de vocabulário, vale o glossário.
@@ -370,6 +370,8 @@ A arquitetura em portas/adaptadores permite colocar um gateway Nest depois, se o
 
 ### 5.4 Modelo de domínio
 
+O diagrama registra o modelo conceitual original. Na implementação, os tipos de ocorrência como falha, humor e conquista aparecem nos marcadores e nos sinais. As seis classes de segmento usadas pela API estão no [glossário](glossario.md).
+
 ```
 Projeto (uma série = um vídeo de 30–50 min; formato narrativo: 100 dias, missão, desafio etc.; ex.: "100 dias Valheim Hardcore", jogo, perfil; números dos dias definidos na edição)
  └─ Sessão (uma gravação de duração variável: 3 h, 6 h, 10 h…; arquivos master/proxy; faixas)
@@ -700,7 +702,7 @@ verificado · ⚠️ = testar no spike. **[F18, 2026-11-19: ~~⚠️~~ riscado =
 - ✅ Exclusivos do Studio: Neural Engine (Super Scale, **Speed Warp**, Object Isolation, Magic Mask), redução de ruído
   de vídeo por IA, film grain, optical blur, edição por texto, vários Resolve FX, Dolby Atmos, Camera Tracker do Fusion.
 - ✅ **Efeitos do Studio usados no gratuito não travam, mas deixam marca d'água** (ex.: correção de lente).
-  → Regra do projeto: o app e os templates **nunca** aplicam efeitos exclusivos do Studio. Timelapse e aceleração
+  → Regra do projeto: o app e os templates **nunca** aplicam efeitos exclusivos do Resolve Studio. Timelapse e aceleração
   saem prontos do FFmpeg (sem Speed Warp); limpeza de voz e legendas ficam com o app.
 
 **Ainda não verificado (spike no PC de casa):**
@@ -717,8 +719,8 @@ As fontes são a documentação oficial e o teste prático:
 
 - ☑️ Importar timeline de FCPXML/EDL/AAF (e OTIO nas versões recentes): cortes, várias trilhas, velocidade constante, marcadores.
 - ~~⚠️~~ **[✅ resolvido em parte: zoom com keyframes, velocidade e transição importam, H §39; o conteúdo fino não foi inspecionado]** Transformações (zoom/posição), opacidade, transições, volume e **keyframes** via FCPXML: suporte parcial.
-- ☑️ Scripts Python/Lua **rodando de dentro do Resolve** (menu Workspace → Scripts e console).
-  ~~⚠️~~ **[❌ confirmado: o scripting externo é bloqueado no gratuito (`scriptapp` devolve nulo), H §39]** Scripts *externos* (o app controlando o Resolve de fora) costumam ser exclusivos do Studio.
+- ~~Scripts Python/Lua pelo menu Workspace → Scripts~~ [SUBSTITUÍDA por H §39]. O spike confirmou Lua colado em uma linha no Console do Resolve gratuito.
+  ~~⚠️~~ **[❌ confirmado: o scripting externo é bloqueado no gratuito (`scriptapp` devolve nulo), H §39]** Scripts *externos* (o app controlando o Resolve de fora) costumam ser exclusivos do Resolve Studio.
 - ☑️ API de scripts: criar projeto, importar mídia, `ImportTimelineFromFile`, `AppendToTimeline`, `AddMarker` (cor, nome, nota),
   `SetProperty` (zoom/pan/crop **estáticos**), cor do clipe, LUT, fila de render. A API não cria keyframes.
 - ☑️ LUTs, color page e importação de legendas SRT.
@@ -751,12 +753,12 @@ As fontes são a documentação oficial e o teste prático:
 - ✅ **Legenda SRT:** Arquivo → Importar → Legenda… cria um item no Pool; arrastado à timeline vira a trilha ST1.
   Detalhe: o clipe começa na primeira fala e, solto no início, desloca tudo (chegou 1 s adiantado). **O app gera o SRT
   com uma fala vazia em 0 s** (confirmado: com ela as falas ficam em 1 s, 4 s e 8 s). `ImportMedia` não importa SRT.
-- ❌ **Scripting externo:** bloqueado (`scriptapp` devolve nulo; o README da API diz que é só Studio). O script
+- ❌ **Scripting externo:** bloqueado (`scriptapp` devolve nulo; o README da API diz que é só Resolve Studio). O script
   **interno** só roda pelo Console (Área de Trabalho → Console), que no gratuito aceita **só Lua**, sem `io`, `dofile`,
   `loadfile` nem `require`: o código vai **colado numa linha**. Scripts na pasta `Scripts\Utility` **não aparecem** no
   menu Scripts, mesmo após reiniciar. `ImportTimelineFromFile`, `AddMarker`, `CreateProject` (nome inédito) e
   `SetSettings` funcionam por esse Console; `ImportMedia` com dicionário devolve vazio. `SetLUT` devolveu `false`.
-- ⚠️ **Ainda sem resposta** **[F18: o FCPXML do próprio app (A16) foi resolvido ainda em 2026-11-16, importou; o resto segue em EA-1]:** relink (A5), FCPXML do próprio app (A16), HEVC importado à mão, tons de áudio por trilha,
+- ⚠️ **Pendências de EA-1** (A16 foi confirmado em 2026-11-16, H §39): relink (A5), HEVC importado à mão, tons de áudio por trilha,
   cartela editável de fato, LUT, desempenho e render (bloco D do roteiro), ProRes na página Entrega.
 - **Editor:** nada do que falhou impede o produto. Trocar o Resolve não se justifica; plano B, se um bloqueio futuro
   surgir: Kdenlive (de memória, não verificado: gratuito, projeto em XML do MLT, sem marca d'água).
@@ -779,9 +781,9 @@ As fontes são a documentação oficial e o teste prático:
      (⚠️ **[aberta em `prod`, EA-1]** de memória: DNxHR SQ em 1080p60 ≈ 290 Mbps; conferir no spike)
      (vai para o HD e é apagado após o upload). ⚠️ **[aberta em `prod`, EA-1]** De memória: o Resolve no Windows lê ProRes, mas historicamente
      não exporta; até o spike confirmar, o intermediário padrão é DNxHR.
-- Antes de cogitar o Studio (US$ 295), medir as duas rotas. O plano não depende de nenhum recurso do Studio.
+- Antes de cogitar o Resolve Studio (US$ 295), medir as duas rotas. O plano não depende de nenhum recurso do Resolve Studio.
 
-**Checklist do spike** (o kit de teste é montado na Fase 1, no PC do trabalho; roda no PC de casa assim que o Resolve
+**Checklist original do spike.** Os resultados confirmados estão acima, em “Resultado do spike”. EA-1 reúne as verificações em produção. O roteiro original previa o seguinte (o kit de teste é montado na Fase 1, no PC do trabalho; roda no PC de casa assim que o Resolve
 for instalado, e obrigatoriamente antes da Fase 6):
 - Copiar o `README.txt` de scripting para `docs/referencias/` (para consulta em qualquer PC).
 - Importar um FCPXML de teste com corte, velocidade, zoom com keyframe, transição, volume, marcador e relink para os masters,
@@ -887,7 +889,7 @@ Atualizado em 2026-11-19. "Conferência em `prod`" = o que só o PC de casa (GPU
 | 7 Studio | Mergeada | #20, #21 | Uso real |
 | 8 Acabamento | Mergeada | #22 | Conferência em `prod` |
 | 9 Embalagem | Mergeada | #23 | Conferência em `prod` |
-| 10 Correções da auditoria | 10A a 10F feitas; resta C8, só em `prod` (`fase/10-correcoes`) | | Ver `docs/fase-10-correcoes.md` |
+| 10 Correções da auditoria | 10A, 10B e 10D a 10F implementadas. Na 10C resta C8, só em `prod` (`fase/10-correcoes`) | | Ver `docs/fase-10-correcoes.md` |
 
 
 Cada fase vira um plano de execução próprio (`docs/fase-N-*.md`), com tarefas, critérios de aceite e testes.
@@ -1090,7 +1092,7 @@ histórico §58).
 | PC de desenvolvimento sem GPU | Fallback CPU, mocks e fixtures sintéticas; testes de GPU só no PC de casa |
 | Gabarito atrasado | Fase 1 não depende dele; a partir da Fase 2 ele é obrigatório para medir qualidade |
 | Render lento no Resolve gratuito (sem encoding por GPU) | Medir no spike; rota intermediário + NVENC pelo app (seção 6.5) |
-| Efeito exclusivo do Studio deixar marca d'água | App e templates nunca usam recursos do Studio; timelapse e limpeza de voz feitos fora do Resolve |
+| Efeito exclusivo do Resolve Studio deixar marca d'água | App e templates nunca usam recursos do Resolve Studio; timelapse e limpeza de voz feitos fora do Resolve |
 | Licença de música gerada por IA | Verificar uso comercial antes de monetizar; Biblioteca de Áudio do YouTube como padrão seguro |
 | Sistema universal acerta menos que um ajustado por jogo | Perfis declarativos aprendidos com o feedback da revisão |
 | Processamento disputando a GPU com o jogo | Pausa automática com o OBS gravando ou jogo em tela cheia; pipeline retomável (seção 4.1) |
@@ -1301,7 +1303,7 @@ não havia decisão registrada, o item consta como *Aberta*.
 | EA-16 | Construção aberta em `Construção ▶` continua na sessão seguinte (dia que atravessa sessões)? | `prod` (uso real) | Aberta; dentro da sessão já é tratada | H §21, §31 |
 | EA-17 | Fala ao vivo num trecho de farm que vira timelapse: descartar, cortar normal ou manter por cima? | antes de usar o timelapse em série real | Aberta (sem decisão registrada) | seção 6.4; fase 6 |
 | EA-18 | Fases 7 e 9 dependem de uma série inteira gravada (~25 h) e de um vídeo publicado | `prod` | Em andamento: código mergeado; falta uso real | seção 7 |
-| EA-19 | Voice Isolation e Dialogue Leveler do Fairlight são exclusivos do Studio? (a seção 6.5 diz "Fairlight completo" com ✅) | `prod` | Aberta: conferir antes de afirmar "Fairlight completo" | seção 6.5; H §21 |
+| EA-19 | Voice Isolation e Dialogue Leveler do Fairlight são exclusivos do Resolve Studio? (a seção 6.5 diz "Fairlight completo" com ✅) | `prod` | Aberta: conferir antes de afirmar "Fairlight completo" | seção 6.5; H §21 |
 | EA-20 | Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público? | antes de tornar o repositório público | Aberta (criador) | H §21 |
 | EA-21 | Marcar `novo_dia` e os tipos com teclado de 60% (sem F13–F24), com uma ou duas teclas | vencido: "antes da Fase 3", que já foi mergeada | Aberta; hoje só a tecla nativa do OBS, sem tipo | H §41 |
 | EA-22 | Para que serve o mix com RNNoise (`MIC_RAW`) | — | Decidida: fonte única `MIC`, com RNNoise, nas faixas 1 e 3 | H §41 |
@@ -1344,7 +1346,7 @@ não havia decisão registrada, o item consta como *Aberta*.
    - Fala ao vivo durante um trecho de farm que vira timelapse: descartar, cortar normal ou manter por cima?
    - Critérios de aceite sem número: "WER aceitável" (Fase 2), "alta precisão" (Fase 3), "top de candidatos" (Fase 4).
    - Fases 7 e 9 dependem de uma série inteira gravada (~25 h) e de um vídeo publicado.
-   - ⚠️ **[aberta, EA-19]** De memória: Voice Isolation (e talvez Dialogue Leveler) do Fairlight seriam exclusivos do Studio; conferir
+   - ⚠️ **[aberta, EA-19]** De memória: Voice Isolation (e talvez Dialogue Leveler) do Fairlight seriam exclusivos do Resolve Studio; conferir
      antes de afirmar "Fairlight completo" (seção 6.5).
    - Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público?
 9. Dúvidas levantadas na quarta revisão (histórico §22), sem resposta ainda:

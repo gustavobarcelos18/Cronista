@@ -42,6 +42,7 @@ export default function Feedback({ mediaId, segStart }: { mediaId: number; segSt
         Enviar
       </button>
       <button onClick={() => setOpen(false)}>Cancelar</button>
+      {status && <small role="status">{status}</small>}
     </div>
   );
 }

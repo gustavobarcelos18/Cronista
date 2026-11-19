@@ -165,3 +165,5 @@ def test_b2_allocation_floor_shrinks_when_there_are_too_many_chapters() -> None:
     assert len(chapters) == 100  # 100 x 30 s de piso passariam de 10 min
     allocate_time(chapters, 600)
     assert sum(c.allocated_s for c in chapters) <= 600 + len(chapters) * 0.05
+    allocate_time(chapters, 666)
+    assert sum(c.allocated_s for c in chapters) == pytest.approx(666)

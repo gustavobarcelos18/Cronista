@@ -30,6 +30,8 @@ export default function AjusteForm({
     const t = toSeconds(to);
     if (s === null || t === null) {
       setProblem("Informe números em segundos.");
+    } else if (s < 0) {
+      setProblem("O início precisa ser zero ou maior.");
     } else if (t <= s) {
       setProblem("O fim precisa ser depois do início.");
     } else {
@@ -39,6 +41,7 @@ export default function AjusteForm({
 
   return (
     <form onSubmit={submit}>
+      <small>Os limites são arredondados para segundos inteiros.</small>{" "}
       <label>
         Novo início (s do arquivo){" "}
         <input value={from} onChange={(e) => setFrom(e.target.value)} inputMode="decimal" size={8} />

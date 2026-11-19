@@ -212,7 +212,7 @@ def register(app: typer.Typer) -> None:
                 f"texto {v.text!r} ({v.position}): {item.path}"
             )
         if package.items:
-            typer.echo("Escolha com `cronista thumbnail-escolher <sessão> --variacao N`.")
+            typer.echo("Escolha com `cronista thumbnails-escolher <sessão> --variacao N`.")
 
     @app.command("thumbnails-escolher")
     @app.command("thumbnail-escolher", deprecated=True, hidden=True)

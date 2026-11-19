@@ -1251,6 +1251,9 @@
           },
           "type": "object"
         },
+        "kept": {
+          "type": "boolean"
+        },
         "markers": {
           "items": {
             "type": "string"
@@ -1277,7 +1280,8 @@
         "score",
         "razoes",
         "markers",
-        "features"
+        "features",
+        "kept"
       ],
       "title": "SegmentOut",
       "type": "object"

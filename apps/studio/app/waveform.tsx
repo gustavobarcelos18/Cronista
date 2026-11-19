@@ -56,11 +56,11 @@ export default function Waveform({
       {segments.map((g) => (
         <rect
           key={g.start_s}
-          x={x(g.start_s)}
-          width={Math.max(x(g.end_s) - x(g.start_s), 0.5)}
+          x={x(g.adj_start_s ?? g.start_s)}
+          width={Math.max(x(g.adj_end_s ?? g.end_s) - x(g.adj_start_s ?? g.start_s), 0.5)}
           y={0}
           height={WAVE_H}
-          fill={g.score >= 0.35 ? "#2a6" : "#555"}
+          fill={g.kept ? "#2a6" : "#555"}
           opacity={0.25}
         />
       ))}

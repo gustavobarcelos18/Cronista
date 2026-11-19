@@ -40,6 +40,8 @@ def progress_router(ctx: ApiContext) -> APIRouter:
 
     @router.get("/sessions/{session_id}/progress", response_model=ProgressOut)
     def progress(session_id: int) -> ProgressOut:
+        with ctx.connect() as db:
+            ctx.require_session(db, session_id)
         return _progress(session_id)
 
     @router.get("/sessions/{session_id}/progress/stream")
@@ -47,6 +49,8 @@ def progress_router(ctx: ApiContext) -> APIRouter:
         request: Request, session_id: int, interval_s: float = Query(1.0, ge=0.05, le=10)
     ) -> StreamingResponse:
         """SSE: um evento `progress` a cada mudança; encerra quando não há mais job pendente ou rodando."""
+        with ctx.connect() as db:
+            ctx.require_session(db, session_id)
 
         async def events() -> AsyncIterator[str]:
             last: str | None = None

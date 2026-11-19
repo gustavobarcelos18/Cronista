@@ -34,14 +34,12 @@ def sessions_router(ctx: ApiContext) -> APIRouter:
     @router.get("/sessions/{session_id}", response_model=SessionOut)
     def get_session(session_id: int) -> SessionOut:
         with ctx.connect() as db:
-            row = db.get(RecordingSession, session_id)
-            if row is None:
-                raise HTTPException(404, "sessão não encontrada")
-            return _session_out(row)
+            return _session_out(ctx.require_session(db, session_id))
 
     @router.get("/sessions/{session_id}/jobs", response_model=list[JobOut])
     def session_jobs(session_id: int) -> list[JobOut]:
         with ctx.connect() as db:
+            ctx.require_session(db, session_id)
             rows = db.scalars(
                 select(Job)
                 .join(MediaFile, Job.media_file_id == MediaFile.id)
@@ -64,6 +62,7 @@ def sessions_router(ctx: ApiContext) -> APIRouter:
     @router.get("/sessions/{session_id}/markers", response_model=list[MarkerOut])
     def session_markers(session_id: int) -> list[MarkerOut]:
         with ctx.connect() as db:
+            ctx.require_session(db, session_id)
             rows = db.scalars(
                 select(Marker).where(Marker.session_id == session_id).order_by(Marker.media_frame)
             ).all()

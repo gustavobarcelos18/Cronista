@@ -16,7 +16,7 @@ não falhar, o item é descartado.
 | 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`); A13 feito. A9 feito; A10 adiado (H §63) |
 | 10D | Documentação | Feita (2026-11-19) |
 | 10E | Testes e CI | Feita (`next build` ok em 2026-11-19; falta o CI real no GitHub) |
-| 10F | Narrativa por série | Feita (conferência com mídia real em `prod`) |
+| 10F | Narrativa por série | Implementada. A conferência com mídia real em `prod` está pendente |
 
 ## 10A. Bugs e regras (concluída)
 
@@ -83,9 +83,10 @@ de sessão fora de `paths.py`.
 F6, F7, F8 e F9 marcados como substituídos onde ainda apareciam como vigentes; F13 (`render` marcado "não implementado",
 nomes de comandos e gabarito corrigidos) e F21; F14 (árvore da 5.5 conforme o código, a antiga mantida e marcada);
 README com setup; C17. Glossário aprovado e citado no CLAUDE.md, README e plano mestre (F17). **F12 feito (2026-11-19):** "Em aberto" virou tabela (EA-1 a EA-30) no plano mestre §9. **Redundância feita (2026-11-19):** duplicatas dentro da §9 do plano mestre marcadas como "DUPLICADA" com o item que vale (cartelas, benchmarks da Fase 2, microfone); trilhas e spike com fonte única declarada (seções 6.3 e 6.5); CLAUDE.md com ponteiros para o plano. **F20 feito (2026-11-19):** o §50 do histórico perdeu as decisões da 3C, que foram para o §50A (numeração mantida; nota de
-leitura no cabeçalho e no §59); a §9 do plano mestre ganhou um guia cronológico, sem reordenar os blocos. **F18 feito (2026-11-19, H §64):** ⚠️ do plano mestre marcados como resolvidos ou ainda abertos. **Falta:** redundância (seção 4 da auditoria) e reordenar o histórico (F20);
-D14 (decidido: fora de escopo, H §63). **F14 anexo feito (2026-11-19):** `docs/anexo-gerado.md`, gerado por
+leitura no cabeçalho e no §59); a §9 do plano mestre ganhou um guia cronológico, sem reordenar os blocos. **F18 feito (2026-11-19, H §64):** ⚠️ do plano mestre marcados como resolvidos ou ainda abertos. O histórico preserva a numeração original. A edição de texto de thumbnail no Studio ficou fora de escopo (D14, H §63). **F14 anexo feito (2026-11-19):** `docs/anexo-gerado.md`, gerado por
 `cronista.devtools.anexo`, com teste de defasagem.
+
+**Escopo original da 10D, para consulta histórica**
 
 - Aprovar e publicar `docs/glossario.md`; citá-lo no CLAUDE.md e no plano mestre.
 - Marcar como "substituída" as contradições do plano mestre: lookback de 60 a 90 s, FCPXML via OTIO, Remotion,
@@ -100,7 +101,7 @@ D14 (decidido: fora de escopo, H §63). **F14 anexo feito (2026-11-19):** `docs/
 
 ## 10E. Testes e CI
 
-- Testes que faltam: A14, B20 (7 casos), C18 (6 casos), D12 (`upgrade head`, `compare_metadata` e `downgrade base`), D15
+- Cobertura prevista na 10E: A14, B20 (7 casos), C18 (6 casos), D12 (`upgrade head`, `compare_metadata` e `downgrade base`), D15
   (6 casos) e E9.
 - CI: job do Studio em Ubuntu e Windows com `pnpm --filter @cronista/studio build`; `ruff` e `mypy` também em
   `integrations/**/*.py` (E8).
@@ -116,12 +117,12 @@ sobre fala ao vivo, soma do orçamento ≤ alvo, decisão humana nunca sobrescri
 
 ## 10F. Narrativa por série (B1, B2, B15)
 
-Hoje `build_story(session_id)` aplica o alvo de 30 a 50 min a cada sessão. O produto é um vídeo por série.
+A história por sessão continua disponível. Para o vídeo da série, `cronista story --projeto N` aplica um único alvo ao projeto inteiro. A última sessão do projeto é a âncora (histórico §62).
 
 - `build_series_story(project_id)`: sessões em ordem, alvo único, dias contínuos entre sessões.
-- `montagem`, `acabamento`, `titulos` e as skills passam a aceitar o projeto; `ProjectPaths` entra em `paths.py`.
-- B15: `segment_id` estável (hash da janela original ou `marker_id`) e checagem de roteiro órfão.
-- Esforço grande, com mudança de modelo de dados.
+- `montagem` e `acabamento` aceitam `--projeto N`. Roteiro, títulos, thumbnails e pacote de publicação usam o ID da sessão âncora. Os Shorts são gerados por sessão.
+- B15 mantém o identificador `arquivo:início_s`. A validação religa a fala ao segmento do mesmo arquivo que contém o início antigo e informa erro se o roteiro ficar órfão.
+- A implementação reutiliza as tabelas existentes e as funções de caminhos em `paths.py`. O plano original de criar um identificador por hash e um modelo novo foi substituído pela decisão do histórico §62.
 
 **Aceite:** com 3 sessões, a soma do vídeo não passa do alvo, e um dia que atravessa sessões continua o mesmo capítulo.
 

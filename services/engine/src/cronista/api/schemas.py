@@ -54,6 +54,7 @@ class SegmentOut(BaseModel):
     razoes: list[str]
     markers: list[str]
     features: dict[str, float]
+    kept: bool
     decision: str | None = None
     adj_start_s: float | None = None
     adj_end_s: float | None = None

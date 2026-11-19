@@ -2,15 +2,15 @@
 
 import type { ProjectPanelOut, SeriesPanelOut } from "@cronista/contracts";
 import { useEffect, useState } from "react";
-import { API } from "../lib/api";
+import { getJson } from "../lib/api";
 
 const SEGUNDOS = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 
 const SITUACAO: Record<ProjectPanelOut["situacao"], string> = {
-  curto_ok: "curto, mas com arco completo: pronto para postar",
-  abaixo_da_referencia: "abaixo de 30 min e o arco ainda está incompleto",
-  no_alvo: "dentro da meta",
-  acima: "acima da meta (dá para cortar)",
+  curto_ok: "abaixo da referência, com arco completo",
+  abaixo_da_referencia: "abaixo da referência, com arco incompleto",
+  no_alvo: "dentro da faixa de referência",
+  acima: "acima da faixa de referência",
 };
 
 function Projeto({ projeto, panel }: { projeto: ProjectPanelOut; panel: SeriesPanelOut }) {
@@ -21,7 +21,8 @@ function Projeto({ projeto, panel }: { projeto: ProjectPanelOut; panel: SeriesPa
       <h2>{projeto.projeto}</h2>
       <progress value={pct} max={100} style={{ width: "100%" }} />
       <p>
-        <strong>{projeto.total_min} min</strong> de {meta} · {SITUACAO[projeto.situacao]}
+        <strong>{SEGUNDOS.format(projeto.total_min)} min estimados</strong> · {SITUACAO[projeto.situacao]}
+        {" "}(referência de {panel.minimo_min} a {panel.maximo_min} min, alvo de {meta} min)
       </p>
       <ul>
         {Object.entries(projeto.por_classe_min).map(([classe, min]) => (
@@ -31,7 +32,7 @@ function Projeto({ projeto, panel }: { projeto: ProjectPanelOut; panel: SeriesPa
         ))}
       </ul>
       <small>
-        {projeto.sessoes.map((s) => `sessão ${s.sessao}: ${s.gravado_h} h → ${s.produto_min} min, ${s.dias} dias`).join(" · ")}
+        {projeto.sessoes.map((s) => `sessão ${s.sessao}: ${SEGUNDOS.format(s.gravado_h)} h de gravação → ${SEGUNDOS.format(s.produto_min)} min estimados, marcações de “Novo dia”: ${s.dias}`).join(" · ")}
       </small>
       {projeto.capitulos_com_pouco_material.length > 0 && (
         <>
@@ -52,25 +53,26 @@ function Projeto({ projeto, panel }: { projeto: ProjectPanelOut; panel: SeriesPa
 
 export default function Painel({ revisao }: { revisao: number }) {
   const [panel, setPanel] = useState<SeriesPanelOut | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
-    fetch(`${API}/series`, { signal })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Painel da série (${r.status})`);
-        return r.json() as Promise<SeriesPanelOut>;
-      })
+    getJson<SeriesPanelOut>("/series", signal)
       .then((next) => {
-        if (!signal.aborted) setPanel(next);
+        if (!signal.aborted) {
+          setPanel(next);
+          setError("");
+        }
       })
-      .catch(() => {
-        if (!signal.aborted) setPanel(null);
+      .catch((e: Error) => {
+        if (!signal.aborted) setError(e.message);
       });
     return () => controller.abort();
   }, [revisao]);
 
-  if (!panel) return null;
+  if (error) return <p role="alert">Painel da série indisponível. {error}</p>;
+  if (!panel) return <p>Carregando painel da série…</p>;
   return (
     <>
       {panel.projetos.map((projeto) => (

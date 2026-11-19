@@ -1,7 +1,7 @@
 """Pastas e arquivos de uma sessão em `data/`: a convenção num único lugar.
 
 CLI, API e serviços pedem o caminho aqui; nenhum outro módulo monta `data/story/<sessão>` à mão. Assim um
-passo sempre enxerga o que o anterior gravou (não há `--out` por comando).
+passo encontra os insumos na pasta esperada. A saída final de `pacote-publicacao` aceita `--out`.
 
     data/story/<s>/         story-pack.json, voice-profile.json, roteiro.json/.srt
     data/packaging/<s>/     titulo-pack.json, titulos.json, thumbnails.json, thumbnails/, publicacao/

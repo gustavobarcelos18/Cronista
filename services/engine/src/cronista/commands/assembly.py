@@ -8,6 +8,7 @@ from typing import Annotated
 import typer
 
 from cronista.commands.common import (
+    TargetMinutes,
     current_settings,
     profile_objectives,
 )
@@ -17,13 +18,14 @@ from cronista.gates import build_gate
 from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
 from cronista.paths import SessionPaths, series_finishing_dir
+from cronista.story.service import DEFAULT_TARGET_MIN
 
 
 def register(app: typer.Typer) -> None:
     @app.command("montar")
     def montar(
         session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
-        target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+        target_min: TargetMinutes = DEFAULT_TARGET_MIN,
         out: Annotated[
             Path | None, typer.Option(help="Pasta de saída (padrão: data/montagem/<sessão>)")
         ] = None,
@@ -58,7 +60,7 @@ def register(app: typer.Typer) -> None:
         script: Annotated[
             Path | None, typer.Option(help="roteiro.json validado (ducking sob a narração)")
         ] = None,
-        target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+        target_min: TargetMinutes = DEFAULT_TARGET_MIN,
         out: Annotated[
             Path | None, typer.Option(help="Pasta dos stems (padrão: data/export/stems/<sessão>)")
         ] = None,
@@ -107,7 +109,7 @@ def register(app: typer.Typer) -> None:
             typer.Option("--projeto", help="Vídeo da série: todas as sessões do projeto, com um alvo só"),
         ] = None,
         script: Annotated[Path | None, typer.Option(help="roteiro.json validado")] = None,
-        target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+        target_min: TargetMinutes = DEFAULT_TARGET_MIN,
         out: Annotated[
             Path | None, typer.Option(help="Base da exportação (padrão: data/export/montagem/<sessão>)")
         ] = None,
@@ -231,7 +233,7 @@ def register(app: typer.Typer) -> None:
             typer.Option("--projeto", help="Vídeo da série: todas as sessões do projeto, com um alvo só"),
         ] = None,
         serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
-        target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+        target_min: TargetMinutes = DEFAULT_TARGET_MIN,
         out: Annotated[
             Path | None, typer.Option(help="Pasta de saída (padrão: data/acabamento/<sessão>)")
         ] = None,

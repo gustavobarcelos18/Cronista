@@ -18,7 +18,7 @@ from cronista.paths import SCRIPT, STORY_PACK, VOICE_PROFILE
 from cronista.relevance.engine import Segment
 from cronista.review.decisions import load_effective_segments
 from cronista.review.learning import params_for_project
-from cronista.story.arc import Chapter, allocate_time, build_chapters
+from cronista.story.arc import Chapter, allocate_time, chapters_from_files
 from cronista.story.models import Script
 from cronista.story.objectives import (
     DiscoveryReport,
@@ -31,7 +31,9 @@ from cronista.story.objectives import (
 from cronista.story.pack import build_story_pack
 from cronista.story.script import LIVE_KINDS, ValidationReport, to_srt, validate_script, voice_profile
 
-DEFAULT_TARGET_S = 40 * 60.0
+DEFAULT_TARGET_MIN = 40.0
+MAX_TARGET_MIN = 240.0
+DEFAULT_TARGET_S = DEFAULT_TARGET_MIN * 60
 
 
 class StoryError(Exception):
@@ -69,7 +71,7 @@ def build_series_story(
 ) -> StoryResult:
     """História do vídeo da série (plano 4.1): todas as sessões do projeto, em ordem, com **um** alvo.
 
-    Os capítulos só quebram em `novo_dia` ou na mudança de beat, então um dia que atravessa duas sessões
+    Um marcador `novo_dia` abre um capítulo, então um dia que atravessa duas sessões
     continua sendo um capítulo só. Os ids dos segmentos (`arquivo:início`) já são únicos entre sessões.
     """
     project = db.get(Project, project_id)
@@ -119,22 +121,20 @@ def _build(
 ) -> StoryResult:
     sync_profile_objectives(db, project.id, *profile_objectives)
 
-    files: list[tuple[int, list[Segment]]] = []
+    files: list[tuple[int, list[Segment], dict[str, str]]] = []
     speech_by_file: dict[int, list[AnalysisEvent]] = {}
-    kinds: dict[str, str] = {}
     discovery = DiscoveryReport()
     ordered = [m for session in sessions for m in sorted(session.media_files, key=lambda m: m.ordinal)]
     for media in ordered:
         segments = load_effective_segments(db, media.id)
         if not segments:
             continue
-        files.append((media.id, segments))
         events = load_active_events(db, media.id)
         speech = speech_events([e for e in events if e.kind == "fala"])
         # Para as lacunas valem também risada, exclamação e voz sem texto: a narração não pode cobri-las.
         speech_by_file[media.id] = [e for e in events if e.kind in LIVE_KINDS]
         marks = list(db.scalars(select(Marker).where(Marker.media_file_id == media.id)))
-        kinds.update({m.marker_id: m.kind for m in marks})
+        files.append((media.id, segments, {m.marker_id: m.kind for m in marks}))
         corroboration = [(m.media_frame, m.media_frame) for m in marks if m.kind == "conquista"]
         failures = [(m.media_frame, m.media_frame) for m in marks if m.kind == "morte_falha"]
         # Os objetivos mudam a cada arquivo (o anterior pode propor um novo): lê de novo antes de cada um.
@@ -148,7 +148,7 @@ def _build(
     if not files:
         raise StoryError("sem segmentos; rode `cronista relevance` antes")
 
-    chapters = build_chapters(files, kinds, params_for_project(db, project.id, overrides).keep_score)
+    chapters = chapters_from_files(files, params_for_project(db, project.id, overrides).keep_score)
     allocate_time(chapters, target_s)
     objectives = []
     for obj in db.scalars(select(Objective).where(Objective.project_id == project.id)):
@@ -164,7 +164,7 @@ def _build(
             }
         )
     pack = build_story_pack(
-        chapters, speech_by_file, {"nome": project.name, "jogo": project.game}, objectives, target_s
+        chapters, speech_by_file, {"nome": project.name, "jogo": project.game or ""}, objectives, target_s
     )
     quotes = [e.evidence.quote or "" for sp in speech_by_file.values() for e in sp if e.kind == "fala"]
     return StoryResult(chapters, pack, discovery, voice_profile(quotes))

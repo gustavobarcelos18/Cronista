@@ -1,6 +1,6 @@
 """`cronista preview <sessão>`: corta uma janela ao redor de cada marcador e concatena em 1080p60 H.264.
 
-Áudio da prévia = o mix (faixa 1), nunca as faixas de análise. Sem recursos do Studio. Em `dev` o
+Áudio da prévia = o mix (faixa 1), nunca as faixas de análise. Sem recursos do Resolve Studio. Em `dev` o
 encoder é CPU (libx264); em `prod`, NVENC, e então o trabalho espera a `GpuGate` liberar.
 """
 

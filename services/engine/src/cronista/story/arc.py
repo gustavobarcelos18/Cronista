@@ -6,7 +6,7 @@ Beats (plano 5.4): setup → conflito → falha → virada → conquista; confli
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from cronista.relevance.engine import RelevanceParams, Segment, is_kept, kept_seconds
@@ -46,8 +46,16 @@ def build_chapters(
     keep_score: float = RelevanceParams.keep_score,
 ) -> list[Chapter]:
     """`files`: `(file_id, segmentos)` na ordem da sessão. Um `novo_dia` abre um capítulo novo."""
+    return chapters_from_files(((fid, segs, marker_kinds) for fid, segs in files), keep_score)
+
+
+def chapters_from_files(
+    files: Iterable[tuple[int, Sequence[Segment], Mapping[str, str]]],
+    keep_score: float,
+) -> list[Chapter]:
+    """Cada arquivo fornece seus segmentos e os tipos dos próprios marcadores."""
     chapters: list[Chapter] = [Chapter(1)]
-    for file_id, segments in files:
+    for file_id, segments, marker_kinds in files:
         for seg in sorted(segments, key=lambda s: s.start_s):
             kinds = sorted({marker_kinds[m] for m in seg.markers if m in marker_kinds})
             if "novo_dia" in kinds and chapters[-1].items:
@@ -122,7 +130,7 @@ def allocate_time(chapters: Sequence[Chapter], target_s: float) -> None:
         fixed.update(share)
         break
     for n, c in enumerate(chapters):
-        c.allocated_s = round(fixed[n], 1)
+        c.allocated_s = fixed[n]
 
 
 def arc_complete(chapters: Sequence[Chapter]) -> bool:

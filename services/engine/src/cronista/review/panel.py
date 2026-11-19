@@ -11,17 +11,19 @@ from collections.abc import Mapping
 from typing import Literal
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from cronista.db.models import Marker, RecordingSession
+from cronista.db.models import Event, Marker, RecordingSession
+from cronista.domain.frames import frame_to_seconds
+from cronista.montage import recorded_duration
 from cronista.relevance.engine import Segment, kept_seconds
 from cronista.review.decisions import load_effective_segments
 from cronista.review.learning import params_for_project
-from cronista.story.arc import MIN_CHAPTER_S, arc_complete, build_chapters
-from cronista.story.service import DEFAULT_TARGET_S
+from cronista.story.arc import MIN_CHAPTER_S, arc_complete, chapters_from_files
+from cronista.story.service import DEFAULT_TARGET_MIN
 
-TARGET_MIN = DEFAULT_TARGET_S / 60
+TARGET_MIN = DEFAULT_TARGET_MIN
 MIN_MIN = 30.0
 MAX_MIN = 50.0
 
@@ -88,24 +90,31 @@ def series_panel_full(db: Session, overrides: Mapping[str, float] | None = None)
 def _project_panel(db: Session, sessions: list[RecordingSession], keep_score: float) -> ProjectPanelOut:
     rows: list[SeriesRowOut] = []
     totals: dict[str, float] = {}
-    files: list[tuple[int, list[Segment]]] = []
-    markers: dict[str, str] = {}
+    files: list[tuple[int, list[Segment], dict[str, str]]] = []
     cumulative = 0.0
     for session in sessions:
-        days = db.execute(
-            select(Marker.marker_id, Marker.media_file_id).where(
-                Marker.session_id == session.id, Marker.kind == "novo_dia"
-            )
-        ).all()
-        markers.update({marker_id: "novo_dia" for marker_id, media_id in days if media_id is not None})
+        marks = db.scalars(select(Marker).where(Marker.session_id == session.id)).all()
+        kinds: dict[int, dict[str, str]] = defaultdict(dict)
+        for mark in marks:
+            if mark.media_file_id is not None:
+                kinds[mark.media_file_id][mark.marker_id] = mark.kind
         raw = kept = 0.0
         by_class: dict[str, float] = {}
         for media in session.media_files:
+            duration = recorded_duration(db, media)
+            if duration is None:
+                # Sem a medição da ingestão, estima pela análise original, antes das decisões.
+                last = db.scalar(
+                    select(func.max(Event.end_frame)).where(
+                        Event.media_file_id == media.id, Event.stage == "relevance", Event.kind == "segmento"
+                    )
+                )
+                duration = frame_to_seconds(last or 0)
+            raw += duration
             segs = load_effective_segments(db, media.id)
             if not segs:
                 continue
-            files.append((media.id, segs))
-            raw += max(s.end_s for s in segs)
+            files.append((media.id, segs, kinds[media.id]))
             for s in segs:
                 sec = kept_seconds(s, keep_score)
                 kept += sec
@@ -120,22 +129,22 @@ def _project_panel(db: Session, sessions: list[RecordingSession], keep_score: fl
                 gravado_h=round(raw / 3600, 2),
                 produto_min=round(kept / 60, 1),
                 acumulado_min=round(cumulative / 60, 1),
-                dias=len(days),
+                dias=sum(mark.kind == "novo_dia" for mark in marks),
                 por_classe_min={k: round(v / 60, 1) for k, v in sorted(by_class.items())},
             )
         )
-    chapters = build_chapters(files, markers, keep_score)
+    chapters = chapters_from_files(files, keep_score)
     total = round(cumulative / 60, 1)
     return ProjectPanelOut(
         projeto_id=sessions[0].project_id,
         projeto=sessions[0].project.name,
         total_min=total,
-        situacao=situation(total, arc_complete(chapters)),
+        situacao=situation(cumulative / 60, arc_complete(chapters)),
         por_classe_min={k: round(v / 60, 1) for k, v in sorted(totals.items())},
         sessoes=rows,
         capitulos_com_pouco_material=[
             ThinChapterOut(capitulo=c.number, produto_s=round(c.product_s, 2))
             for c in chapters
-            if round(c.product_s, 2) < MIN_CHAPTER_S
+            if c.product_s < MIN_CHAPTER_S
         ],
     )

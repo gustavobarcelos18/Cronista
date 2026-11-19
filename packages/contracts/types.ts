@@ -475,6 +475,7 @@ export interface SegmentOut {
   features: {
     [k: string]: number;
   };
+  kept: boolean;
   markers: string[];
   razoes: string[];
   score: number;

@@ -2,12 +2,37 @@
 
 from __future__ import annotations
 
+import pytest
 import typer.main
+from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
 from cronista.cli import app
+from cronista.commands.common import _pick_media
+from cronista.db.models import MediaFile, Project, RecordingSession
 
 runner = CliRunner()
+
+
+def test_filtro_de_arquivo_ambiguo_exige_nome_especifico(db: Session) -> None:
+    session = RecordingSession(project=Project(name="série"), folder="pasta")
+    media = [
+        MediaFile(session=session, path=name, ordinal=n)
+        for n, name in enumerate(("dia.mp4", "outro-dia.mp4"))
+    ]
+    db.add_all(media)
+    db.commit()
+    assert _pick_media(db, session.id, None) == media[0]
+    assert _pick_media(db, session.id, "dia.mp4") == media[0]
+    with pytest.raises(typer.BadParameter, match="mais de um arquivo"):
+        _pick_media(db, session.id, "dia")
+
+
+def test_alvo_invalido_e_recusado_antes_de_abrir_a_sessao() -> None:
+    for command in ("story", "montar", "mixar", "montagem", "acabamento"):
+        result = runner.invoke(app, [command, "1", "--target-min", "0"])
+        assert result.exit_code == 2 and "240 minutos" in result.output, command
+
 
 # Nomes públicos que o criador usa; a lista só cresce (um comando renomeado ganha alias deprecado).
 EXPECTED = {

@@ -54,6 +54,16 @@ def _artifact_result(db: Session, media: MediaFile, stage: str) -> StageResult |
     return StageResult.model_validate_json(Path(artifact.result_path).read_text(encoding="utf-8"))
 
 
+def _probe_duration(normalized: StageResult | None) -> float | None:
+    duration = normalized.data.get("probe", {}).get("duration_s") if normalized else None
+    return float(duration) if duration is not None else None
+
+
+def recorded_duration(db: Session, media: MediaFile) -> float | None:
+    """Duração medida na ingestão, independente dos cortes ou da disponibilidade do master."""
+    return _probe_duration(_artifact_result(db, media, "normalize"))
+
+
 def load_source(db: Session, media: MediaFile) -> SourceFile:
     normalized = _artifact_result(db, media, "normalize")
     if normalized is None:
@@ -61,7 +71,7 @@ def load_source(db: Session, media: MediaFile) -> SourceFile:
     master = Path(str(normalized.data["media"]))
     if not master.is_file():
         raise SessionPlanError(f"{master} não existe mais; rode `cronista ingest` de novo")
-    duration = normalized.data["probe"].get("duration_s")
+    duration = _probe_duration(normalized)
 
     audio = _artifact_result(db, media, "audio")
 
@@ -71,9 +81,7 @@ def load_source(db: Session, media: MediaFile) -> SourceFile:
         path = Path(str(audio.data.get(label, "")))
         return path if path.is_file() else None
 
-    return SourceFile(
-        media.id, master, float(duration) if duration is not None else None, wav("game"), wav("mic")
-    )
+    return SourceFile(media.id, master, duration, wav("game"), wav("mic"))
 
 
 def load_masters(

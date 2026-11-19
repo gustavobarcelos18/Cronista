@@ -18,6 +18,10 @@ const ORIGINS: Record<string, string> = {
 
 type Result = { data?: PackagingOut; error?: string };
 
+function titleText(value: string) {
+  return value.trim().replace(/\s+/gu, " ");
+}
+
 function TitleRow({
   n,
   text,
@@ -28,25 +32,26 @@ function TitleRow({
   n: number;
   text: string;
   reason: string | null | undefined;
-  chosen: boolean;
+  chosen: string | null | undefined;
   onPick: (n: number, edited: string) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(text);
-  const trimmed = draft.trim();
+  const trimmed = titleText(draft);
+  const length = Array.from(trimmed).length;
+  const selected = trimmed === chosen;
   return (
     <li aria-label={`Sugestão ${n}`}>
       <input
         aria-label={`Texto da sugestão ${n}`}
         value={draft}
-        maxLength={100}
         onChange={(e) => setDraft(e.target.value)}
         size={60}
       />{" "}
       <small>
-        {trimmed.length}/70{trimmed.length > 70 && " (o YouTube corta acima de 70)"}
+        {length}/100 caracteres{length > 70 && " · a referência para sugestões é de 70"}
       </small>{" "}
-      <button disabled={trimmed === ""} onClick={() => void onPick(n, trimmed)}>
-        {chosen ? "Escolhido" : "Usar"}
+      <button disabled={!length || length > 100 || selected} onClick={() => void onPick(n, trimmed)}>
+        {selected ? "Escolhido" : "Usar"}
       </button>
       {reason && (
         <>
@@ -215,6 +220,8 @@ export default function Embalagem({ sessionId }: { sessionId: number }) {
   const shorts = data.shorts ?? [];
   const missing = data.missing ?? [];
   const thumbTexts = data.title.thumbnail_texts ?? [];
+  const customTitle = titleText(custom);
+  const customLength = Array.from(customTitle).length;
 
   return (
     <section aria-label="Embalagem">
@@ -246,7 +253,7 @@ export default function Embalagem({ sessionId }: { sessionId: number }) {
               n={s.n}
               text={s.text}
               reason={s.reason}
-              chosen={data.title.chosen === s.text}
+              chosen={data.title.chosen}
               onPick={pickTitle}
             />
           ))}
@@ -257,20 +264,20 @@ export default function Embalagem({ sessionId }: { sessionId: number }) {
           aria-label="Título seu"
           placeholder="Título seu"
           value={custom}
-          maxLength={100}
           size={60}
           onChange={(e) => setCustom(e.target.value)}
         />{" "}
         <button
-          disabled={custom.trim() === ""}
+          disabled={!customLength || customLength > 100}
           onClick={() => {
-            void mutate("/title", { text: custom.trim() }, "Não registrou o título").then((ok) => {
+            void mutate("/title", { text: customTitle }, "Não registrou o título").then((ok) => {
               if (ok) setCustom("");
             });
           }}
         >
           Usar o meu
         </button>
+        {" "}<small>{customLength}/100 caracteres</small>
       </p>
 
       <h4>Thumbnail</h4>

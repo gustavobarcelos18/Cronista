@@ -3,8 +3,7 @@
 App pessoal que transforma horas de gameplay gravada no OBS em uma **timeline pré-montada no DaVinci Resolve**
 (gratuito) + **roteiro de narração**, para vídeos de "100 dias". Um vídeo por série, de 30 a 50 min como referência.
 
-**Status:** fases 1 a 9 mergeadas; Fase 10 (correções da auditoria de 2026-11-18) em andamento. A tabela de status
-fica no [plano mestre, seção 7](docs/00-plano-mestre.md); o resto aponta para ela.
+O andamento de cada fase e as verificações pendentes em produção estão no [plano mestre, seção 7](docs/00-plano-mestre.md).
 
 ## Documentos
 
@@ -30,14 +29,17 @@ uv sync
 uv run pytest                  # testes em CPU; os marcados gpu/media rodam só em prod
 uv run cronista --help         # lista de comandos
 uv run cronista api            # API local na porta 8000
-
-# Studio (Node LTS + pnpm)
-pnpm install
-pnpm --filter @cronista/studio dev   # http://localhost:3000; NEXT_PUBLIC_ENGINE_URL aponta para a API
-pnpm gen:contracts                   # regera types.ts a partir de schema.json
 ```
 
-O schema dos contratos sai do Pydantic: `uv run python -m cronista.contracts` escreve `packages/contracts/schema.json`.
+Com a API em execução, abra outro terminal na raiz do repositório para iniciar o Studio.
+
+```bash
+pnpm install
+pnpm --filter @cronista/studio dev   # http://localhost:3000; NEXT_PUBLIC_ENGINE_URL aponta para a API
+```
+
+Ao alterar um contrato Pydantic, execute `uv run python -m cronista.contracts` em `services/engine` para atualizar
+`packages/contracts/schema.json`. Depois execute `pnpm gen:contracts` na raiz para gerar os tipos TypeScript.
 
 ## Retomar em outro PC ou numa nova sessão
 

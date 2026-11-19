@@ -5,15 +5,17 @@ import { useEffect, useState } from "react";
 import { ApiError, getJson, send } from "../lib/api";
 
 /** Proposta de pesos por manter/tirar trecho (7E). Só vale depois de aceita. */
-export default function Aprendizado({ projectId }: { projectId: number }) {
+export default function Aprendizado({ projectId, revisao }: { projectId: number; revisao: number }) {
   const [info, setInfo] = useState<LearningOut | null>(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    getJson<LearningOut>(`/projects/${projectId}/learning`)
-      .then(setInfo)
-      .catch((e: Error) => setMessage(e.message));
-  }, [projectId]);
+    const controller = new AbortController();
+    getJson<LearningOut>(`/projects/${projectId}/learning`, controller.signal)
+      .then((next) => !controller.signal.aborted && setInfo(next))
+      .catch((e: Error) => !controller.signal.aborted && setMessage(e.message));
+    return () => controller.abort();
+  }, [projectId, revisao]);
 
   async function accept() {
     try {
@@ -42,7 +44,7 @@ export default function Aprendizado({ projectId }: { projectId: number }) {
         </>
       ) : (
         <p>
-          Aceite ou rejeite pelo menos {info.needed} trechos (5 de cada lado) para eu sugerir pesos.
+          Revise pelo menos {info.needed} segmentos, com pelo menos 5 aceitos ou ajustados e 5 rejeitados.
         </p>
       )}
       <small>{message}</small>

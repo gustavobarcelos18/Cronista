@@ -8,7 +8,7 @@ import type {
   FinishItemOut,
 } from "@cronista/contracts";
 import { useCallback, useEffect, useState } from "react";
-import { API } from "../lib/api";
+import { API, errorOf } from "../lib/api";
 
 const MODES: Record<EffectMode, string> = {
   sugerir: "Só sugerir (marcador)",
@@ -127,8 +127,7 @@ export default function Acabamento({
     try {
       const res = await fetch(`${API}/sessions/${sessionId}/finishing${query}`);
       if (res.ok) return { data: (await res.json()) as FinishingOut };
-      const body = (await res.json().catch(() => ({}))) as { detail?: string };
-      return { error: body.detail ?? `erro ${res.status}` };
+      return { error: await errorOf(res, "Erro ao carregar a prévia") };
     } catch {
       return { error: "Engine fora do ar." };
     }
@@ -159,7 +158,7 @@ export default function Acabamento({
         body: JSON.stringify(body),
       });
       if (res.ok) await load();
-      else setMessage(`${failure} (${res.status}).`);
+      else setMessage(await errorOf(res, failure));
     } catch {
       setMessage("Engine fora do ar.");
     }

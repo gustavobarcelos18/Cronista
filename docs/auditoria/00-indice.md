@@ -5,7 +5,9 @@ auditados em paralelo. A auditoria procurou bugs, violações das regras do prod
 código quanto nos documentos. Cada bloco tem o seu plano de correção nesta pasta, no mesmo formato dos `fase-N-*.md`:
 tarefas, aceite e testes.
 
-**Status:** as 7 decisões foram tomadas pelo criador em 2026-11-18 e registradas no histórico §60 e no plano mestre §9.
+> **Registro histórico.** Os achados descrevem o commit auditado. As notas de andamento abaixo registram o que se sabia em cada etapa. Para consultar o que foi entregue e as pendências atuais, veja o [fechamento da Fase 10](../fase-10-correcoes.md) e a [tabela do plano mestre, seção 7](../00-plano-mestre.md).
+
+**Status na abertura:** as 7 decisões foram tomadas pelo criador em 2026-11-18 e registradas no histórico §60 e no plano mestre §9.
 As marcas de "substituída" nas seções temáticas do plano mestre ficam para a etapa 10D.
 
 **Andamento da 10A (2026-11-18):** concluída, com teste de regressão em cada item, exceto B11 (muda o contrato do painel; vai
@@ -48,7 +50,7 @@ passaram aqui). Próxima: 10F (narrativa por série).
 - `cronista story --projeto N`: grava o pacote na pasta da sessão âncora e imprime o número dela.
 - `cronista montagem --projeto N` (pacote em `data/export/montagem/serie-<projeto>`, FCPXML `serie-N-vK`) e
   `cronista acabamento --projeto N` (`data/acabamento/serie-<projeto>`).
-- `titulos`, `titulos-import`, `thumbnails`, `shorts` e `publicar` usam o número da sessão âncora; as skills
+- `titulos`, `titulos-import`, `thumbnails`, `shorts` e `pacote-publicacao` usam o número da sessão âncora; as skills
   `/roteirizar` e `/titular` dizem isso.
 - Studio: caixa "Vídeo da série" (só aparece com 2+ sessões no projeto); a API aceita `?serie=true` em
   `/sessions/{âncora}/export` e `/finishing`.

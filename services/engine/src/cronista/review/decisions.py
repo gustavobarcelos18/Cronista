@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from typing import Literal
 
@@ -32,10 +33,15 @@ def record_decision(
     No ajuste, o fim não pode passar da duração do arquivo (`duration_s`) nem invadir outro segmento.
     """
     if decision == "ajustado":
-        if start_s is None or end_s is None or end_s <= start_s or start_s < 0:
+        if start_s is None or end_s is None or not (math.isfinite(start_s) and math.isfinite(end_s)):
+            raise ValueError("ajuste precisa de início e fim finitos em segundos")
+        if end_s <= start_s or start_s < 0:
             raise ValueError("ajuste precisa de início e fim válidos (fim depois do início)")
-        if duration_s is not None and end_s > duration_s:
+        if duration_s is not None and max(end_s, round(end_s)) > duration_s:
             raise ValueError(f"o fim ({end_s:.0f} s) passa da duração do arquivo ({duration_s:.0f} s)")
+        start_s, end_s = round(start_s), round(end_s)
+        if end_s <= start_s:
+            raise ValueError("o ajuste precisa ter ao menos um segundo após o arredondamento")
         for other in _effective_with_origin(db, media_id):
             if other[0] != seg_start_s and start_s < other[1].end_s and end_s > other[1].start_s:
                 raise ValueError(

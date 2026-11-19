@@ -16,7 +16,7 @@ from cronista.commands.common import (
     current_settings,
     profile_objectives,
 )
-from cronista.db.models import Artifact, MediaFile
+from cronista.db.models import Artifact
 from cronista.db.session import open_db
 from cronista.devtools.fixtures import make_fixtures
 from cronista.devtools.resolve_kit import make_resolve_kit
@@ -123,18 +123,7 @@ def register(app: typer.Typer) -> None:
             typer.echo(f"erro: sem modelos nesta máquina ({why})", err=True)
             raise typer.Exit(1)
         with open_db(settings.db_path) as db:
-            candidates = db.scalars(
-                select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
-            )
-            existing = [
-                m
-                for m in candidates
-                if Path(m.path).is_file() and (file is None or file in Path(m.path).name)
-            ]
-            media = existing[0] if existing else None
-            if media is None:
-                typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
-                raise typer.Exit(1)
+            media = _pick_media(db, session, file, existing_only=True)
             artifact = db.scalar(
                 select(Artifact).where(
                     Artifact.media_file_id == media.id, Artifact.stage == "audio", Artifact.variant == ""
@@ -186,20 +175,10 @@ def register(app: typer.Typer) -> None:
             )
             raise typer.Exit(1)
         with open_db(settings.db_path) as db:
-            candidates = db.scalars(
-                select(MediaFile).where(MediaFile.session_id == session).order_by(MediaFile.ordinal)
-            )
-            existing = [
-                m
-                for m in candidates
-                if Path(m.path).is_file() and (file is None or file in Path(m.path).name)
-            ]
-            if not existing:
-                typer.echo(f"erro: sessão {session} sem arquivos (veja `cronista status`)", err=True)
-                raise typer.Exit(1)
+            media = _pick_media(db, session, file, existing_only=True)
             artifact = db.scalar(
                 select(Artifact).where(
-                    Artifact.media_file_id == existing[0].id,
+                    Artifact.media_file_id == media.id,
                     Artifact.stage == "proxy",
                     Artifact.variant == "",
                 )

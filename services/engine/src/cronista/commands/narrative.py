@@ -10,6 +10,7 @@ import typer
 from sqlalchemy import select
 
 from cronista.commands.common import (
+    TargetMinutes,
     _pick_media,
     current_settings,
     profile_objectives,
@@ -20,6 +21,7 @@ from cronista.domain.frames import frame_to_seconds
 from cronista.domain.models import StageResult
 from cronista.logging_setup import setup_logging
 from cronista.paths import SessionPaths, review_csv
+from cronista.story.service import DEFAULT_TARGET_MIN
 from cronista.video.models import build_video_models
 
 
@@ -85,7 +87,7 @@ def register(app: typer.Typer) -> None:
             int | None,
             typer.Option("--projeto", help="Vídeo da série: todas as sessões do projeto, com um alvo só"),
         ] = None,
-        target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
+        target_min: TargetMinutes = DEFAULT_TARGET_MIN,
         out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/story/<sessão>)")] = None,
     ) -> None:
         """Capítulos, beats, objetivos e `story-pack.json` para o roteiro (Fases 5 e 5A)."""

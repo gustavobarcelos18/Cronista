@@ -38,7 +38,7 @@ por série, com duração-alvo de 30–50 min** (plano §1), montado a partir de
 - Gravação: OBS em Hybrid MP4, H.264 8-bit SDR (NV12, Rec. 709), **60 fps exatos** (timeline e renders também),
   faixa 1 = mix, 2 = jogo, 3 = microfone (fonte única `MIC` com RNNoise nas faixas 1 e 3; sem fonte crua, histórico §41; plano §2).
   Nunca analisar o mix. Sem facecam.
-- **Resolve gratuito:** nunca gerar nada que dependa de recurso do Studio (Speed Warp, Magic Mask, Super Scale,
+- **Resolve gratuito:** nunca gerar nada que dependa de recurso do Resolve Studio (Speed Warp, Magic Mask, Super Scale,
   redução de ruído de vídeo etc.), porque deixa marca d'água. Limites e estratégia de render na seção 6.5 do plano.
 
 ## Ambientes

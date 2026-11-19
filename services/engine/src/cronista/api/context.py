@@ -29,6 +29,8 @@ class ApiContext:
             yield session
 
     @staticmethod
-    def require_session(db: Session, session_id: int) -> None:
-        if db.get(RecordingSession, session_id) is None:
+    def require_session(db: Session, session_id: int) -> RecordingSession:
+        session = db.get(RecordingSession, session_id)
+        if session is None:
             raise HTTPException(404, "sessão não encontrada")
+        return session

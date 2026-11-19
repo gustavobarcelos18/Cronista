@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
-from cronista.api.app import (
+from cronista.api.schemas import (
     DecisionIn,
     EffectSettingIn,
     EffectSettingOut,

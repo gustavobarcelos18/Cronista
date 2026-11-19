@@ -13,7 +13,7 @@ não falhar, o item é descartado.
 |---|---|---|
 | 10A | Bugs de severidade alta e de regra | Concluída (B11 foi para a 10C) |
 | 10B | Fundação transversal (T1 a T4) | T1 a T3 feitas; T4 (glossário) aguarda aprovação |
-| 10C | Consolidação | Quase toda feita; faltam D8, D13, B17 e C8 |
+| 10C | Consolidação | Quase toda feita; faltam D8, B17 e C8 |
 | 10D | Documentação | Não iniciada |
 | 10E | Testes e CI | Não iniciada |
 | 10F | Narrativa por série | Não iniciada |
@@ -52,6 +52,9 @@ de sessão fora de `paths.py`.
 - C8 (só o pico): o zoom centra no marcador do criador.
 - C12, C13, C14, C15: esqueleto único de FCPXML (`export/fcpxml_base.py`); FFmpeg e encoder únicos; `Track` único com a
   lane do FCPXML (`domain/tracks.py`).
+- D13 (routers): `api/app.py` só monta o app; um `APIRouter` por domínio em `api/routes_*.py`, modelos em
+  `api/schemas.py` e estado comum em `api/context.py`. Os testes de acabamento passaram a fazer monkeypatch em
+  `cronista.api.routes_finishing`.
 - D7, D9, D10, D11, D13 (engine único): `valid_thumbnail_choice`; nomes `<objeto>-<verbo>` com aliases deprecados e
   `export` deprecado; opções tipadas; `ShortsError`; um engine SQLAlchemy por app.
 - E13, E14, E15: contratos sem títulos de campo; meta de 40 min numa constante; YAML só com o que muda por ambiente.
@@ -61,7 +64,6 @@ de sessão fora de `paths.py`.
 | Item | O quê | Observação |
 |---|---|---|
 | D8 | Dividir `cli.py` em sub-apps Typer, com helper de erro e `profile_objectives` | Os testes fazem monkeypatch em `cronista.cli`; precisam de ajuste |
-| D13 | Um `APIRouter` por domínio em `api/app.py` | Só reorganização |
 | B17 | `StoryPack` como modelo Pydantic exportado, tipos `Literal`, um só modelo de status | Muda os contratos gerados |
 | C8 | Foco x/y do zoom a partir da saliência da Fase 3 | Só em `prod` |
 

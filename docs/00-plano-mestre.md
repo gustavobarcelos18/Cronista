@@ -406,7 +406,8 @@ raiz/
 └─ data/ (fora do git)           # story/, packaging/, shorts/, montagem/, acabamento/, export/ por sessão (ver `paths.py`)
 ```
 
-A lista de comandos vem de `cronista --help`. *Árvore do planejamento inicial (2026-11-12; `vision/`, `profiles/`,
+A lista completa de pacotes e de comandos é gerada do código em [anexo-gerado.md](anexo-gerado.md)
+(`python -m cronista.devtools.anexo`; o teste `test_anexo_gerado` falha se ela ficar defasada). Esta árvore é só um mapa. *Árvore do planejamento inicial (2026-11-12; `vision/`, `profiles/`,
 `adapters/`, `vfx-templates/` e `game-mods/` **não existem**: [SUBSTITUÍDA pela árvore acima]):*
 
 ```

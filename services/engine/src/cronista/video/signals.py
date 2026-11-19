@@ -11,9 +11,8 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
+from cronista.domain.types import FloatArray
 from cronista.video.frames import GrayFrames
-
-FloatArray = npt.NDArray[np.float32]
 
 SIGNAL_NAMES = (
     "motion",

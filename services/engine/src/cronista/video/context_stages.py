@@ -10,7 +10,7 @@ import numpy as np
 from cronista.audio import dsp
 from cronista.audio.events import EVENTS_KEY, events_from_result, write_events_file
 from cronista.audio.signals import (
-    HOP_FRAMES as AUDIO_HOP,
+    AUDIO_SIGNAL_HOP as AUDIO_HOP,
 )
 from cronista.audio.signals import (
     SIGNALS_KEY,

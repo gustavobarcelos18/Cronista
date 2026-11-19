@@ -13,7 +13,7 @@ não falhar, o item é descartado.
 |---|---|---|
 | 10A | Bugs de severidade alta e de regra | Concluída (B11 foi para a 10C) |
 | 10B | Fundação transversal (T1 a T4) | Feita (T4: glossário aprovado) |
-| 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`); A13 feito. A9 e A10 (só arrumação) pendentes |
+| 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`); A13 feito. A9 feito; A10 adiado (H §63) |
 | 10D | Documentação | Em andamento (parte feita; ver abaixo) |
 | 10E | Testes e CI | Feita (`next build` ok em 2026-11-19; falta o CI real no GitHub) |
 | 10F | Narrativa por série | Feita (conferência com mídia real em `prod`) |
@@ -84,7 +84,7 @@ F6, F7, F8 e F9 marcados como substituídos onde ainda apareciam como vigentes; 
 nomes de comandos e gabarito corrigidos) e F21; F14 (árvore da 5.5 conforme o código, a antiga mantida e marcada);
 README com setup; C17. Glossário aprovado e citado no CLAUDE.md, README e plano mestre (F17). **Falta:** "Em aberto" como tabela e
 revisão dos ⚠️ (F12, F18, só uma nota por enquanto); redundância (seção 4 da auditoria) e reordenar o histórico (F20);
-D14; árvore e comandos gerados por script (F14, anexo).
+D14 (decidido: fora de escopo, H §63); árvore e comandos gerados por script (F14, anexo).
 
 - Aprovar e publicar `docs/glossario.md`; citá-lo no CLAUDE.md e no plano mestre.
 - Marcar como "substituída" as contradições do plano mestre: lookback de 60 a 90 s, FCPXML via OTIO, Remotion,

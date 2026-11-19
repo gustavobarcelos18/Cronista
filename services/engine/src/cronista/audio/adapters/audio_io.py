@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 import soundfile as sf
 
-from cronista.audio.signals import FloatArray
+from cronista.domain.types import FloatArray
 
 MODEL_RATE = 16000
 

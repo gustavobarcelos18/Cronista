@@ -15,7 +15,8 @@ from typing import Any
 import numpy as np
 
 from cronista.audio.adapters.audio_io import MODEL_RATE, duration_s, package_version, read_segment
-from cronista.audio.ports import Pause, SoundEventSpan
+from cronista.audio.ports import SoundEventSpan
+from cronista.domain.types import Pause
 
 WINDOW_S = 10.24  # o AST espera 1024 quadros de 10 ms
 

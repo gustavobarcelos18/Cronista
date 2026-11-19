@@ -10,14 +10,14 @@ gate de GPU: bloqueia enquanto o OBS grava ou há jogo em tela cheia (CLAUDE.md,
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
-Pause = Callable[[], None]
+from cronista.domain.types import Pause
 
 GAME_TRACK = "game"
 MIC_TRACK = "mic"

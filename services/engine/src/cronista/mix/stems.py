@@ -16,7 +16,8 @@ import soundfile as sf
 from cronista.assembly.plan import EditItem, Mode
 from cronista.domain.frames import FPS
 from cronista.domain.tracks import Track
-from cronista.mix.envelope import FloatArray, gain_at
+from cronista.domain.types import FloatArray
+from cronista.mix.envelope import gain_at
 from cronista.pipeline.stage import StageError
 
 RATE = 48_000

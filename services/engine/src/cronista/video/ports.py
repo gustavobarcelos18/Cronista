@@ -6,17 +6,18 @@ usam um fake determinístico. Embeddings saem **normalizados** (norma 1), então
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 import numpy as np
 import numpy.typing as npt
 
+from cronista.domain.types import Pause
+
 if TYPE_CHECKING:
     from cronista.video.vlm import ScreenVLM
 
-Pause = Callable[[], None]
 RgbFrames = npt.NDArray[np.uint8]
 """`(n, altura, largura, 3)`, RGB."""
 RgbImage = npt.NDArray[np.uint8]

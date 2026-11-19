@@ -12,13 +12,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 
 from cronista.domain.evidence import AnalysisEvent
 from cronista.domain.frames import FPS
+from cronista.domain.types import FloatArray
 from cronista.video.ports import FrameEmbedder
-
-FloatArray = npt.NDArray[np.float32]
 
 POSITIVE = (
     "a game scene showing an environment",

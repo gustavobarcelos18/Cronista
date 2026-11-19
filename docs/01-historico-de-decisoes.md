@@ -1512,6 +1512,19 @@ com sessão que não é a âncora (422), o aviso de roteiro ausente na âncora, 
 e as thumbnails, que agora usam as gravações do projeto todo. **Limites conhecidos:** entrar uma sessão nova muda a
 âncora e deixa roteiro, título e decisões na âncora antiga (é preciso copiá-los); os Shorts continuam por sessão.
 
+## 63. Texto da thumbnail, A9 e A10 (2026-11-19)
+
+- **D14:** o texto editável da thumbnail (fase 9, 9B) fica **fora de escopo**: não existe endpoint nem campo no Studio, e o
+  criador escolheu não criá-los. O texto sai sugerido (2–4 palavras, humanizado) e quem quer outro texto escolhe outra
+  variação. A frase da fase 9 foi marcada como substituída.
+- **A9 feito:** `HOP_FRAMES` virou `AUDIO_SIGNAL_HOP` (6 quadros, 10 Hz) em `audio/signals` e `VIDEO_SAMPLE_HOP` (12 quadros,
+  5 por segundo) em `video/frames`; `FloatArray` (float32) e `Pause` passaram a existir só em `domain/types.py`. O campo
+  `hop_frames` dos sinais não mudou (é dado persistido).
+- **A10 adiado:** mover a infraestrutura genérica de sinais e eventos de `cronista.audio` para `cronista/analysis/` mexe em
+  muitos imports sem corrigir bug; fica como dívida técnica consciente, sem prazo.
+- **A13 e E17 feitos:** o serviço de observação não dá a gravação como abandonada enquanto o OBS grava; o Studio ganhou
+  teclado no waveform, `aria-label`, títulos em ordem e formulário inline de ajuste.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

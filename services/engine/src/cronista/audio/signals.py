@@ -20,14 +20,13 @@ from pydantic import BaseModel, Field
 
 from cronista.domain.evidence import params_hash
 from cronista.domain.models import StageResult
+from cronista.domain.types import FloatArray
 
-HOP_FRAMES = 6
+AUDIO_SIGNAL_HOP = 6
 """Padrão: 6 quadros a 60 fps = 0,1 s = 10 Hz."""
 
 SIGNALS_KEY = "signals"
 """Chave em `StageResult.data` onde a etapa lista seus sinais (nome → SignalMeta)."""
-
-FloatArray = npt.NDArray[np.float32]
 
 
 def frame_to_index(frame: int, hop_frames: int) -> int:
@@ -87,7 +86,7 @@ def write_signal(
     source_track: str,
     version: str,
     params: dict[str, Any],
-    hop_frames: int = HOP_FRAMES,
+    hop_frames: int = AUDIO_SIGNAL_HOP,
     model: str = "dsp",
 ) -> SignalMeta:
     """Grava o sinal em `<out_dir>/<name>.npy` e devolve o descritor para o `result.json`."""

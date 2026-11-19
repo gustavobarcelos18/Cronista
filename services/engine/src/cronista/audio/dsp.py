@@ -15,8 +15,8 @@ import numpy as np
 import soundfile as sf
 from numpy.lib.stride_tricks import sliding_window_view
 
-from cronista.audio.signals import FloatArray
 from cronista.domain.frames import FPS
+from cronista.domain.types import FloatArray
 
 DB_FLOOR = -120.0
 EPS = 1e-9

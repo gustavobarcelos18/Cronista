@@ -8,7 +8,8 @@ from typing import Any
 
 import numpy as np
 
-from cronista.video.ports import Embeddings, Pause, RgbFrames
+from cronista.domain.types import Pause
+from cronista.video.ports import Embeddings, RgbFrames
 
 
 class FakeEmbedder:

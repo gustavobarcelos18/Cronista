@@ -6,7 +6,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from cronista.audio.ports import Pause, SoundEventSpan, SpeechSpan, Utterance, Word
+from cronista.audio.ports import SoundEventSpan, SpeechSpan, Utterance, Word
+from cronista.domain.types import Pause
 
 
 class FakeDetector:

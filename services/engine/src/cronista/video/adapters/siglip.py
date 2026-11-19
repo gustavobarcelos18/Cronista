@@ -16,7 +16,8 @@ from typing import Any
 import numpy as np
 
 from cronista.audio.adapters.audio_io import package_version
-from cronista.video.ports import Embeddings, Pause, RgbFrames
+from cronista.domain.types import Pause
+from cronista.video.ports import Embeddings, RgbFrames
 
 
 def input_size_for(model_id: str) -> int:

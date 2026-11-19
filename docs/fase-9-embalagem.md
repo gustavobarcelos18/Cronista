@@ -44,7 +44,8 @@ título para o vídeo da série.
   filtros de cor), para o layout ser trocado sem mexer no código.
 - Candidatos a frame: picos do vídeo (maiores notas, chefes, antes/depois de construção), com nitidez e composição medidas por
   heurística simples (sem modelo); 2–3 variações por vídeo (frame, texto, posição).
-- Texto de 2–4 palavras, sugerido (humanizado) e editável no Studio.
+- Texto de 2–4 palavras, sugerido (humanizado) e ~~editável no Studio~~ [SUBSTITUÍDA por H §63, 2026-11-19: o texto vem
+  sugerido e não é editável no Studio; para outro texto, escolha outra variação].
 - Aceite: variações geradas de forma determinística a partir de uma montagem sintética; modelo carrega e valida (campo
   desconhecido, cor inválida e fonte ausente são recusados).
 - **Como ficou (2026-11-18):** pacote `thumbnails/` com `model.py` (modelo Pydantic `extra=forbid`; cores são papéis da paleta

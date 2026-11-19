@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from cronista.audio.adapters.audio_io import package_version, read_segment
-from cronista.audio.ports import Pause, SpeechSpan, Utterance, Word
+from cronista.audio.ports import SpeechSpan, Utterance, Word
+from cronista.domain.types import Pause
 
 NO_SPEECH_PROB = 0.6
 LOW_LOGPROB = -1.0

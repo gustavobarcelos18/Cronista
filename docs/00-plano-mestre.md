@@ -1257,6 +1257,10 @@ alterar a ordem do roadmap.
   minuto (seções 6.3 e 6.4); (5) a biblioteca pessoal de arquivos de áudio e vídeo é a fonte prioritária (seção 6.4);
   (6) só modelos abertos locais; (7) Q27: o feedback ajusta a edição atual e registra a preferência (Fase 7).
 
+- **Decisões da Fase 10 (2026-11-19, histórico §63):** o texto da thumbnail não é editável no Studio (fora de escopo; D14);
+  A9 feito (nomes dos passos de amostragem e tipos comuns em `domain/types.py`); A10 (mover a infraestrutura de sinais para
+  `cronista/analysis/`) adiado.
+
 **Status da Fase 1 (2026-11-16):** 1A integrada à `main` (PR #1). 1B com código completo no `dev` (histórico §28–34); `/code-review` feito e 10 achados corrigidos (§35); PR #3 integrado à `main` com CI verde; a
 tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadros` (histórico §38), a integrar.
 1C pendente (PC de casa). A Fase 2 só começa com 1B e 1C cumpridas.

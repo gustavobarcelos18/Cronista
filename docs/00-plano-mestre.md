@@ -887,7 +887,7 @@ Atualizado em 2026-11-19. "Conferência em `prod`" = o que só o PC de casa (GPU
 | 7 Studio | Mergeada | #20, #21 | Uso real |
 | 8 Acabamento | Mergeada | #22 | Conferência em `prod` |
 | 9 Embalagem | Mergeada | #23 | Conferência em `prod` |
-| 10 Correções da auditoria | 10A a 10F feitas; resta C8 e parte da 10D (`fase/10-correcoes`) | | Ver `docs/fase-10-correcoes.md` |
+| 10 Correções da auditoria | 10A a 10F feitas; resta C8, só em `prod` (`fase/10-correcoes`) | | Ver `docs/fase-10-correcoes.md` |
 
 
 Cada fase vira um plano de execução próprio (`docs/fase-N-*.md`), com tarefas, critérios de aceite e testes.

@@ -34,6 +34,14 @@ vinha da 10B), C14, C15, D7, D9, D10, D11, D13 (só o engine único e a docstrin
   x/y do zoom: precisa da saliência da Fase 3, só `prod`) e os renomes públicos que dependem da aprovação do glossário
   (T4). Os comandos `montar` e `montagem` ficam como estão até lá.
 
+**Andamento da 10E (2026-11-19):** feitos E8 (CI do Studio em Ubuntu e Windows com `vitest` e `next build`; `ruff` e
+`mypy` não estrito em `integrations/`, com `integrations/mypy.ini`), E9 (Vitest + Testing Library: `lib/api.ts`,
+`Waveform`, que saiu de `revisao.tsx` para `waveform.tsx`, e os estados de erro da Revisão), D12 (`compare_metadata == []`
+e `downgrade base`), A14 (caixas MP4 sintéticas, `probe_chapters`/`probe_media` com JSON inválido, 2 faixas de áudio, WAV
+vazio) e B20 (sessão sem `novo_dia` nem fala, painel com 2 projetos). A14, B20, C18 e D15 já tinham boa parte coberta
+pelos testes de regressão da 10A/10C. **Ainda não rodado:** `next build` e o CI no GitHub (só `tsc`, `eslint` e `vitest`
+passaram aqui). Próxima: 10F (narrativa por série).
+
 ## Divisão lógica do projeto
 
 | Bloco | Escopo | Tamanho aprox. | Plano |

@@ -1525,6 +1525,23 @@ e as thumbnails, que agora usam as gravações do projeto todo. **Limites conhec
 - **A13 e E17 feitos:** o serviço de observação não dá a gravação como abandonada enquanto o OBS grava; o Studio ganhou
   teclado no waveform, `aria-label`, títulos em ordem e formulário inline de ajuste.
 
+## 64. Revisão dos ⚠️ e dos critérios sem número (2026-11-19, Fase 10D, F18)
+
+Os ⚠️ do plano mestre foram revisados um a um contra o que o spike do `prod` (§39), os benchmarks (§44, §49) e as fases
+já registraram. Cada um foi marcado no próprio texto: ~~⚠️~~ riscado com ✅/❌ e o ponteiro quando resolvido, ou ⚠️ com
+colchetes quando segue aberto ou parcial (a maioria só se resolve em `prod`, e consta como EA-1 na tabela "Em aberto").
+Os ⚠️ deste histórico **não foram alterados**: são o registro do que se pensava em cada data.
+
+- **Resolvidos ❌ (o plano de memória estava errado):** marcadores por FCPXML/EDL (só por script), scripting externo,
+  adaptador OTIO do FCPXML, script interno com interface própria, HEVC importado, DeepFilterNet no ambiente principal.
+- **Resolvidos ✅:** CUDA convivendo (torch e CTranslate2), hotkeys e obs-websocket no Python 3.12, capítulos nativos do
+  OBS, título nativo no FCPXML, faixas de áudio por WAVs extraídos.
+- **Critérios sem número:** "WER aceitável" (proposta ≤ 15%, fase 2), "alta precisão" (menu/loading ≥ 90% de precisão,
+  fase 3) e "top de candidatos" (85% dos momentos, fase 4, já no código) ficaram com a proposta e o resultado medido ao
+  lado. **Nenhum corte foi aprovado pelo criador**; seguem propostas até o benchmark final em `prod`.
+- **Medido nos benchmarks (com gabaritos pequenos):** `whisper-turbo` WER 1,1% e `large-v3` 3,1% (viés a favor do
+  turbo); tela: todos os VLMs acertaram 100% (teste saturado).
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

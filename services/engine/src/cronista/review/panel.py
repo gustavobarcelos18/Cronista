@@ -7,6 +7,7 @@ Totais e situação são por projeto (série): cada projeto é um vídeo, com a 
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from typing import Literal
 
 from pydantic import BaseModel
@@ -68,7 +69,7 @@ def situation(total_min: float, complete_arc: bool) -> Situacao:
     return "acima" if total_min > MAX_MIN else "no_alvo"
 
 
-def series_panel_full(db: Session) -> SeriesPanelOut:
+def series_panel_full(db: Session, overrides: Mapping[str, float] | None = None) -> SeriesPanelOut:
     sessions_by_project: dict[int, list[RecordingSession]] = defaultdict(list)
     for session in db.scalars(select(RecordingSession).order_by(RecordingSession.id)):
         sessions_by_project[session.project_id].append(session)
@@ -78,7 +79,7 @@ def series_panel_full(db: Session) -> SeriesPanelOut:
         maximo_min=MAX_MIN,
         referencia_capitulo_s=MIN_CHAPTER_S,
         projetos=[
-            _project_panel(db, sessions, params_for_project(db, project_id).keep_score)
+            _project_panel(db, sessions, params_for_project(db, project_id, overrides).keep_score)
             for project_id, sessions in sessions_by_project.items()
         ],
     )

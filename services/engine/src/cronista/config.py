@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from cronista.domain.frames import FPS
 
@@ -72,6 +72,9 @@ class Settings(BaseModel):
     whisper_compute_type: str = "int8_float16"
     sound_model: str = "MIT/ast-finetuned-audioset-10-10-0.4593"
     profile: str = ""  # perfil de jogo (`profiles/<nome>.yaml`); vazio = genérico
+    relevance_overrides: dict[str, float] | None = Field(default=None, exclude=True)
+    """Limiares do grupo `relevance` do perfil (lookback, `keep_score`...). **Não vem do YAML**: quem monta as
+    configurações (`current_settings`) o preenche do perfil, para o núcleo não conhecer perfis (B9)."""
     vlm_model: str = ""  # checkpoint do VLM local (3C-4), ex.: Qwen/Qwen3-VL-4B-Instruct; vazio = desligado
     vlm_4bit: bool = False
     video_embedder: str = ""  # checkpoint de embeddings de quadro (3B); vazio = desligado, sem baixar nada

@@ -1555,6 +1555,22 @@ Os ⚠️ deste histórico **não foram alterados**: são o registro do que se p
 - **Medido nos benchmarks (com gabaritos pequenos):** `whisper-turbo` WER 1,1% e `large-v3` 3,1% (viés a favor do
   turbo); tela: todos os VLMs acertaram 100% (teste saturado).
 
+## 65. Correções da revisão de código da Fase 10 (2026-11-19)
+
+O `/code-review` da branch achou 10 pontos; 4 foram confirmados e corrigidos, cada um com teste que o reproduzia:
+- **Limiar do perfil no arco e no painel:** `keep_score` (e o resto do grupo `relevance`) só valia em `relevance_session`;
+  story, painel e `/aprendizado` usavam o padrão. Os limiares do perfil agora vão em `Settings.relevance_overrides`
+  (campo que **não vem do YAML**, preenchido por `current_settings()`), para o núcleo não conhecer perfis.
+- **Marcadores no mesmo quadro** ficam dentro do próprio corte (para a frente e, no fim, para trás); sem quadro livre
+  viram aviso.
+- **Estado de objetivo:** a guarda de reexecução compara com a última linha da **mesma citação**, então um estado que
+  volta a ser o de antes (a evidência mudou e mudou de novo) é regravado, sem alternar entre citações diferentes (B7).
+- **Docstring solta** em `finishing/plan.py` removida.
+
+Os demais achados não procedem: a chave dos Shorts é a decisão D4 (§60) e as thumbnails do projeto todo são a correção da
+10F (§62). Não foram tratados: `pipe_raw` com bloco parcial, `session_id or 0` repetido e listas mutáveis em `ExportStatus`
+(sem falha hoje); o painel de embalagem que engole manifesto corrompido ficou **sem verificar**.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

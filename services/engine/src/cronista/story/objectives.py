@@ -238,16 +238,20 @@ def discover(
         prior = current_state(db, obj.id, session_id)
         if prior is not None and prior.origin == "humano":
             continue  # decisão do criador nunca é sobrescrita por reexecução
-        already = db.scalar(
-            select(ObjectiveState.id).where(
+        last_for_quote = db.scalar(
+            select(ObjectiveState)
+            .where(
                 ObjectiveState.objective_id == obj.id,
                 ObjectiveState.session_id == session_id,
-                ObjectiveState.state == state.value,
                 ObjectiveState.ev_quote == cand.quote,
             )
+            .order_by(ObjectiveState.id.desc())
+            .limit(1)
         )
-        if already is not None:
-            continue  # (objetivo, estado, citação) já gravado: reexecutar não duplica nem alterna o estado
+        if last_for_quote is not None and last_for_quote.state == state.value:
+            # Esta citação já gerou este estado: reexecutar não duplica nem alterna o objetivo entre citações
+            # diferentes. Se a evidência mudou (o estado da citação mudou), grava a nova linha.
+            continue
         set_state(
             db, obj.id, session_id, state, source="transcricao", quote=cand.quote,
             start_frame=cand.start_frame, end_frame=cand.end_frame, confidence=cand.confidence,

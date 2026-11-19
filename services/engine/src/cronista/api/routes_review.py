@@ -20,7 +20,7 @@ def review_router(ctx: ApiContext) -> APIRouter:
     router = APIRouter()
 
     def _learning(db: Session, project_id: int) -> LearningOut:
-        applied = params_for_project(db, project_id)
+        applied = params_for_project(db, project_id, ctx.settings.relevance_overrides)
         current = {n: float(getattr(applied, n)) for n in WEIGHT_NAMES}
         proposal = propose(db, project_id)
         if proposal is None:
@@ -75,6 +75,6 @@ def review_router(ctx: ApiContext) -> APIRouter:
     @router.get("/series", response_model=SeriesPanelOut)
     def series() -> SeriesPanelOut:
         with ctx.connect() as db:
-            return series_panel_full(db)
+            return series_panel_full(db, ctx.settings.relevance_overrides)
 
     return router

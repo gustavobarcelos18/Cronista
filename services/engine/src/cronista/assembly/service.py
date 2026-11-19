@@ -45,11 +45,12 @@ def assemble(
 
     Com `project_id`, é o vídeo da série: todas as sessões do projeto, com um alvo só.
     """
+    overrides = settings.relevance_overrides
     sessions = scope_sessions(db, session_id, project_id)
     story = (
-        build_series_story(db, project_id, target_s, profile_objectives)
+        build_series_story(db, project_id, target_s, profile_objectives, overrides)
         if project_id is not None
-        else build_story(db, session_id or 0, target_s, profile_objectives)
+        else build_story(db, session_id or 0, target_s, profile_objectives, overrides)
     )
     words: dict[int, list[WordSpan]] = {}
     broll: dict[int, list[BrollClip]] = {}

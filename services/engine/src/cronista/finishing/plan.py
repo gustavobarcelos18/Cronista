@@ -30,8 +30,6 @@ from cronista.domain.frames import FPS, seconds_to_frame
 from cronista.domain.tracks import Track
 from cronista.finishing.effects import EffectKind, EffectMode
 
-"""Igual a `cronista.domain.frames.FPS` (conferido em teste); repetido para não importar pydantic."""
-
 PLAN_VERSION = 1
 
 STRUCTURAL = frozenset({EffectKind.COR_LUT, EffectKind.MUSICA, EffectKind.CARTELA_DIA})

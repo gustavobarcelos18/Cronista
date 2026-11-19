@@ -47,7 +47,22 @@ def _pick_media(db: Session, session: int, file: str | None) -> MediaFile:
 
 def current_settings() -> Settings:
     """Configuração da máquina; os testes trocam esta função (`load_settings` deste módulo)."""
-    return load_settings()
+    settings = load_settings()
+    settings.relevance_overrides = _profile_relevance_overrides(settings)
+    return settings
+
+
+def _profile_relevance_overrides(settings: Settings) -> dict[str, float] | None:
+    """Limiares de relevância do perfil, para o núcleo usar o mesmo critério que a relevância usou (B9).
+
+    Um perfil que não carrega não derruba os comandos que nem o usam; `relevance` e `story` o relatam.
+    """
+    from cronista.profiles import relevance_overrides
+
+    try:
+        return relevance_overrides(settings)
+    except (FileNotFoundError, ValueError):
+        return None
 
 
 def profile_objectives(settings: Settings) -> tuple[list[str], list[str]]:

@@ -30,7 +30,7 @@ def register(app: typer.Typer) -> None:
         top: Annotated[int, typer.Option(help="Quantos candidatos mostrar por arquivo")] = 15,
     ) -> None:
         """Segmenta a sessão, dá nota explicável a cada trecho e grava os segmentos (Fase 4)."""
-        from cronista.profiles import load_settings_profile
+        from cronista.profiles import relevance_overrides
         from cronista.relevance.quality import top_candidates
         from cronista.relevance.service import RelevanceError, relevance_session
 
@@ -38,9 +38,7 @@ def register(app: typer.Typer) -> None:
         setup_logging(settings.log_level)
         with open_db(settings.db_path) as db:
             try:
-                results = relevance_session(
-                    db, session, overrides=load_settings_profile(settings).thresholds.get("relevance")
-                )
+                results = relevance_session(db, session, overrides=relevance_overrides(settings))
             except RelevanceError as exc:
                 typer.echo(f"erro: {exc}", err=True)
                 raise typer.Exit(1) from exc
@@ -64,7 +62,7 @@ def register(app: typer.Typer) -> None:
 
         settings = current_settings()
         with open_db(settings.db_path) as db:
-            panel = series_panel_full(db)
+            panel = series_panel_full(db, settings.relevance_overrides)
         for project in panel.projetos:
             typer.echo(
                 f"{project.projeto} (projeto {project.projeto_id}): "
@@ -106,12 +104,13 @@ def register(app: typer.Typer) -> None:
         settings = current_settings()
         setup_logging(settings.log_level)
         objectives = profile_objectives(settings)
+        overrides = settings.relevance_overrides
         with open_db(settings.db_path) as db:
             try:
                 result = (
-                    build_series_story(db, project, target_min * 60, objectives)
+                    build_series_story(db, project, target_min * 60, objectives, overrides)
                     if project is not None
-                    else build_story(db, session or 0, target_min * 60, objectives)
+                    else build_story(db, session or 0, target_min * 60, objectives, overrides)
                 )
             except StoryError as exc:
                 typer.echo(f"erro: {exc}", err=True)

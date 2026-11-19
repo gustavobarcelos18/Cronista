@@ -142,6 +142,15 @@ def load_settings_profile(settings: Settings) -> GameProfile:
     return resolve_profile(settings.profile, directory)
 
 
+def relevance_overrides(settings: Settings) -> dict[str, float] | None:
+    """Limiares do grupo `relevance` do perfil configurado (lookback, `keep_score`...), ou None sem ajuste.
+
+    Todo consumidor de `params_for_project` precisa receber isto, para o relatório, o arco e o painel usarem o
+    mesmo critério de "material mantido" que a relevância usou (B9).
+    """
+    return load_settings_profile(settings).thresholds.get("relevance") or None
+
+
 def build_models_with_profile(settings: Settings) -> VideoModels:
     """Modelos de vídeo da máquina mais o OCR do HUD, se o perfil configurado tiver regiões de HUD."""
     models = build_video_models(settings)

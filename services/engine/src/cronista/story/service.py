@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -50,12 +51,13 @@ def build_story(
     session_id: int,
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
+    overrides: Mapping[str, float] | None = None,
 ) -> StoryResult:
     """História de **uma** sessão, com o alvo inteiro. Para o vídeo da série use `build_series_story`."""
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
-    return _build(db, session.project, [session], target_s, profile_objectives)
+    return _build(db, session.project, [session], target_s, profile_objectives, overrides)
 
 
 def build_series_story(
@@ -63,6 +65,7 @@ def build_series_story(
     project_id: int,
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
+    overrides: Mapping[str, float] | None = None,
 ) -> StoryResult:
     """História do vídeo da série (plano 4.1): todas as sessões do projeto, em ordem, com **um** alvo.
 
@@ -73,7 +76,7 @@ def build_series_story(
     if project is None:
         raise StoryError(f"projeto {project_id} não existe (veja `cronista status`)")
     sessions = scope_sessions(db, None, project_id)
-    return _build(db, project, sessions, target_s, profile_objectives)
+    return _build(db, project, sessions, target_s, profile_objectives, overrides)
 
 
 def scope_sessions(db: Session, session_id: int | None, project_id: int | None) -> list[RecordingSession]:
@@ -112,6 +115,7 @@ def _build(
     sessions: list[RecordingSession],
     target_s: float,
     profile_objectives: tuple[list[str], list[str]],
+    overrides: Mapping[str, float] | None = None,
 ) -> StoryResult:
     sync_profile_objectives(db, project.id, *profile_objectives)
 
@@ -144,7 +148,7 @@ def _build(
     if not files:
         raise StoryError("sem segmentos; rode `cronista relevance` antes")
 
-    chapters = build_chapters(files, kinds, params_for_project(db, project.id).keep_score)
+    chapters = build_chapters(files, kinds, params_for_project(db, project.id, overrides).keep_score)
     allocate_time(chapters, target_s)
     objectives = []
     for obj in db.scalars(select(Objective).where(Objective.project_id == project.id)):

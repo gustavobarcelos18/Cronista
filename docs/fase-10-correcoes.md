@@ -135,4 +135,6 @@ Não dá para fazer em `dev` (sem GPU e sem Resolve):
 
 ## Fechamento
 
+`/code-review` feito em 2026-11-19; 4 achados corrigidos (histórico §65).
+
 Revisão com `/code-review` e PR para a `main`. Decisões novas vão para o plano mestre (seção 9) e para o histórico.

@@ -1143,7 +1143,7 @@ histórico §58).
 - **Microfone sem a fonte crua (2026-11-16, histórico §41):** o `MIC_RAW` foi descartado; fonte única `MIC` com RNNoise
   nas faixas 1 (mix) e 3 (microfone). Faixas: 1 = mix, 2 = jogo, 3 = microfone (com RNNoise). O código não muda
   (`AUDIO_TRACKS`); a detecção de teclado e respiração depende do benchmark da Fase 2 (seções 2 e 3).
-- **Spike do Resolve gratuito 21.2 (2026-11-16, histórico §39):** FCPXML importa pelo menu; marcadores só por script
+- **Spike do Resolve gratuito 21.2 (2026-11-16, histórico §39; fonte única do resultado: seção 6.5):** FCPXML importa pelo menu; marcadores só por script
   (Lua colado no Console, único que o gratuito aceita); legenda SRT pelo menu Importar → Legenda, com fala vazia em 0 s;
   scripting externo bloqueado; HEVC recusado (o projeto usa H.264). O Resolve fica como editor (seção 6.5).
 - Marcador = "aconteceu algo aqui" (ponto no tempo dentro do arquivo); os capítulos do vídeo vêm só de `Novo dia`
@@ -1153,8 +1153,9 @@ histórico §58).
   dia é definido na edição. `Construção ▶/■` é uma tecla só, que alterna (seção 4).
 - A contagem de dias aparece na tela, mas o número final e a divisão são decididos na edição; `Novo dia` é proposta,
   e cartelas/contador saem editáveis (seções 4 e 6.3).
-- Gravação e timeline em 60 fps exatos; microfone em uma fonte só no OBS, com RNNoise, nas faixas 1 e 3 (seção 2,
-  histórico §41). *Substitui* "duas fontes, RNNoise só na do mix".
+- Gravação e timeline em 60 fps exatos (seção 2). ~~Microfone em uma fonte só no OBS, com RNNoise, nas faixas 1 e 3
+  (seção 2, histórico §41). *Substitui* "duas fontes, RNNoise só na do mix".~~ [DUPLICADA em 2026-11-19 (F20): vale o item
+  "Microfone sem a fonte crua" acima.]
 - Processamento automático ao fim da gravação, com pausa enquanto o OBS grava ou um jogo em tela cheia está aberto (seção 4.1).
 - ML em PyTorch + ONNX Runtime; OCR com RapidOCR em frames do master; DeepFilterNet só se melhorar o WER (seção 5.2).
 - Exceção aceita: o CTranslate2 (base do faster-whisper) traz CUDA próprio; se conflitar com o PyTorch, a
@@ -1163,7 +1164,8 @@ histórico §58).
 - Classificador de eventos sonoros: **AST/AudioSet** é o primeiro candidato (resolução de 2,5 s); PANNs, BEATs e CLAP
   continuam candidatos da 2C. Transcrição com `large-v3-turbo` em `int8_float16` (histórico §44).
 - Trilhas da timeline: V1 gameplay, V2 efeitos renderizados, V3 B-roll, V4 overlays, V5 cartelas; A1 jogo, A2 voz
-  ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados (seção 6.3).
+  ao vivo, A3 narração complementar, A4 música, A5 SFX, A6/A7 stems crus desativados. **A tabela da seção 6.3 é a fonte
+  única** (F20): esta linha é só um resumo e não deve ser atualizada separadamente.
 - CI em Ubuntu e Windows; configuração versionada sem caminhos pessoais + `*.local.yaml` fora do git (seção 5.6).
 - **Fase 3B (2026-11-17, histórico §48–§50):** contextos visuais por embedding (SigLIP 2 base nos contextos, large só na busca de B-roll); **B-roll** com nota de **utilidade** (nunca beleza), tags, **clima** (bonito, sombrio, perigoso, calmo) e estado do HUD; sob a narração o B-roll **alterna**, sempre casando com o assunto, e sem tomada à altura o app **sugere gravar** (ferramenta do jogo em `camera_tools` do perfil, 3C); **tipos de menu** por embedding centrado na média (sem nome; nomear é do VLM/criador, peso é da Fase 4); **HUD oculto** universal por gabarito estável da sessão (experimental, não validado com HUD escondido); **`idle`** = cena parada com o HUD inteiro à vista (substitui a heurística da 3A, removida; 1 acerto no `claude_teste`, recalibrar na 3C).
 - ~~Benchmark da Fase 1 só de desempenho~~: **substituído** (histórico §36): benchmarks de desempenho e de qualidade (WER, precisão) ocorrem na Fase 2; a 1C não faz benchmark de modelos (seções 6.1 e 7).
@@ -1190,8 +1192,9 @@ histórico §58).
   faixas cruas (seções 2 e 6.3).
 - Numeração de trilhas fixa: trilhas sem conteúdo são criadas vazias; só A6/A7 são condicionais (seção 6.3).
 - Perfil de jogo: pesos aprendidos com o feedback + campos manuais opcionais (HUD, lookback, rótulos ignorados) (seção 3).
-- Cartelas: título editável na Fase 6; as de template Remotion (Fase 8) são regeneradas pelo app, nunca com número
-  fixo (seções 6.3 e 6.4).
+- ~~Cartelas: título editável na Fase 6; as de template Remotion (Fase 8) são regeneradas pelo app, nunca com número
+  fixo (seções 6.3 e 6.4).~~ [DUPLICADA em 2026-11-19 (F20): vale o item "Cartelas na Fase 6" acima e a seção 6.3; o
+  Remotion foi substituído por FFmpeg, histórico §57.]
 - Os dois registros do marcador (OBS + diário) vêm do mesmo programa: a redundância não cobre a falha dele (seção 4).
 - Arquivo 10-bit na ingestão: avisa e converte para 8-bit (seções 2 e 6.5).
 - O app nunca chama a API do Claude; só o Claude Code, por skill manual ou `claude -p` (seção 1).
@@ -1233,8 +1236,9 @@ histórico §58).
   entre vários (missão, desafio, sobrevivência por regras) e continua preservado, com `Novo dia` e cartelas "Dia N" (seções 4, 5.4, 6.3).
 - **Montagem inteligente como preferência editorial** (seção 6.3). Timelapse é uma das opções, escolhida por trecho.
 - **Fase 5A** (objetivos, subobjetivos, estados e evidências), entre a Fase 4 e a Fase 5 (seção 7).
-- **Benchmarks de modelos na Fase 2**, não na 1C. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE, GpuGate,
-  gravação real com o microfone ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).
+- ~~**Benchmarks de modelos na Fase 2**, não na 1C. A 1C fica com testes físicos e técnicos (Resolve, OBS, FIFINE, GpuGate,
+  gravação real com o microfone ativo). Substitui a decisão anterior "benchmark da Fase 1" (seções 6.1 e 7).~~
+  [DUPLICADA em 2026-11-19 (F20): vale o item "Benchmark da Fase 1 só de desempenho ... substituído" acima, e as seções 6.1 e 7.]
 
 **Lacunas técnicas identificadas (2026-11-16) e fase de correção:**
 1. **Tempo do marcador em float de segundos** (`marker.media_time_s`) → guardar em **quadros inteiros a 60 fps**. Fase: **1B, antes do merge** (o modelo do marcador é entregue pela 1B).

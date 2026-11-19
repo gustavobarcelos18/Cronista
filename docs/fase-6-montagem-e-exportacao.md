@@ -7,6 +7,8 @@ WAVs e masters da ingestão. Caminho de mão única: o que o Resolve aceita é o
 
 ## Premissas já medidas no spike (plano 6.5, histórico §39)
 
+*Fonte única do resultado do spike: plano mestre, seção 6.5. Esta lista só guarda o que muda o desenho da fase (F20).*
+
 - FCPXML 1.9 escrito à mão importa (V1, A1, A2, título editável "Texto - Dia 1", velocidade, zoom, transição, overlay alfa).
   Um recurso recusado derruba o arquivo inteiro: **cada recurso é validado isoladamente antes de entrar no export**.
 - **Marcadores só entram por script**: Lua de uma linha colado no Console do Resolve (sem `io`/`require`). O app gera esse

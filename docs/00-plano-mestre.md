@@ -1124,6 +1124,10 @@ histórico §58).
 - Studio (Fase 7, histórico §56): decisões do criador só por inserção e presas à janela do segmento; roteiro, montagem e
   Shorts usam os segmentos com as decisões aplicadas; escrita da API só da origem do Studio; recalibração de pesos só vale
   depois de aceita; feedback em texto fica guardado sem interpretação até o benchmark do LLM local.
+- Estilo do canal (histórico §67, [perfil](referencias/estilo-do-canal.md)): extraído de 5 vídeos de referência do criador;
+  é ponto de partida para calibrar acabamento e roteiro, não meta. O molde de roteiro do canal está na skill `/roteirizar`
+  e o pacote reserva as janelas `@gancho` (45 s) e `@fecho` (35 s) fora das lacunas: **exceção declarada** à regra
+  "fala ao vivo tem prioridade", só nessas duas janelas, gravadas à parte pelo criador. As demais propostas do perfil seguem em aberto.
 - Acabamento (Fase 8, histórico §57): brand kit e estilo por série em YAML versionado (`packages/brand-kit/`); cada efeito com
   modo, máximo por minuto e nota mínima, mais teto somado; humor e impacto nascem só como `sugerir`; biblioteca pessoal com
   licença obrigatória por item e bloqueio de uso comercial. Render e exportação (8C/8D): zoom/shake por `zoompan` do FFmpeg

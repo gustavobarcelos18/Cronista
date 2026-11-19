@@ -910,6 +910,31 @@
       "title": "PackProject",
       "type": "object"
     },
+    "PackReserva": {
+      "description": "Janela de narração reservada fora das lacunas: gancho (abertura) e fecho (final), gravados à parte.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "instrucao": {
+          "type": "string"
+        },
+        "max_s": {
+          "type": "number"
+        },
+        "onde": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "onde",
+        "max_s",
+        "instrucao"
+      ],
+      "title": "PackReserva",
+      "type": "object"
+    },
     "PackWindow": {
       "description": "Intervalo em segundos do arquivo de origem.",
       "properties": {
@@ -1486,6 +1511,12 @@
         },
         "projeto": {
           "$ref": "#/$defs/PackProject"
+        },
+        "reservas": {
+          "items": {
+            "$ref": "#/$defs/PackReserva"
+          },
+          "type": "array"
         },
         "truncado": {
           "default": false,

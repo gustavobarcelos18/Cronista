@@ -19,10 +19,11 @@ from cronista.story.models import (
     PackLiveSpeech,
     PackObjective,
     PackProject,
+    PackReserva,
     PackWindow,
     StoryPack,
 )
-from cronista.story.script import free_gaps
+from cronista.story.script import CLOSE_ID, HOOK_ID, RESERVED_MAX_S, free_gaps
 
 MAX_CHARS = 60_000
 QUOTE_CHARS = 160
@@ -36,6 +37,25 @@ INSTRUCTIONS = [
     "Texto falado, frases curtas, sem muletas de texto escrito; o suspense vem de fato do pacote.",
     ANTICIPATION_RULE,
 ]
+
+
+RESERVAS = [
+    PackReserva(
+        id=HOOK_ID,
+        onde="abertura do vídeo",
+        max_s=RESERVED_MAX_S[HOOK_ID],
+        instrucao="Gancho gravado à parte: premissa, objetivos confirmados, convite e virada para o relato."
+        " Use `segmento_id` `@gancho`; sem lacuna a conferir; só fatos do pacote.",
+    ),
+    PackReserva(
+        id=CLOSE_ID,
+        onde="final do vídeo",
+        max_s=RESERVED_MAX_S[CLOSE_ID],
+        instrucao="Fecho gravado à parte: final, balanço dos objetivos (preservando o fracasso),"
+        " convite e despedida. Use `segmento_id` `@fecho`; sem lacuna a conferir; só fatos do pacote.",
+    ),
+]
+"""Janelas de narração fora das lacunas (histórico §67); o pacote só as oferece quando há capítulo."""
 
 
 def _beat_entry(item: BeatedSegment, speech: Sequence[AnalysisEvent], with_quotes: bool) -> PackBeat:
@@ -94,6 +114,7 @@ def build_story_pack(
                 )
                 for c in chapters
             ],
+            reservas=list(RESERVAS) if chapters else [],
             truncado=truncated,
         )
 

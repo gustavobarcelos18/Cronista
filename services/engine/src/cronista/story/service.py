@@ -29,7 +29,15 @@ from cronista.story.objectives import (
     sync_profile_objectives,
 )
 from cronista.story.pack import build_story_pack
-from cronista.story.script import LIVE_KINDS, ValidationReport, to_srt, validate_script, voice_profile
+from cronista.story.script import (
+    CLOSE_ID,
+    HOOK_ID,
+    LIVE_KINDS,
+    ValidationReport,
+    to_srt,
+    validate_script,
+    voice_profile,
+)
 
 DEFAULT_TARGET_MIN = 40.0
 MAX_TARGET_MIN = 240.0
@@ -216,6 +224,10 @@ def save_script(folder: Path, script: Script) -> ValidationReport:
     current = folder / SCRIPT
     saved = script.model_copy(update={"lines": report.lines})
     starts = {sid: gaps[0][0] if gaps else a for sid, (a, _b, gaps) in index.items()}
+    if index:  # janelas reservadas em tempo de arquivo: gancho no começo do 1º trecho, fecho no fim do último
+        close_total = sum(x.est_s or 0.0 for x in report.lines if x.segment_id == CLOSE_ID)
+        starts[HOOK_ID] = min(a for a, _b, _g in index.values())
+        starts[CLOSE_ID] = max(b for _a, b, _g in index.values()) - close_total
     # Grava o novo em arquivos temporários ANTES de mexer no atual: se a escrita falhar, o roteiro vigente
     # continua no lugar e o histórico não fica com buraco.
     tmp_json, tmp_srt = folder / f"{SCRIPT}.tmp", folder / "roteiro.srt.tmp"

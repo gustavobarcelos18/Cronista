@@ -314,6 +314,18 @@ export interface PackProject {
   nome?: string;
 }
 /**
+ * Janela de narração reservada fora das lacunas: gancho (abertura) e fecho (final), gravados à parte.
+ *
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "PackReserva".
+ */
+export interface PackReserva {
+  id: string;
+  instrucao: string;
+  max_s: number;
+  onde: string;
+}
+/**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "PackagingOut".
  */
@@ -535,6 +547,7 @@ export interface StoryPack {
   instrucoes: string[];
   objetivos: PackObjective[];
   projeto: PackProject;
+  reservas?: PackReserva[];
   truncado?: boolean;
 }
 /**

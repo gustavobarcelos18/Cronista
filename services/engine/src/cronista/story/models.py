@@ -62,7 +62,9 @@ class ScriptLine(BaseModel):
     est_s: float | None = None
     """Duração estimada falada; calculada na validação quando vem vazia."""
     start_s: float | None = None
-    """Onde a fala entra, em segundos do arquivo; vazio = começo do primeiro espaço livre do segmento."""
+    """Onde a fala entra, em segundos do arquivo; vazio = começo do primeiro espaço livre do segmento.
+
+    Nas janelas reservadas (`@gancho`, `@fecho`) é o deslocamento, em segundos, dentro da janela."""
 
 
 class Script(BaseModel):
@@ -116,6 +118,15 @@ class PackProject(BaseModel):
     jogo: str = ""
 
 
+class PackReserva(BaseModel):
+    """Janela de narração reservada fora das lacunas: gancho (abertura) e fecho (final), gravados à parte."""
+
+    id: str
+    onde: str
+    max_s: float
+    instrucao: str
+
+
 class StoryPack(BaseModel):
     """`story-pack.json`: o recorte compacto que o roteirista recebe (Fase 5). Só fatos verificáveis."""
 
@@ -124,4 +135,5 @@ class StoryPack(BaseModel):
     objetivos: list[PackObjective]
     instrucoes: list[str]
     capitulos: list[PackChapter]
+    reservas: list[PackReserva] = Field(default_factory=list)
     truncado: bool = False

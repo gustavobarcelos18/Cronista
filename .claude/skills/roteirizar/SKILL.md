@@ -24,6 +24,35 @@ Escreve `roteiro.json` para a sessão. No vídeo da série (`cronista story --pr
 7. **Duração.** Cada fala cabe nas `lacunas` do seu beat (≈ 2,6 palavras por segundo). O criador corta se ficar curto
    ou estende se ficar longo; o roteiro não depende da duração prevista.
 
+## Molde do canal (histórico §67, `docs/referencias/estilo-do-canal.md`)
+
+Extraído dos vídeos de "100 dias" do próprio criador. Ele **organiza** o roteiro; as regras acima continuam valendo (fala
+ao vivo primeiro, só fatos do pacote, falas dentro das `lacunas`, `segment_id` obrigatório). Fato que o molde pede e o
+pacote não tem **não se inventa**: omita a frase e liste a falta em `pendencias.md`, ao lado do `roteiro.json` (ver Saída).
+
+1. **Gancho (abertura do vídeo, até 45 s).** Janela reservada do pacote (`reservas`, `segment_id` **`@gancho`**): é gravada
+   à parte, não depende de lacuna e o validador não confere fala ao vivo ali (exceção declarada, histórico §67). Em ordem, uma
+   ideia por fala, sem `start_s` (as falas se encadeiam sozinhas):
+   - a premissa em uma frase: o jogo (`projeto.jogo`) e o que o torna diferente. O que torna diferente (mods, regra de
+     jogo, desafio) só entra se estiver no pacote (objetivo do tipo `restricao`, ou fala ao vivo do criador);
+   - a promessa de dias, só se o número de dias estiver no pacote;
+   - os **objetivos** de `objetivos` com `confirmado: true`: "Primeiro…", "Segundo…", "Terceiro, e mais importante…",
+     um por fala; `principal` por último ("mais importante"); `restricao` descrita como regra ("uma vida, um erro");
+     nunca cite objetivo `incerto` nem não confirmado;
+   - o convite ao like, curto e encaixado na fala, e a virada para o relato ("agora é só começar"). É a única
+     fala sem fato do pacote; **o criador decide se fica**: marque com `"justification": "convite do criador: confirmar"`
+     (o `kind` continua `narracao`; o validador só aceita `narracao` e `antecipacao`).
+2. **Relato (capítulos).** Primeira pessoa, **passado**, blocos curtos: o que fez e por quê ("Pra não arriscar o bote, arrastei
+   ele até a praia"). Complementa a fala ao vivo e **volta a ela** logo depois: nunca emende duas falas de narração
+   seguidas sem uma fala ao vivo no meio, quando o beat tiver fala ao vivo. Não diga "dia N": a marcação de dias é
+   do contador na tela, não da narração.
+3. **Fecho (final do vídeo, até 35 s).** Janela reservada, `segment_id` **`@fecho`**, sem `start_s`. Em ordem: o final do jogo ou do desafio e o que ele significa
+   (só fatos do pacote); o balanço dos objetivos pelo `estado` (`concluido`, `falhou`, `abandonado`), com o motivo se estiver
+   no pacote e **preservando o fracasso**; o convite à comunidade (Discord, lista de mods na descrição) e a despedida curta.
+   Convite e despedida são do criador: marque com a mesma `justification` e não os invente com nome ou link.
+4. **Densidade.** Mais fala de narração no gancho e no fecho que no meio; no meio, só onde há lacuna e algo a explicar.
+   No relato, sem lacuna, sem fala (o validador recusa); só `@gancho` e `@fecho` dispensam lacuna.
+
 ## Saída
 
 Arquivo `roteiro.json`:
@@ -36,5 +65,7 @@ Arquivo `roteiro.json`:
 ```
 
 `segment_id` vem do campo `segmento_id` do beat (obrigatório: cada fala é ligada a um segmento).
+Se o molde pediu algo que o pacote não traz (número de dias, o que torna o jogo diferente, motivo de um objetivo
+falhar), escreva `pendencias.md` ao lado: uma linha por falta, para o criador completar na gravação.
 Depois valide: `uv run cronista roteiro-import <sessão> roteiro.json` (gera também o SRT) e
 `uv run cronista roteiro-lint roteiro.json`. Corrija o que o validador apontar antes de entregar.

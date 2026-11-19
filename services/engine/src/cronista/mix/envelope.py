@@ -16,7 +16,7 @@ from cronista.domain.frames import FPS
 from cronista.domain.tracks import Track
 from cronista.domain.types import FloatArray
 from cronista.story.models import ScriptLine
-from cronista.story.script import estimate_seconds
+from cronista.story.script import CLOSE_ID, HOOK_ID, estimate_seconds, is_reserved
 
 CONTROL_RATE = 200
 
@@ -58,8 +58,28 @@ def narration_cues(
     Linha de segmento que não está na montagem (ou está em timelapse) é ignorada.
     """
     by_segment = {sid: i for i in plan_items if i.track == Track.V1 and i.speed == 1 for sid in i.segment_ids}
+    v1 = [i for i in plan_items if i.track == Track.V1]
     out: list[tuple[int, int, ScriptLine]] = []
+    if v1:  # janelas reservadas (histórico §67): o gancho abre a timeline e o fecho termina nela
+        first, last = min(i.timeline_start for i in v1), max(i.timeline_end for i in v1)
+        close_total = sum(
+            round((x.est_s if x.est_s is not None else estimate_seconds(x.text)) * FPS)
+            for x in lines
+            if x.segment_id == CLOSE_ID
+        )
+        for line in lines:
+            if not is_reserved(line.segment_id):
+                continue
+            seconds = line.est_s if line.est_s is not None else estimate_seconds(line.text)
+            offset = round((line.start_s or 0.0) * FPS)
+            base = first if line.segment_id == HOOK_ID else max(last - close_total, first)
+            start = base + offset
+            end = min(start + round(seconds * FPS), last)
+            if end > start:
+                out.append((start, end, line))
     for line in lines:
+        if is_reserved(line.segment_id):
+            continue
         item = by_segment.get(line.segment_id)
         if item is None:
             continue

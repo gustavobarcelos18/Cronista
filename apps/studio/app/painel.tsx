@@ -18,7 +18,7 @@ function Projeto({ projeto, panel }: { projeto: ProjectPanelOut; panel: SeriesPa
   const pct = Math.min(100, (projeto.total_min / meta) * 100);
   return (
     <section aria-label={`Painel da série ${projeto.projeto}`}>
-      <h3>{projeto.projeto}</h3>
+      <h2>{projeto.projeto}</h2>
       <progress value={pct} max={100} style={{ width: "100%" }} />
       <p>
         <strong>{projeto.total_min} min</strong> de {meta} · {SITUACAO[projeto.situacao]}
@@ -35,7 +35,7 @@ function Projeto({ projeto, panel }: { projeto: ProjectPanelOut; panel: SeriesPa
       </small>
       {projeto.capitulos_com_pouco_material.length > 0 && (
         <>
-          <h4>Capítulos com pouco material</h4>
+          <h3>Capítulos com pouco material</h3>
           <p>Referência de {panel.referencia_capitulo_s} s por capítulo.</p>
           <ul>
             {projeto.capitulos_com_pouco_material.map((c) => (

@@ -10,7 +10,7 @@ const segmento = (start_s: number, end_s: number, score: number) =>
 describe("Waveform", () => {
   it("desenha uma barra por amostra de jogo e de microfone mais um retângulo por segmento", () => {
     const { container } = render(<Waveform wave={wave} segments={[segmento(0, 10, 0.9)]} onSeek={() => {}} />);
-    expect(screen.getByRole("img")).toBeInTheDocument();
+    expect(screen.getByRole("slider")).toBeInTheDocument();
     expect(container.querySelectorAll("rect")).toHaveLength(1 + 3 + 3);
   });
 
@@ -24,9 +24,29 @@ describe("Waveform", () => {
   it("clique converte a posição em segundos do arquivo", () => {
     const onSeek = vi.fn();
     render(<Waveform wave={wave} segments={[]} onSeek={onSeek} />);
-    const svg = screen.getByRole("img");
+    const svg = screen.getByRole("slider");
     svg.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
     fireEvent.click(svg, { clientX: 50 });
     expect(onSeek).toHaveBeenCalledWith(25);
+  });
+
+  it("teclado: setas andam 5 s, PageUp 30 s, Home/End vão às pontas e nunca saem do arquivo", () => {
+    const onSeek = vi.fn();
+    render(<Waveform wave={wave} segments={[]} onSeek={onSeek} />);
+    const slider = screen.getByRole("slider");
+    expect(slider).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(slider, { key: "ArrowRight" });
+    expect(onSeek).toHaveBeenLastCalledWith(5);
+    fireEvent.keyDown(slider, { key: "PageUp" });
+    expect(onSeek).toHaveBeenLastCalledWith(35);
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    expect(onSeek).toHaveBeenLastCalledWith(30);
+    fireEvent.keyDown(slider, { key: "End" });
+    expect(onSeek).toHaveBeenLastCalledWith(100);
+    fireEvent.keyDown(slider, { key: "ArrowRight" });
+    expect(onSeek).toHaveBeenLastCalledWith(100);
+    fireEvent.keyDown(slider, { key: "Home" });
+    expect(onSeek).toHaveBeenLastCalledWith(0);
+    expect(slider).toHaveAttribute("aria-valuenow", "0");
   });
 });

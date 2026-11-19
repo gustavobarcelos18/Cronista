@@ -13,7 +13,7 @@ não falhar, o item é descartado.
 |---|---|---|
 | 10A | Bugs de severidade alta e de regra | Concluída (B11 foi para a 10C) |
 | 10B | Fundação transversal (T1 a T4) | Feita (T4: glossário aprovado) |
-| 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`) |
+| 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`); A13 feito. A9 e A10 (só arrumação) pendentes |
 | 10D | Documentação | Em andamento (parte feita; ver abaixo) |
 | 10E | Testes e CI | Feita (`next build` ok em 2026-11-19; falta o CI real no GitHub) |
 | 10F | Narrativa por série | Feita (conferência com mídia real em `prod`) |
@@ -107,6 +107,8 @@ D14; árvore e comandos gerados por script (F14, anexo).
   Revisão (E9).
 - Acessibilidade (E17): teclado no waveform, `aria-label` nos `textarea`, ordem dos títulos, formulário inline no lugar
   de `prompt()`.
+  **Feita (2026-11-19):** o waveform é um `slider` com teclado (setas ±5 s, PageUp/PageDown ±30 s, Home/End); `aria-label` nos
+  `textarea`; títulos do painel lateral sem salto de nível; `AjusteForm` (`app/ajuste.tsx`) no lugar do `prompt()`.
 
 **Aceite:** o CI roda `eslint`, `tsc`, `next build` e `vitest` em Ubuntu e Windows; os invariantes de B (nenhuma fala
 sobre fala ao vivo, soma do orçamento ≤ alvo, decisão humana nunca sobrescrita) estão testados.

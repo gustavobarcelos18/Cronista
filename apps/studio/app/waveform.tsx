@@ -1,7 +1,10 @@
 import type { SegmentOut, WaveformOut } from "@cronista/contracts";
+import { useState } from "react";
 
 const WAVE_H = 80;
 const FLOOR_DB = -60;
+const STEP_S = 5;
+const BIG_STEP_S = 30;
 
 export default function Waveform({
   wave,
@@ -12,6 +15,18 @@ export default function Waveform({
   segments: SegmentOut[];
   onSeek: (seconds: number) => void;
 }) {
+  const [pos, setPos] = useState(0);
+  const goTo = (seconds: number) => {
+    const clamped = Math.min(Math.max(seconds, 0), wave.duration_s);
+    setPos(clamped);
+    onSeek(clamped);
+  };
+  const keyStep: Record<string, number> = {
+    ArrowRight: STEP_S,
+    ArrowLeft: -STEP_S,
+    PageUp: BIG_STEP_S,
+    PageDown: -BIG_STEP_S,
+  };
   const n = Math.max(wave.game.length, wave.mic.length, 1);
   const bar = (db: number) => Math.max(1, ((Math.min(0, Math.max(FLOOR_DB, db)) - FLOOR_DB) / -FLOOR_DB) * (WAVE_H / 2));
   const x = (seconds: number) => (seconds / Math.max(wave.duration_s, 1)) * n;
@@ -19,12 +34,23 @@ export default function Waveform({
     <svg
       viewBox={`0 0 ${n} ${WAVE_H}`}
       preserveAspectRatio="none"
-      role="img"
-      aria-label="Energia do áudio (jogo em cima, microfone embaixo)"
+      role="slider"
+      tabIndex={0}
+      aria-label="Energia do áudio (jogo em cima, microfone embaixo); setas e PageUp/PageDown navegam"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(wave.duration_s)}
+      aria-valuenow={Math.round(pos)}
+      onKeyDown={(e) => {
+        if (e.key === "Home") goTo(0);
+        else if (e.key === "End") goTo(wave.duration_s);
+        else if (e.key in keyStep) goTo(pos + keyStep[e.key]);
+        else return;
+        e.preventDefault();
+      }}
       style={{ width: "100%", height: WAVE_H, background: "#111", cursor: "pointer", display: "block" }}
       onClick={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
-        onSeek(((e.clientX - r.left) / r.width) * wave.duration_s);
+        goTo(((e.clientX - r.left) / r.width) * wave.duration_s);
       }}
     >
       {segments.map((g) => (

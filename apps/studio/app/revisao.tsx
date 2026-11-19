@@ -10,6 +10,7 @@ import type {
 } from "@cronista/contracts";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { API, getJson, send } from "../lib/api";
+import Ajuste from "./ajuste";
 import Acabamento from "./acabamento";
 import Aprendizado from "./aprendizado";
 import Embalagem from "./embalagem";
@@ -45,6 +46,7 @@ export default function Revisao() {
   const [error, setError] = useState<string | null>(null);
   const [decisaoVersao, setDecisaoVersao] = useState(0);
   const [serie, setSerie] = useState(false);
+  const [ajustando, setAjustando] = useState<number | null>(null); // start_s do trecho em ajuste
   const video = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -86,21 +88,6 @@ export default function Revisao() {
     setDecisaoVersao((versao) => versao + 1);
   }
 
-  function adjust(g: Segment) {
-    // Cancelar (null) ou deixar vazio não pode virar 0: aborta o ajuste inteiro.
-    const askedStart = prompt("Novo início (s do arquivo)", String(g.adj_start_s ?? g.start_s));
-    if (askedStart === null || askedStart.trim() === "") return;
-    const askedEnd = prompt("Novo fim (s do arquivo)", String(g.adj_end_s ?? g.end_s));
-    if (askedEnd === null || askedEnd.trim() === "") return;
-    const start = Number(askedStart.replace(",", "."));
-    const end = Number(askedEnd.replace(",", "."));
-    if (Number.isFinite(start) && Number.isFinite(end)) {
-      void decide(g, { decision: "ajustado", start_s: start, end_s: end });
-    } else {
-      setError("Ajuste cancelado: informe números em segundos.");
-    }
-  }
-
   // Vídeo da série: um só vídeo com todas as sessões do projeto, ancorado na última sessão dele.
   const projectSessions = sessions.filter((s) => s.project_id === projectId);
   const serieDisponivel = projectId !== null && projectSessions.length > 1;
@@ -123,9 +110,9 @@ export default function Revisao() {
         <Painel revisao={decisaoVersao} />
         {sessions.map((s) => (
           <section key={s.id}>
-            <h3>
+            <h2>
               {s.project} · sessão {s.id}
-            </h3>
+            </h2>
             <Progresso sessionId={s.id} />
             <ul>
               {s.files.map((f) => (
@@ -167,7 +154,18 @@ export default function Revisao() {
                   )}{" "}
                   <button onClick={() => void decide(g, { decision: "aceito" })}>Aceitar</button>
                   <button onClick={() => void decide(g, { decision: "rejeitado" })}>Rejeitar</button>
-                  <button onClick={() => adjust(g)}>Ajustar</button>
+                  <button onClick={() => setAjustando(g.start_s)}>Ajustar</button>
+                  {ajustando === g.start_s && (
+                    <Ajuste
+                      start={g.adj_start_s ?? g.start_s}
+                      end={g.adj_end_s ?? g.end_s}
+                      onCancel={() => setAjustando(null)}
+                      onSubmit={(start, end) => {
+                        setAjustando(null);
+                        void decide(g, { decision: "ajustado", start_s: start, end_s: end });
+                      }}
+                    />
+                  )}
                   <Feedback mediaId={media.id} segStart={g.start_s} />
                   <SignalChips events={events.filter((e) => e.start_s < g.end_s && e.end_s >= g.start_s)} />
                 </li>

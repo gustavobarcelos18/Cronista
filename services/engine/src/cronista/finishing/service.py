@@ -47,10 +47,11 @@ MarkerFrames = Mapping[int, Sequence[tuple[int, str]]]
 """`file_id` → `(quadro no arquivo, tipo)` de cada marcador do criador."""
 
 
-def marker_peaks(db: Session, session_id: int) -> dict[int, list[tuple[int, str]]]:
+def marker_peaks(db: Session, session_ids: int | Sequence[int]) -> dict[int, list[tuple[int, str]]]:
     """Marcadores do criador por arquivo: o pico do zoom é onde ele apertou a tecla."""
+    ids = [session_ids] if isinstance(session_ids, int) else list(session_ids)
     out: dict[int, list[tuple[int, str]]] = {}
-    for marker in db.scalars(select(Marker).where(Marker.session_id == session_id)):
+    for marker in db.scalars(select(Marker).where(Marker.session_id.in_(ids))):
         if marker.media_file_id is not None:
             out.setdefault(marker.media_file_id, []).append((marker.media_frame, marker.kind))
     return out

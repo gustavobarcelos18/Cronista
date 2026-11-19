@@ -43,7 +43,8 @@ pelos testes de regressão da 10A/10C. **Ainda não rodado:** `next build` e o C
 passaram aqui). Próxima: 10F (narrativa por série).
 
 **Andamento da 10F (2026-11-19):** B1 em parte. `build_series_story(project_id)` (todas as sessões do projeto, um alvo só,
-dia contínuo entre sessões) e `cronista story --projeto N` (saída em `data/story/serie-<projeto>`). **Falta:** `montagem`,
+dia contínuo entre sessões) e `cronista story --projeto N` (saída em `data/story/serie-<projeto>`). `cronista montagem --projeto N` (assemble, mix e pacote
+em `data/export/montagem/serie-<projeto>`; FCPXML `serie-N-vK`) também já usa a série. **Falta:**
 `acabamento`, `titulos`, as skills e o Studio ainda trabalham por sessão e leem a história de `build_story`; B15 feito em versão
 reconciliadora: `validate_script` religa a fala ao segmento do mesmo arquivo que hoje contém o início do id antigo (aviso)
 e, se não houver, acusa roteiro órfão (erro); o id continua `arquivo:início_s`, sem hash.

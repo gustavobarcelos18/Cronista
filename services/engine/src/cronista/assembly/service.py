@@ -9,39 +9,52 @@ from sqlalchemy.orm import Session
 from cronista.assembly.plan import AssemblyParams, BrollClip, EditPlan, WordSpan, build_edit_plan
 from cronista.audio.events import load_active_events
 from cronista.config import Settings
-from cronista.db.models import RecordingSession
 from cronista.domain.frames import duration_frames
 from cronista.montage import SessionPlanError, load_source
-from cronista.story.service import DEFAULT_TARGET_S, StoryResult, build_story
+from cronista.story.service import (
+    DEFAULT_TARGET_S,
+    StoryResult,
+    build_series_story,
+    build_story,
+    scope_sessions,
+)
 
 
 def build_assembly(
     db: Session,
-    session_id: int,
+    session_id: int | None,
     settings: Settings,
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     params: AssemblyParams | None = None,
+    project_id: int | None = None,
 ) -> EditPlan:
-    return assemble(db, session_id, settings, target_s, profile_objectives, params)[0]
+    return assemble(db, session_id, settings, target_s, profile_objectives, params, project_id)[0]
 
 
 def assemble(
     db: Session,
-    session_id: int,
+    session_id: int | None,
     settings: Settings,
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     params: AssemblyParams | None = None,
+    project_id: int | None = None,
 ) -> tuple[EditPlan, StoryResult]:
-    """Plano de montagem e a história de onde ele saiu (o acabamento lê os marcadores dos segmentos)."""
-    story = build_story(db, session_id, target_s, profile_objectives)
-    session = db.get(RecordingSession, session_id)
-    assert session is not None  # build_story já validou
+    """Plano de montagem e a história de onde ele saiu (o acabamento lê os marcadores dos segmentos).
+
+    Com `project_id`, é o vídeo da série: todas as sessões do projeto, com um alvo só.
+    """
+    sessions = scope_sessions(db, session_id, project_id)
+    story = (
+        build_series_story(db, project_id, target_s, profile_objectives)
+        if project_id is not None
+        else build_story(db, session_id or 0, target_s, profile_objectives)
+    )
     words: dict[int, list[WordSpan]] = {}
     broll: dict[int, list[BrollClip]] = {}
     durations: dict[int, int] = {}
-    for media in session.media_files:
+    for media in (m for s in sessions for m in sorted(s.media_files, key=lambda m: m.ordinal)):
         for event in load_active_events(db, media.id):
             ev = event.evidence
             if event.kind == "fala":

@@ -122,3 +122,29 @@ def test_b1_series_story_rejects_unknown_project(db: Session) -> None:
 
     with pytest.raises(StoryError, match="projeto 9 não existe"):
         build_series_story(db, 9)
+
+
+def test_b1_assemble_series_plan_covers_all_sessions_with_one_target(
+    monkeypatch: pytest.MonkeyPatch, db: Session, settings: Settings
+) -> None:
+    from cronista.assembly import service as assembly_service
+    from cronista.assembly.service import assemble
+    from cronista.montage import SessionPlanError
+    from cronista.story import service
+
+    project = _two_sessions(db)
+    monkeypatch.setattr(
+        service,
+        "load_effective_segments",
+        lambda _db, _media: [Segment(0, 600, "momento", 0.9, ["r"], [], {})],
+    )
+    monkeypatch.setattr(assembly_service, "load_active_events", lambda *_: [])
+    monkeypatch.setattr(
+        assembly_service,
+        "load_source",
+        lambda *_: (_ for _ in ()).throw(SessionPlanError("sem mídia")),
+    )
+    plan, story = assemble(db, None, settings, 60, project_id=project.id)
+    assert plan.v1 and {i.file_id for i in plan.v1} <= {1, 2}
+    assert plan.total_s <= 60 + 1
+    assert [c.number for c in story.chapters] == [1]

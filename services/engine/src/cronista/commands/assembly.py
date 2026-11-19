@@ -99,7 +99,13 @@ def register(app: typer.Typer) -> None:
 
     @app.command("montagem")
     def montagem(
-        session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+        session: Annotated[
+            int | None, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")
+        ] = None,
+        project: Annotated[
+            int | None,
+            typer.Option("--projeto", help="Vídeo da série: todas as sessões do projeto, com um alvo só"),
+        ] = None,
         script: Annotated[Path | None, typer.Option(help="roteiro.json validado")] = None,
         target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
         out: Annotated[
@@ -118,6 +124,9 @@ def register(app: typer.Typer) -> None:
         from cronista.story.script import load_script
         from cronista.story.service import StoryError
 
+        if (session is None) == (project is None):
+            typer.echo("erro: informe a sessão ou --projeto (um dos dois)", err=True)
+            raise typer.Exit(2)
         settings = current_settings()
         setup_logging(settings.log_level)
         try:
@@ -136,6 +145,7 @@ def register(app: typer.Typer) -> None:
                     build_gate(settings),
                     style,
                     library,
+                    project_id=project,
                 )
         except (FileNotFoundError, ValueError, StoryError, SessionPlanError, StageError) as exc:
             typer.echo(f"erro: {exc}", err=True)

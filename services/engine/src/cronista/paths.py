@@ -87,6 +87,11 @@ class SessionPaths:
         return self._sub("export", "stems")
 
 
+def series_package_base(settings: Settings, project_id: int) -> Path:
+    """Base das versões do pacote do vídeo da série: `data/export/montagem/serie-<projeto>`."""
+    return settings.data_dir / "export" / "montagem" / f"serie-{project_id}"
+
+
 def series_story_dir(settings: Settings, project_id: int) -> Path:
     """Pasta do story-pack da série: `data/story/serie-<projeto>` (não colide com o id de uma sessão)."""
     return settings.data_dir / "story" / f"serie-{project_id}"

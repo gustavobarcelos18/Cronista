@@ -84,6 +84,27 @@ def build_series_story(
     return _build(db, project, sessions, target_s, profile_objectives)
 
 
+def scope_sessions(db: Session, session_id: int | None, project_id: int | None) -> list[RecordingSession]:
+    """Sessões do escopo: uma sessão, ou todas as do projeto (vídeo da série), em ordem."""
+    if (session_id is None) == (project_id is None):
+        raise StoryError("informe a sessão ou o projeto (um dos dois)")
+    if project_id is not None:
+        sessions = list(
+            db.scalars(
+                select(RecordingSession)
+                .where(RecordingSession.project_id == project_id)
+                .order_by(RecordingSession.id)
+            )
+        )
+        if not sessions:
+            raise StoryError(f"projeto {project_id} não tem sessões")
+        return sessions
+    session = db.get(RecordingSession, session_id or 0)
+    if session is None:
+        raise StoryError(f"sessão {session_id} não existe (veja `cronista status`)")
+    return [session]
+
+
 def _build(
     db: Session,
     project: Project,

@@ -1100,6 +1100,12 @@ histórico §58).
 
 ## 9. Decisões
 
+> **Guia de leitura (F20, 2026-11-19):** a lista cresce por inclusão, não por data, e os blocos não foram reordenados
+> para não quebrar as referências cruzadas. Ordem cronológica dos blocos: **2026-11-16** (D1–D4; 1B: marcadores, serviço,
+> `GpuGate`, FCPXML mínimo; spike do Resolve, histórico §39; microfone, §41; visão narrativa, §36, §37 e §40);
+> **2026-11-17** (Fase 3B e 3C, §48–§50A; Fases 4 a 6); **2026-11-18** (Fases 7 a 9 e auditoria, §60);
+> **2026-11-19** (Fase 10: §61–§63). O status mais recente de cada pergunta está na tabela "Em aberto", no fim da seção.
+
 **Já decididas:**
 - Glossário aprovado em 2026-11-19, sem unificar o vocabulário de decisões (histórico §61).
 - Sistema universal, sem jogo de calibração específico.

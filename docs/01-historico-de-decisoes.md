@@ -3,6 +3,10 @@
 Registro, em ordem, de cada pergunta feita durante o planejamento (2026-11-12) e da resposta ou decisão tomada.
 O detalhe técnico de cada item está no [plano mestre](00-plano-mestre.md), na seção indicada.
 
+> **Nota de leitura (2026-11-19, F20):** as seções são numeradas por ordem de inclusão e o número nunca muda (os outros
+> documentos o citam). Por isso a data de uma seção pode ser anterior à da anterior (§59 é de 11-17 e vem depois do §58, de
+> 11-18). As decisões da 3C ficam no §50A, separadas do B-roll (§50).
+
 ---
 
 ## 1. Ideia inicial
@@ -1279,6 +1283,13 @@ Em `prod` (SigLIP base, `claude_teste.mp4`): 20 candidatos em ~35 s; buscas "a c
 
 Falta da 3B: conferir B-roll de olho, tipo de menu, `idle`, HUD oculto.
 
+*As decisões da Fase 3C (3C-1 a 3C-4), que ficavam aqui, passaram para o §50A.*
+
+## 50A. Fase 3C: perfis, gabarito visual, OCR do HUD e VLM (2026-11-17)
+
+Estas decisões estavam dentro do §50 (Fase 3B, B-roll) e foram separadas em 2026-11-19 (Fase 10D, F20), sem mudar o texto.
+A numeração fica como estava, para não quebrar as referências "§50" já escritas; o §50A vem logo depois do §50.
+
 **Fase 3C-2, perfis e plugabilidade (2026-11-17):** `cronista/profiles.py` com `GameProfile` (Pydantic; `extra=forbid`): `hud_regions` (retângulo relativo, leitura `text`/`number`/`icon`, `tag_theme`), `thresholds` por grupo (`screen`, `hud`, `idle`, validados contra os campos dos parâmetros do núcleo), `context_labels`, `camera_tools`, `objetivos`, `regras`. Perfil `generico` embutido (não acrescenta nada); `apply_thresholds` devolve cópia dos parâmetros. `profiles/exemplo.yaml` (Minecraft, só dados, valores ilustrativos) e `profiles/profile.schema.json` gerado (`python -m cronista.profiles`). **Teste de plugabilidade:** falha se qualquer módulo do núcleo (exceto `profiles.py` e a CLI) importar `cronista.profiles` ou citar um jogo ou perfil. Ainda **não ligado às etapas** (isso entra com a 3C-3/3C-5, via `Settings.profile`).
 
 **Fase 3C-1, gabarito visual e métricas (2026-11-17):** classe `hud_oculto` no gabarito; `cronista gabarito-ui <sessão> --visual` gera a página com os **candidatos visuais** (menu, loading, idle, hud_oculto) já com miniatura do meio do trecho (confirmar com ✓, corrigir bordas, apagar com ✕, marcar o que faltou); `cronista bench-video-quality <sessão> <gabarito.csv>` imprime por classe anotados, previstos, casados, precisão, revocação, erro médio de bordas, pares dentro da tolerância (padrão 2 s) e falsos a cada 30 min (`video/quality.py`, funções puras). Casamento guloso pelo maior encavalamento. Correções no caminho: `video_idle` não estava em `VIDEO_STAGES` (idle não aparecia no relatório nem nos candidatos); atalhos numéricos do anotador quebravam com 10 classes. **Linha de base ainda não medida:** falta o criador anotar o gabarito visual do `claude_teste.mp4` (28 menus e 1 idle candidatos; nenhum `loading`/`hud_oculto` detectado hoje).
@@ -1452,6 +1463,8 @@ também vale para o contador da Fase 8); (29) `titulos.json` quebrado vira `Titl
 reaproveitado acima de 2 MB avisa de novo.
 
 ## 59. Aviso de capítulos com pouco material no Studio (2026-11-17)
+
+*Ordem: a numeração segue a ordem de inclusão no histórico, não a data; este §59 é de 2026-11-17 e vem depois do §58 (2026-11-18).*
 
 O painel reaproveita a divisão e a estimativa da narrativa sobre os segmentos revisados, em ordem de sessão e arquivo
 por projeto. Capítulos podem atravessar sessões e aparecem no aviso quando têm menos de 30 s de material estimado,

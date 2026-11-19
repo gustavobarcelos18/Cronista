@@ -5,8 +5,7 @@ description: Escreve o roteiro de narração do vídeo a partir do story-pack.js
 
 # /roteirizar
 
-Escreve `roteiro.json` para a sessão. No vídeo da série (`cronista story --projeto N`), "a sessão" é a **sessão
-âncora** (a última do projeto, número impresso pelo comando): use esse número em todos os comandos abaixo. Entrada: `data/<ambiente>/story/<sessão>/story-pack.json` e `voice-profile.json`.
+Escreve `roteiro.json` para a sessão. Entrada: `data/<ambiente>/story/<sessão>/story-pack.json` e `voice-profile.json`.
 
 ## Regras (plano mestre, seções 6.3 e 6.8)
 

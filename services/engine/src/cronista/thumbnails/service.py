@@ -81,7 +81,7 @@ def render_session_thumbnails(
     if problems:
         raise ThumbnailError("; ".join(problems))
     try:
-        masters, notes = load_masters(db, session, project_wide=True)  # a âncora pode ser a de uma série
+        masters, notes = load_masters(db, session)
     except SessionPlanError as exc:
         raise ThumbnailError(str(exc)) from exc
     if texts:

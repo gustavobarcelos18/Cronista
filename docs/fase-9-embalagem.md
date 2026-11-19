@@ -9,7 +9,7 @@ título para o vídeo da série.
 ## Regras que valem para toda a fase
 
 - **Sem facecam, sem IA generativa de imagem, sem voz sintética.** Shorts e thumbnails usam frames e áudio da própria gravação.
-- **Nada do Studio do Resolve:** reenquadramento, legenda e loudness saem do FFmpeg; thumbnails só de FFmpeg (sem Pillow, H §58).
+- **Nada do Studio do Resolve:** reenquadramento, legenda e loudness saem do FFmpeg; thumbnails de FFmpeg/Pillow.
 - **Identidade vem do brand kit** (paleta, fontes, loudness-alvo); nada de cor ou fonte fixa no código.
 - **Texto sem "cara de IA":** títulos e textos de thumbnail passam pela skill `/humanizar`; texto escrito pelo criador sempre
   ganha do sugerido.
@@ -37,7 +37,7 @@ título para o vídeo da série.
 - Aceite: testes das partes puras (legenda, layout, filtros, nome com hash, cancelamento sem arquivo parcial); em `prod`,
   `pytest -m media tests/test_shorts_render.py` e olhar 3 Shorts reais (legenda legível, nada sob a interface, loudness).
 
-### 9B — Thumbnails (`thumbnails/`; puro + só FFmpeg, sem Pillow, H §58)
+### 9B — Thumbnails (`thumbnails/`; puro + FFmpeg/Pillow)
 
 - **Modelo do canal ainda a definir com o criador** (plano 6.7 e "Em aberto" 4): o app entrega o **mecanismo** e um modelo
   declarativo em YAML dentro do brand kit (`thumbnail.yaml`: tamanho 1280×720, posição e tamanho do texto, moldura, selo de dia,

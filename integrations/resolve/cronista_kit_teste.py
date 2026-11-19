@@ -19,9 +19,7 @@ from pathlib import Path
 
 # `KIT_DIR` (variável de ambiente) aponta a pasta do kit; sem ela vale a pasta do repositório, se o script
 # estiver nele. Dentro do Resolve o script é copiado para fora do repositório, então a variável é obrigatória.
-KIT_DIR = Path(
-    os.environ.get("KIT_DIR") or Path(__file__).resolve().parents[2] / "data" / "prod" / "kit-resolve"
-)
+KIT_DIR = Path(os.environ.get("KIT_DIR") or Path(__file__).resolve().parents[2] / "data" / "prod" / "kit-resolve")
 PROJECT = "Cronista-kit-teste"
 RESULTS: list[str] = []
 
@@ -34,7 +32,7 @@ def step(name: str):
             detail = fn()
             RESULTS.append(f"OK      {name}" + (f" -> {detail}" if detail else ""))
             return detail
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - o relatório é o produto
             RESULTS.append(f"FALHOU  {name}: {type(exc).__name__}: {exc}")
             RESULTS.append("        " + traceback.format_exc().strip().splitlines()[-2].strip())
             return None
@@ -44,7 +42,7 @@ def step(name: str):
 
 def get_resolve():
     try:
-        return resolve  # type: ignore[name-defined]  # global injetado pelo console do Resolve
+        return resolve  # noqa: F821 - injetado pelo Resolve quando rodado pelo menu Scripts
     except NameError:
         import DaVinciResolveScript as dvr  # só existe se o Resolve configurou o PYTHONPATH
 
@@ -107,11 +105,7 @@ def main() -> None:
         timeline = state["timeline"]
         results = [
             timeline.AddMarker(frame, color, name, f"nota de {name}", 1, f"{name}|teste")
-            for frame, color, name in (
-                (60, "Blue", "Momento"),
-                (180, "Red", "Morte"),
-                (300, "Green", "Conquista"),
-            )
+            for frame, color, name in ((60, "Blue", "Momento"), (180, "Red", "Morte"), (300, "Green", "Conquista"))
         ]
         return f"AddMarker={results}; lidos={len(timeline.GetMarkers() or {})}"
 
@@ -122,22 +116,11 @@ def main() -> None:
         ok = clip.SetLUT(1, str(KIT_DIR / "teste.cube"))
         return f"SetLUT={ok}"
 
-    for fcpxml in (
-        "01-basico",
-        "02a-titulo",
-        "02b-velocidade",
-        "02c-zoom-keyframes",
-        "02d-transicao",
-        "02e-overlay-alfa",
-        "02f-hevc",
-        "03-audio",
-    ):
+    for fcpxml in ("01-basico", "02a-titulo", "02b-velocidade", "02c-zoom-keyframes", "02d-transicao", "02e-overlay-alfa", "02f-hevc", "03-audio"):
 
         @step(f"importar {fcpxml}.fcpxml (ImportTimelineFromFile)")
         def _(name=fcpxml):
-            timeline = pool.ImportTimelineFromFile(
-                str(KIT_DIR / f"{name}.fcpxml"), {"importSourceClips": True}
-            )
+            timeline = pool.ImportTimelineFromFile(str(KIT_DIR / f"{name}.fcpxml"), {"importSourceClips": True})
             if not timeline:
                 raise RuntimeError("devolveu None: o Resolve recusou o arquivo (veja o console do Resolve)")
             tracks = {k: timeline.GetTrackCount(k) for k in ("video", "audio")}
@@ -146,9 +129,7 @@ def main() -> None:
     @step("importar legenda SRT na timeline atual")
     def _():
         ok = pool.ImportMedia([{"FilePath": str(KIT_DIR / "roteiro.srt")}])
-        return (
-            f"ImportMedia(srt)={bool(ok)} (o Resolve trata SRT como item de legenda; conferir na página Edit)"
-        )
+        return f"ImportMedia(srt)={bool(ok)} (o Resolve trata SRT como item de legenda; conferir na página Edit)"
 
     finish()
 

@@ -116,25 +116,6 @@ def _place(
     return None, None
 
 
-def _reconcile_segment_id(
-    segment_id: str, segments: Mapping[str, tuple[float, float, Sequence[tuple[float, float]]]]
-) -> str | None:
-    """Acha o segmento atual que contém o início do id antigo (`arquivo:início_s`), no mesmo arquivo.
-
-    O id muda quando a relevância é recalculada e a janela se desloca (B15); a fala continua valendo se o
-    ponto onde ela estava ainda cai dentro de um segmento do mesmo arquivo.
-    """
-    file_part, _, start_part = segment_id.partition(":")
-    try:
-        old_start = float(start_part)
-    except ValueError:
-        return None
-    for sid, (start, end, _gaps) in segments.items():
-        if sid.partition(":")[0] == file_part and start <= old_start < end:
-            return sid
-    return None
-
-
 def validate_script(
     script: Script,
     segments: Mapping[str, tuple[float, float, Sequence[tuple[float, float]]]],
@@ -153,12 +134,8 @@ def validate_script(
     for n, line in enumerate(script.lines, start=1):
         label = f"fala {n} ({line.segment_id})"
         if line.segment_id not in segments:
-            moved = _reconcile_segment_id(line.segment_id, segments)
-            if moved is None:
-                report.errors.append(f"{label}: segmento inexistente (roteiro órfão: a relevância mudou?)")
-                continue
-            report.warnings.append(f"{label}: segmento mudou de janela; fala religada a {moved}")
-            line = line.model_copy(update={"segment_id": moved})
+            report.errors.append(f"{label}: segmento inexistente")
+            continue
         if line.kind == "antecipacao" and not (line.justification and line.justification.strip()):
             report.errors.append(f"{label}: antecipação precisa de justificativa")
             continue

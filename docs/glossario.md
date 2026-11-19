@@ -1,7 +1,7 @@
 # Glossário do Cronista
 
-**Status: aprovado pelo criador em 2026-11-19 (10B, T4), com uma ressalva:** o vocabulário de decisões **não** será unificado
-agora (ver a linha "Decisões"). O CLAUDE.md e o plano mestre citam este glossário. A auditoria de 2026-11-18 achou termos sobrecarregados (ver `docs/auditoria/T-transversal.md`); cada linha abaixo
+**Status: proposta (10B, T4), aguardando aprovação do criador.** Depois de aprovado, o CLAUDE.md e o plano mestre passam
+a citá-lo. A auditoria de 2026-11-18 achou termos sobrecarregados (ver `docs/auditoria/T-transversal.md`); cada linha abaixo
 fixa um sentido só. Mudanças de nome **internas** (constantes, enums, docstrings) vão na 10C; as **públicas** (comandos da
 CLI, valores gravados no banco) só com alias ou migração, nunca quebrando dados já salvos.
 
@@ -16,7 +16,7 @@ CLI, valores gravados no banco) só com alias ou migração, nunca quebrando dad
 | Perfil | **perfil de jogo**, **perfil de voz**, **ambiente** | Perfil de jogo = YAML em `profiles/`. Perfil de voz = `voice-profile.json`. Ambiente = `dev`/`prod`. |
 | Studio | **Studio**, **Resolve Studio** | **Studio** = o app (Next.js). **Resolve Studio** = a versão paga do DaVinci, sempre por extenso. |
 | EDL × plano | **EDL**, **plano de montagem** | EDL = só o formato CMX. O plano interno (`edit_plan`) é o plano de montagem. |
-| Decisões | três vocabulários, por tela | **Aprovado como está, sem unificar** (a unificação exigiria migração de dados; fica como possibilidade sem urgência). Alvo descartado por ora: `aceito` / `rejeitado` / `ajustado` / `padrao`. Hoje: `aprovado`/`rejeitado` (Shorts), `aceito`/`removido` (acabamento), `aceito`/`rejeitado`/`ajustado` (segmentos). Exige migração Alembic de dados e aceite dos valores antigos na leitura. |
+| Decisões | `aceito` / `rejeitado` / `ajustado` / `padrao` | Um vocabulário só. Hoje: `aprovado`/`rejeitado` (Shorts), `aceito`/`removido` (acabamento), `aceito`/`rejeitado`/`ajustado` (segmentos). Exige migração Alembic de dados e aceite dos valores antigos na leitura. |
 | Comandos da CLI | `<objeto>-<verbo>` | Objeto no plural (`shorts-decidir`, `titulos-escolher`, `thumbnails-escolher`), com alias para os nomes atuais. `export` fica deprecado em favor de `montagem` (§60). |
 
 ## Mapa de nomes atuais

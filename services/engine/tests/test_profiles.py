@@ -81,16 +81,7 @@ def test_versioned_profile_schema_is_up_to_date() -> None:
 
 def test_core_never_imports_or_names_a_profile() -> None:
     """Plugabilidade: acrescentar um perfil não toca o núcleo. Só `profiles.py` (e a CLI) conhecem perfis."""
-    allowed = {
-        "profiles.py",
-        "cli.py",
-        "common.py",
-        "narrative.py",
-        "devtools.py",
-        "capture.py",
-        "assembly.py",
-        "packaging.py",
-    }
+    allowed = {"profiles.py", "cli.py"}
     import_re = re.compile(
         r"^\s*(from|import)\s+cronista\.profiles\b|^\s*from\s+cronista\s+import\s+.*\bprofiles\b", re.M
     )

@@ -89,7 +89,6 @@ ignore_missing_imports = true  # sem tipos publicados
 
 [tool.ruff.lint.per-file-ignores]
 "src/cronista/devtools/resolve_kit.py" = ["E501"]  # modelos de FCPXML: quebrar a linha estraga a leitura
-"../../integrations/**" = ["E501", "RUF002"]  # scripts de spike para `prod`: mensagens longas e texto em pt-BR
 "src/cronista/audio/report.py" = ["E501"]  # modelos de HTML/SVG: quebrar a linha estraga a leitura
 
 # Ambiente de ML da Fase 2B (só `prod`): `uv sync --group ml`. Fora do `uv sync` padrão, então a CI e o `dev`

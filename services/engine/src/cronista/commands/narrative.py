@@ -144,7 +144,7 @@ def register(app: typer.Typer) -> None:
         )
         if project is not None:
             typer.echo(
-                f"vídeo da série: o pacote mora na sessão âncora {anchor_id} (a última do projeto); "
+                f"vídeo da série: o pacote mora na sessão âncora {anchor_id} (a primeira do projeto); "
                 "use esse número em roteiro-import, titulos, thumbnails e shorts"
             )
         typer.echo(f"{pack_path}\n{voice_path}\nAgora rode /roteirizar no Claude Code com este pacote.")

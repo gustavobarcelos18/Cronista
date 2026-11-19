@@ -45,7 +45,7 @@ pelos testes de regressão da 10A/10C. **Ainda não rodado:** `next build` e o C
 passaram aqui). Próxima: 10F (narrativa por série).
 
 **Andamento da 10F (2026-11-19): feita** (B1, B15; B2 já estava na 10A). O vídeo da série mora na **sessão âncora**
-(a última do projeto; histórico §62), então todos os comandos por sessão funcionam passando o id dela.
+(a primeira do projeto; histórico §62 e §66), então todos os comandos por sessão funcionam passando o id dela.
 - `build_series_story(project_id)`: todas as sessões, um alvo só, dia contínuo entre sessões.
 - `cronista story --projeto N`: grava o pacote na pasta da sessão âncora e imprime o número dela.
 - `cronista montagem --projeto N` (pacote em `data/export/montagem/serie-<projeto>`, FCPXML `serie-N-vK`) e

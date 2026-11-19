@@ -86,19 +86,23 @@ def _effective_with_origin(db: Session, media_id: int) -> list[tuple[int, Segmen
     out: list[tuple[int, Segment]] = []
     for seg in load_segments(db, media_id):
         d = decision_for(decisions, seg)
-        if d is None or d.decision == "aceito":
+        if d is None:
             out.append((seg.start_s, seg))
+        elif d.decision == "aceito":
+            out.append((seg.start_s, replace(seg, aceito=True)))
         elif d.decision == "ajustado" and d.start_s is not None and d.end_s is not None:
             start, end = round(d.start_s), round(d.end_s)
             if end > start:
-                out.append((seg.start_s, replace(seg, start_s=start, end_s=end)))
+                out.append((seg.start_s, replace(seg, start_s=start, end_s=end, aceito=True)))
     return out
 
 
 def load_effective_segments(db: Session, media_id: int) -> list[Segment]:
     """Segmentos da relevância com as decisões do criador aplicadas (usado por roteiro, montagem e Shorts).
 
-    `rejeitado` tira o trecho; `ajustado` troca os limites (ao segundo); `aceito` e sem decisão ficam.
+    `rejeitado` tira o trecho; `ajustado` troca os limites (ao segundo);
+    `aceito` e `ajustado` forçam a inclusão (`Segment.aceito`), mesmo com nota baixa e sem marcador;
+    sem decisão, vale a regra normal.
     Decisão tomada para outra janela do segmento (relevância recalculada) é ignorada.
     """
     return sorted((seg for _, seg in _effective_with_origin(db, media_id)), key=lambda s: s.start_s)

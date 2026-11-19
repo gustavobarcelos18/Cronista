@@ -164,7 +164,9 @@ def _segment_out(seg: Segment, row: SegmentDecision | None, threshold: float) ->
         razoes=seg.razoes,
         markers=seg.markers,
         features=seg.features,
-        kept=is_kept(seg, threshold) and decision != "rejeitado" and valid_window,
+        kept=(decision in ("aceito", "ajustado") or is_kept(seg, threshold))
+        and decision != "rejeitado"
+        and valid_window,
         decision=decision,
         adj_start_s=start,
         adj_end_s=end,

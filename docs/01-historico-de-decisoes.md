@@ -1511,7 +1511,7 @@ porque exigiria migração de dados; fica como possibilidade sem urgência. Em c
 
 ## 62. Vídeo da série na sessão âncora (2026-11-19)
 
-Para a 10F sem tabela nova nem migração, o vídeo único da série é ancorado na **última sessão do projeto**
+Para a 10F sem tabela nova nem migração, o vídeo único da série é ancorado na ~~**última sessão do projeto**~~ [SUBSTITUÍDA por H §66, 2026-11-19: agora é a **primeira**]
 (`anchor_session`). `cronista story --projeto N` grava o story-pack na pasta dela; roteiro, títulos, thumbnails, Shorts
 e publicação seguem como comandos por sessão, chamados com o número da âncora. Montagem e acabamento ganham
 `--projeto N` (alvo único, dias contínuos), e o Studio/API aceitam `serie=true` na sessão âncora. Contrapartida: rodar
@@ -1570,6 +1570,21 @@ O `/code-review` da branch achou 10 pontos; 4 foram confirmados e corrigidos, ca
 Os demais achados não procedem: a chave dos Shorts é a decisão D4 (§60) e as thumbnails do projeto todo são a correção da
 10F (§62). Não foram tratados: `pipe_raw` com bloco parcial, `session_id or 0` repetido e listas mutáveis em `ExportStatus`
 (sem falha hoje); o painel de embalagem que engole manifesto corrompido ficou **sem verificar**.
+
+## 66. Segunda revisão de código da Fase 10: âncora fixa e outros 3 achados (2026-11-19)
+
+O `/code-review` (nível high) achou 10 pontos; os 4 mais graves foram corrigidos, cada um com teste (`test_correcoes_review_10.py`):
+- **Sessão âncora = a primeira do projeto** (antes, a última). Com a última, gravar uma sessão nova mudava a âncora e
+  roteiro, títulos e decisões "sumiam" na sessão antiga (era o limite conhecido do §62). A primeira não muda quando
+  entram sessões novas. Quem já tinha pacote da série na última sessão precisa regerar ou copiar para a primeira.
+- **Shorts do vídeo da série:** `shorts` e `shorts-render` ganham `--projeto-todo` (passe a sessão âncora) e usam as
+  gravações do projeto inteiro. Sem a flag, continuam por sessão.
+- **`aceito`/`ajustado` forçam o trecho** (`Segment.aceito`; `is_kept` devolve verdadeiro), mesmo com nota baixa e sem
+  marcador. Antes, aceitar um trecho de nota baixa não tinha efeito no vídeo.
+- **Overrides do perfil mantêm o tipo do campo** (`max_s: 120` virava `120.0` e quebrava o fatiamento da segmentação).
+
+Os outros 6 achados (manifesto de thumbnail malformado, quadro do asset OTIO, perfil sobrepondo a calibração aceita,
+arredondamento do status do painel, marcador na divisão do `novo_dia`, custo do truncamento do pacote) **seguem abertos**.
 
 ## Decisões em aberto
 

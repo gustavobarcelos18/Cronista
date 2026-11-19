@@ -47,7 +47,7 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
     def video_session(db: Session, session_id: int, series: bool) -> RecordingSession:
         session = ctx.require_session(db, session_id)
         if series and anchor_session(db, session.project_id).id != session_id:
-            raise HTTPException(422, "no vídeo da série use a sessão âncora (a última do projeto)")
+            raise HTTPException(422, "no vídeo da série use a sessão âncora (a primeira do projeto)")
         return session
 
     @router.get("/sessions/{session_id}/export", response_model=ExportStatus)

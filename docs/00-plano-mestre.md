@@ -1101,6 +1101,7 @@ histórico §58).
 ## 9. Decisões
 
 **Já decididas:**
+- Glossário aprovado em 2026-11-19, sem unificar o vocabulário de decisões (histórico §61).
 - Sistema universal, sem jogo de calibração específico.
 - Só a voz do criador nas gravações.
 - Nome "Cronista" mantido (o nome não é prioridade).

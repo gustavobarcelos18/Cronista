@@ -1489,6 +1489,13 @@ O que substitui o quê:
 
 Detalhes, local de cada achado e critérios de aceite estão nos planos.
 
+## 61. Glossário aprovado (2026-11-19)
+
+O criador aprovou `docs/glossario.md` (termos: Studio × Resolve Studio, faixa × trilha, segmento × trecho, os três
+sentidos de "pacote", perfil de jogo/voz/ambiente). Ressalva: o vocabulário de decisões **não** será unificado agora
+(`aprovado`/`rejeitado` nos Shorts, `aceito`/`removido` no acabamento, `aceito`/`rejeitado`/`ajustado` nos segmentos),
+porque exigiria migração de dados; fica como possibilidade sem urgência. Em conflito de vocabulário, vale o glossário.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

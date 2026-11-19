@@ -185,3 +185,17 @@ def test_conclusao_exige_duas_palavras_do_objetivo() -> None:
     extractor = RuleExtractor(["construir a casa grande"])
     assert extractor.extract([fala("consegui um diamante grande")]) == []
     assert len(extractor.extract([fala("consegui construir a casa")])) == 1
+
+
+def test_roteiro_religa_fala_quando_a_janela_se_desloca_b15() -> None:
+    from cronista.story.models import Script, ScriptLine
+
+    segments = {"1:100": (100.0, 130.0, [(100.0, 130.0)])}
+    moved = Script(lines=[ScriptLine(segment_id="1:110", text="Aqui muda tudo")])
+    report = validate_script(moved, segments)
+    assert report.ok and report.lines[0].segment_id == "1:100"
+    assert any("religada" in w for w in report.warnings)
+
+    orphan = Script(lines=[ScriptLine(segment_id="1:500", text="Fala sem segmento")])
+    report = validate_script(orphan, segments)
+    assert not report.ok and "órfão" in report.errors[0]

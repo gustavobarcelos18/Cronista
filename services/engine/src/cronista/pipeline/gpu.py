@@ -12,6 +12,8 @@ from typing import Any, Protocol
 
 from cronista.logging_setup import log_event
 
+OBS_RECORDING_REASON = "OBS gravando"  # motivo de `ObsRecordingGate`; o serviço de observação o lê (A13)
+
 
 class GpuGate(Protocol):
     def is_free(self) -> bool:

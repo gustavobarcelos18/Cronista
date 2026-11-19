@@ -1265,13 +1265,45 @@ alterar a ordem do roadmap.
 tarefa 7 da 1B (tempo em quadros, lacuna 1) está feita na branch `fase/1b-quadros` (histórico §38), a integrar.
 1C pendente (PC de casa). A Fase 2 só começa com 1B e 1C cumpridas.
 
-**Em aberto:**
+**Em aberto** (tabela de 2026-11-19, Fase 10D, F12; revisada ao fim de cada fase). Status: *Decidida*, *Parcial*, *Aberta*,
+*Superada*. A lista original, com o texto integral, fica logo abaixo e **está substituída por esta tabela**. Referências
+"H §N" são seções do [histórico](01-historico-de-decisoes.md). Os status vêm do texto já registrado nos documentos; onde
+não havia decisão registrada, o item consta como *Aberta*.
 
-*Revisão de 2026-11-19 (Fase 10D, F12):* já decididos, apenas com o texto abaixo ainda sem riscar: o item 1 em parte
-(o spike do Resolve respondeu o FCPXML e os marcadores, §6.5 e H §39; restam decodificação por GPU, HEVC e tempo de
-render, em `prod`); o item 7 "Contratos via OpenAPI" (decidido em D2: Pydantic → JSON Schema → TypeScript); Shorts de
-608 px (H §58-3); "cobrir sessão ou trechos" (H §53). Sem dono ainda: `cronista render` (não implementado). O
-formato definitivo é uma tabela (id, pergunta, fase-prazo, status), revisada ao fim de cada fase.
+| Id | Pergunta | Prazo | Status | Onde |
+|---|---|---|---|---|
+| EA-1 | Decodificação por GPU, HEVC e tempo de render no Resolve gratuito (seção 6.5). FCPXML e marcadores já respondidos | `prod` | Parcial | H §39; seção 6.5 |
+| EA-2 | FIFINE SC3 como dispositivo de marcação | — | Decidida: descartada | H §39; seção 4 |
+| EA-3 | Gravar a gameplay de teste (~30 min) e anotar o gabarito | `prod` (1C, Fase 2) | Aberta | `docs/gabarito.md` |
+| EA-4 | Layout do modelo de thumbnail do canal | antes de usar a 9B em série real | Aberta (criador) | H §58; seção 6.7 |
+| EA-5 | Identidade visual e sonora do canal (paleta, fontes, vinheta, sons recorrentes) | antes da série real | Aberta (criador); o brand kit (Fase 8) já recebe os valores | seção 6.4 |
+| EA-6 | Quem cria o marcador com tipo e dia no OBS | — | Decidida: programa ao lado do OBS (opção A) | H §20, §31; seção 4 |
+| EA-7 | Fase 1.5 só com marcadores; dividir a Fase 1; D1–D3 | — | Decidida (não criar; 1A/1B/1C) | H §18, §19 |
+| EA-8 | Contratos via OpenAPI | — | Decidida: Pydantic → JSON Schema → TypeScript (D2) | H §26; CLAUDE.md |
+| EA-9 | Gabarito com dois gêneros; critérios de aceite sem número ("WER aceitável", "alta precisão", "top de candidatos") | Fase 10D (F18) | Aberta | H §18, §21; `docs/gabarito.md` |
+| EA-10 | Backup e política do PC do trabalho | sem fase | Parcial: backup do que é pequeno decidido; política e `StorageBackend` sem fase | seção 5.6 |
+| EA-11 | Retenção × relink: liberar os masters quebra o projeto do Resolve | sem fase | Aberta | seção 5.6 |
+| EA-12 | Termos de uso do `claude -p` automatizado; licenças dos modelos; macros do Fusion | antes de automatizar | Aberta (Remotion: decidido não usar) | H §18, §57; fase 8 |
+| EA-13 | Faixa 2 com "Captura de áudio de aplicativo" no OBS (hoje o áudio do desktop pega notificações, Discord, música) | `prod` | Aberta | H §19 |
+| EA-14 | Pausar pela carga da GPU ou por tela cheia: qual vale com os jogos da série | `prod` (1C) | Parcial: os dois existem, padrão OBS + tela cheia | H §33 |
+| EA-15 | Importar o teste também como `.otio` no spike | — | Superada: o FCPXML é escrito à mão (H §39) | H §39 |
+| EA-16 | Construção aberta em `Construção ▶` continua na sessão seguinte (dia que atravessa sessões)? | `prod` (uso real) | Aberta; dentro da sessão já é tratada | H §21, §31 |
+| EA-17 | Fala ao vivo num trecho de farm que vira timelapse: descartar, cortar normal ou manter por cima? | antes de usar o timelapse em série real | Aberta (sem decisão registrada) | seção 6.4; fase 6 |
+| EA-18 | Fases 7 e 9 dependem de uma série inteira gravada (~25 h) e de um vídeo publicado | `prod` | Em andamento: código mergeado; falta uso real | seção 7 |
+| EA-19 | Voice Isolation e Dialogue Leveler do Fairlight são exclusivos do Studio? (a seção 6.5 diz "Fairlight completo" com ✅) | `prod` | Aberta: conferir antes de afirmar "Fairlight completo" | seção 6.5; H §21 |
+| EA-20 | Copiar o `README.txt` do Resolve para `docs/referencias/` é seguro se o repositório for público? | antes de tornar o repositório público | Aberta (criador) | H §21 |
+| EA-21 | Marcar `novo_dia` e os tipos com teclado de 60% (sem F13–F24), com uma ou duas teclas | vencido: "antes da Fase 3", que já foi mergeada | Aberta; hoje só a tecla nativa do OBS, sem tipo | H §41 |
+| EA-22 | Para que serve o mix com RNNoise (`MIC_RAW`) | — | Decidida: fonte única `MIC`, com RNNoise, nas faixas 1 e 3 | H §41 |
+| EA-23 | Saber que o toque foi registrado com o jogo em tela cheia; programa de marcadores fechado | `prod` (1C) | Parcial: som por tipo, aviso de toque perdido e reassunção do diário; falta teste em tela cheia e com o programa fechado | H §31 |
+| EA-24 | Marcador que existe só no arquivo e não no diário | — | Decidida: `Momento` com aviso | seção 4 |
+| EA-25 | `Cinemática` e `Foto de progresso`: a tomada é antes ou depois do toque? (lookback) | — | Parcial: lookback por tipo e ajustável pelo perfil (25/20/30 s); conferir os dois tipos | H §22, §51, §60 |
+| EA-26 | Ducking do jogo sob a narração: pré-aplicado pelo app ou deixado para o Fairlight | confirmar com o criador | Decidida como padrão (pré-aplicado, seção 6.4); falta a confirmação do criador | seção 6.4; Fase 6 |
+| EA-27 | Origem dos arquivos para as métricas de ritmo de criadores de referência (baixar do YouTube fere os termos de uso) | sem fase | Aberta | H §22; seção 6 |
+| EA-28 | `cronista render`, mídia intermediária DNxHR, extração das métricas de ritmo, `StorageBackend` e retenção sem fase definida | sem fase | Aberta (`render` não implementado) | H §22; seção 6.5 |
+| EA-29 | Direção dos contratos; ferramenta do gabarito (D2, D3) | — | Decidida (Pydantic → JSON Schema → TypeScript; CSV + script) | H §26 |
+| EA-30 | Marcador por áudio da FIFINE no pad do microfone (iria para a trilha A2) | — | Decidida: sai da lista com a FIFINE (EA-2) | H §22, §39 |
+
+**Lista original (substituída pela tabela acima, mantida como registro):**
 
 1. Verificar na prática os itens ☑️/⚠️ da seção 6.5 (FCPXML, scripts, decodificação por GPU, HEVC e tempo de render),
    com o Resolve instalado no PC de casa. Os limites gerais do gratuito já foram confirmados pela pesquisa do criador.

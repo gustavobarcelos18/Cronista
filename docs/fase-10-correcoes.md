@@ -82,8 +82,7 @@ de sessão fora de `paths.py`.
 (tabela de status única em plano mestre §7, com ponteiros nas fases 1 a 3, no README e no cabeçalho do plano); F1, F3, F4,
 F6, F7, F8 e F9 marcados como substituídos onde ainda apareciam como vigentes; F13 (`render` marcado "não implementado",
 nomes de comandos e gabarito corrigidos) e F21; F14 (árvore da 5.5 conforme o código, a antiga mantida e marcada);
-README com setup; C17. Glossário aprovado e citado no CLAUDE.md, README e plano mestre (F17). **Falta:** "Em aberto" como tabela e
-revisão dos ⚠️ (F12, F18, só uma nota por enquanto); redundância (seção 4 da auditoria) e reordenar o histórico (F20);
+README com setup; C17. Glossário aprovado e citado no CLAUDE.md, README e plano mestre (F17). **F12 feito (2026-11-19):** "Em aberto" virou tabela (EA-1 a EA-30) no plano mestre §9. **Falta:** revisão dos ⚠️ (F18); redundância (seção 4 da auditoria) e reordenar o histórico (F20);
 D14 (decidido: fora de escopo, H §63); árvore e comandos gerados por script (F14, anexo).
 
 - Aprovar e publicar `docs/glossario.md`; citá-lo no CLAUDE.md e no plano mestre.

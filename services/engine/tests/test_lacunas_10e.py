@@ -148,3 +148,12 @@ def test_b1_assemble_series_plan_covers_all_sessions_with_one_target(
     assert plan.v1 and {i.file_id for i in plan.v1} <= {1, 2}
     assert plan.total_s <= 60 + 1
     assert [c.number for c in story.chapters] == [1]
+
+
+def test_b1_reexport_jobs_keep_session_and_series_status_apart(settings: Settings) -> None:
+    from cronista.review.reexport import ReexportJobs
+
+    jobs = ReexportJobs(settings)
+    jobs._status[(3, True)] = jobs.status(3, True).model_copy(update={"state": "done"})
+    assert jobs.status(3, True).state == "done"
+    assert jobs.status(3).state == "idle"  # o vídeo da série não sobrescreve o estado da sessão

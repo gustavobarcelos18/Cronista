@@ -192,7 +192,7 @@ def test_api_reexport_estados(settings: Settings, db: Session, monkeypatch: pyte
     gate, calls = threading.Event(), []
 
     def fake_export(
-        _db: object, session_id: int, _s: object, script: object, target_s: float, *_a: object
+        _db: object, session_id: int, _s: object, script: object, target_s: float, *_a: object, **_k: object
     ) -> SimpleNamespace:
         calls.append((session_id, script, target_s))
         gate.wait(5)

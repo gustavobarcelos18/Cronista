@@ -45,40 +45,55 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
     router = APIRouter()
 
     @router.get("/sessions/{session_id}/export", response_model=ExportStatus)
-    def export_status(session_id: int) -> ExportStatus:
-        return ctx.jobs.status(session_id)
+    def export_status(session_id: int, serie: bool = Query(False)) -> ExportStatus:
+        return ctx.jobs.status(session_id, serie)
 
     @router.post("/sessions/{session_id}/export", response_model=ExportStatus, status_code=202)
-    def start_export(session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)) -> ExportStatus:
-        """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou."""
+    def start_export(
+        session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240), serie: bool = Query(False)
+    ) -> ExportStatus:
+        """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou.
+
+        Com `serie=true`, `session_id` é a sessão âncora e o vídeo cobre todas as sessões do projeto.
+        """
         with ctx.connect() as db:
             if db.get(RecordingSession, session_id) is None:
                 raise HTTPException(404, "sessão não encontrada")
-        if not ctx.jobs.start(session_id, target_min * 60):
+        if not ctx.jobs.start(session_id, target_min * 60, serie):
             raise HTTPException(409, "já há uma exportação em andamento")
-        return ctx.jobs.status(session_id)
+        return ctx.jobs.status(session_id, serie)
 
-    assembly_cache: dict[tuple[int, float], tuple[tuple[int, ...], EditPlan, StoryResult]] = {}
+    assembly_cache: dict[tuple[int, float, bool], tuple[tuple[int, ...], EditPlan, StoryResult]] = {}
     assembly_lock = threading.Lock()
 
     def _finish_plan(
-        db: Session, session_id: int, target_s: float, style: ResolvedStyle, library: Library | None
+        db: Session,
+        session_id: int,
+        target_s: float,
+        style: ResolvedStyle,
+        library: Library | None,
+        series: bool = False,
     ) -> FinishPlan:
         """Plano de acabamento da sessão. A montagem (história + cortes) é cara e só muda quando o banco muda:
         fica em cache por sessão e alvo, com a impressão digital das tabelas que a alimentam."""
         objectives = ctx.profile_loader() if ctx.profile_loader else ([], [])
-        key, fingerprint = (session_id, target_s), assembly_fingerprint(db, session_id)
+        session = db.get(RecordingSession, session_id)
+        project_id = session.project_id if session is not None and series else None
+        scope_session = None if series else session_id
+        key, fingerprint = (session_id, target_s, series), assembly_fingerprint(db, session_id, series)
         with assembly_lock:
             hit = assembly_cache.get(key)
         if hit is not None and hit[0] == fingerprint:
             assembled = (hit[1], hit[2])
         else:
-            assembled = assemble(db, session_id, ctx.settings, target_s, objectives)
+            assembled = assemble(db, scope_session, ctx.settings, target_s, objectives, None, project_id)
             with assembly_lock:
                 if len(assembly_cache) >= MAX_CACHED_ASSEMBLIES:
                     assembly_cache.pop(next(iter(assembly_cache)))
                 assembly_cache[key] = (fingerprint, *assembled)
-        return build_finishing(db, session_id, ctx.settings, style, library, target_s, objectives, assembled)
+        return build_finishing(
+            db, scope_session, ctx.settings, style, library, target_s, objectives, assembled, project_id
+        )
 
     def _effect_rows(
         base: ResolvedStyle, overrides: dict[EffectKind, EffectPolicy]
@@ -97,7 +112,7 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
 
     @router.get("/sessions/{session_id}/finishing", response_model=FinishingOut)
     def finishing_preview(
-        session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)
+        session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240), serie: bool = Query(False)
     ) -> FinishingOut:
         """Prévia do acabamento: o que o plano aplicaria em cada momento, com seus ajustes e decisões."""
         loaded = ctx.finishing_loader() if ctx.finishing_loader else None
@@ -112,7 +127,7 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
             decisions = current_item_decisions(db, session_id)
             style = with_overrides(base, overrides)
             try:
-                plan = _finish_plan(db, session_id, target_min * 60, style, library)
+                plan = _finish_plan(db, session_id, target_min * 60, style, library, serie)
             except (StoryError, SessionPlanError) as exc:
                 raise HTTPException(409, str(exc)) from exc
             effective = {decision_key(i): i.mode for i in apply_decisions(plan, decisions).items}
@@ -164,6 +179,7 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
         item_id: str,
         body: FinishDecisionIn,
         target_min: float = Query(TARGET_MIN, gt=0, le=240),
+        serie: bool = Query(False),
     ) -> FinishDecisionIn:
         """Aceita uma sugestão (vira editável), tira um efeito ou volta ao padrão. Só insere.
 
@@ -179,7 +195,7 @@ def finishing_router(ctx: ApiContext) -> APIRouter:
                 raise HTTPException(404, "sessão não encontrada")
             style = with_overrides(loaded[0], current_settings(db, session.project_id))
             try:
-                plan = _finish_plan(db, session_id, target_min * 60, style, loaded[1])
+                plan = _finish_plan(db, session_id, target_min * 60, style, loaded[1], serie)
             except (StoryError, SessionPlanError) as exc:
                 raise HTTPException(409, str(exc)) from exc
             item = next((i for i in plan.items if i.id == item_id), None)

@@ -30,7 +30,7 @@ from cronista.finishing.plan import (
     build_finish_plan,
 )
 from cronista.story.arc import Chapter
-from cronista.story.service import DEFAULT_TARGET_S, StoryResult
+from cronista.story.service import DEFAULT_TARGET_S, StoryResult, scope_sessions
 
 
 def marker_kinds_by_segment(chapters: Sequence[Chapter]) -> dict[str, frozenset[str]]:
@@ -118,36 +118,45 @@ def finish_from_edit_plan(
 
 def build_finishing(
     db: Session,
-    session_id: int,
+    session_id: int | None,
     settings: Settings,
     style: ResolvedStyle,
     library: Library | None = None,
     target_s: float = DEFAULT_TARGET_S,
     profile_objectives: tuple[list[str], list[str]] = ([], []),
     assembled: tuple[EditPlan, StoryResult] | None = None,
+    project_id: int | None = None,
 ) -> FinishPlan:
-    """`assembled` reaproveita uma montagem já feita (a prévia do Studio guarda uma por sessão e alvo)."""
-    plan, story = assembled or assemble(db, session_id, settings, target_s, profile_objectives)
+    """`assembled` reaproveita uma montagem já feita (a prévia do Studio guarda uma por sessão e alvo).
+
+    Com `project_id`, é o acabamento do vídeo da série (todas as sessões do projeto).
+    """
+    plan, story = assembled or assemble(
+        db, session_id, settings, target_s, profile_objectives, None, project_id
+    )
+    ids = [s.id for s in scope_sessions(db, session_id, project_id)]
     return finish_from_edit_plan(
-        plan, marker_kinds_by_segment(story.chapters), style, library, marker_peaks(db, session_id)
+        plan, marker_kinds_by_segment(story.chapters), style, library, marker_peaks(db, ids)
     )
 
 
-def write_finish_plan(plan: FinishPlan, directory: Path, session_id: int) -> Path:
+def write_finish_plan(plan: FinishPlan, directory: Path, session_id: int | str) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"acabamento-{session_id}.json"
     path.write_text(plan.to_json(), encoding="utf-8")
     return path
 
 
-def assembly_fingerprint(db: Session, session_id: int) -> tuple[int, ...]:
+def assembly_fingerprint(db: Session, session_id: int, series: bool = False) -> tuple[int, ...]:
     """Muda sempre que algo que alimenta a montagem muda (eventos, artefatos, marcadores, decisões...).
 
     Essas tabelas só crescem ou são reescritas com ids novos, então o maior id e a contagem bastam. É a
     chave de cache da montagem na prévia do Studio, que senão refaria a história a cada clique.
     """
     session = db.get(RecordingSession, session_id)
-    media_ids = [m.id for m in session.media_files] if session else []
+    sessions = list(session.project.sessions) if session and series else [session] if session else []
+    session_ids = [s.id for s in sessions]
+    media_ids = [m.id for s in sessions for m in s.media_files]
 
     def stat(column: InstrumentedAttribute[int], condition: ColumnElement[bool]) -> tuple[int, int]:
         top, count = db.execute(select(func.max(column), func.count()).where(condition)).one()
@@ -156,8 +165,8 @@ def assembly_fingerprint(db: Session, session_id: int) -> tuple[int, ...]:
     parts = (
         stat(Event.id, Event.media_file_id.in_(media_ids)),
         stat(Artifact.id, Artifact.media_file_id.in_(media_ids)),
-        stat(Marker.id, Marker.session_id == session_id),
+        stat(Marker.id, Marker.session_id.in_(session_ids)),
         stat(SegmentDecision.id, SegmentDecision.media_file_id.in_(media_ids)),
-        stat(NarrativeEvent.id, NarrativeEvent.session_id == session_id),
+        stat(NarrativeEvent.id, NarrativeEvent.session_id.in_(session_ids)),
     )
     return tuple(n for pair in parts for n in pair)

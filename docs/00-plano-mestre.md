@@ -1208,9 +1208,9 @@ histórico §58).
 - Primeira sessão do projeto sem `Novo dia`: abre um dia implícito no início, sem número.
 - Marcadores na ingestão: passo idempotente da sessão (não etapa com cache por arquivo); `Construção ▶/■` pareada pela ordem dos toques, com `■` sintético se ficar aberta; dia implícito como marcador sintético (histórico §28).
 - **Auditoria de 2026-11-18 e Fase 10 de correções (histórico §60; planos em `docs/auditoria/`):**
-  - **Lacuna registrada:** narrativa, montagem, acabamento e títulos ainda trabalham **por sessão** (alvo inteiro em
-    cada sessão). Isso contradiz a seção 4.1 até a sub-etapa 10F, que implementa a história por série (`build_series_story`,
-    alvo único, dias contínuos entre sessões).
+  - ~~**Lacuna registrada:** narrativa, montagem, acabamento e títulos trabalham **por sessão** (alvo inteiro em
+    cada sessão).~~ [SUBSTITUÍDA por H §62, 2026-11-19: a 10F implementou a história por série (`build_series_story`,
+    alvo único, dias contínuos entre sessões); o vídeo da série mora na sessão âncora, a última do projeto.]
   - **LUT:** padrão `sugerir` até a conferência em `prod` mostrar que o `SetLUT` funciona no Resolve gratuito. Volta a
     `editavel` só depois disso.
   - **Detector de grito** (`ScreamHeuristic`, reprovado no §46): atrás da flag `audio.scream_enabled`, desligada por padrão.

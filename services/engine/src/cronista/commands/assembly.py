@@ -16,7 +16,7 @@ from cronista.finishing.loader import load_style
 from cronista.gates import build_gate
 from cronista.logging_setup import setup_logging
 from cronista.montage import SessionPlanError
-from cronista.paths import SessionPaths
+from cronista.paths import SessionPaths, series_finishing_dir
 
 
 def register(app: typer.Typer) -> None:
@@ -223,7 +223,13 @@ def register(app: typer.Typer) -> None:
 
     @app.command("acabamento")
     def acabamento(
-        session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
+        session: Annotated[
+            int | None, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")
+        ] = None,
+        project: Annotated[
+            int | None,
+            typer.Option("--projeto", help="Vídeo da série: todas as sessões do projeto, com um alvo só"),
+        ] = None,
         serie: Annotated[str, typer.Option(help="Estilo de série (`brand-kit/series/<nome>.yaml`)")] = "",
         target_min: Annotated[float, typer.Option(help="Duração-alvo do vídeo, em minutos")] = 40.0,
         out: Annotated[
@@ -236,6 +242,9 @@ def register(app: typer.Typer) -> None:
         from cronista.finishing.service import build_finishing, write_finish_plan
         from cronista.story.service import StoryError
 
+        if (session is None) == (project is None):
+            typer.echo("erro: informe a sessão ou --projeto (um dos dois)", err=True)
+            raise typer.Exit(2)
         settings = current_settings()
         setup_logging(settings.log_level)
         try:
@@ -256,11 +265,17 @@ def register(app: typer.Typer) -> None:
                     library,
                     target_min * 60,
                     objectives,
+                    project_id=project,
                 )
             except (StoryError, SessionPlanError) as exc:
                 typer.echo(f"erro: {exc}", err=True)
                 raise typer.Exit(1) from exc
-        path = write_finish_plan(plan, out or SessionPaths.of(settings, session).finishing_dir, session)
+        if project is not None:
+            path = write_finish_plan(plan, out or series_finishing_dir(settings, project), f"serie-{project}")
+        else:
+            path = write_finish_plan(
+                plan, out or SessionPaths.of(settings, session or 0).finishing_dir, session or 0
+            )
         for kind, modes in sorted(plan.summary().items()):
             typer.echo(f"{kind:<16} " + ", ".join(f"{n} {mode}" for mode, n in sorted(modes.items())))
         for warning in plan.warnings:

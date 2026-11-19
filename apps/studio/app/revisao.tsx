@@ -44,6 +44,7 @@ export default function Revisao() {
   const [wave, setWave] = useState<WaveformOut | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decisaoVersao, setDecisaoVersao] = useState(0);
+  const [serie, setSerie] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -99,6 +100,13 @@ export default function Revisao() {
       setError("Ajuste cancelado: informe números em segundos.");
     }
   }
+
+  // Vídeo da série: um só vídeo com todas as sessões do projeto, ancorado na última sessão dele.
+  const projectSessions = sessions.filter((s) => s.project_id === projectId);
+  const serieDisponivel = projectId !== null && projectSessions.length > 1;
+  const anchorId = serieDisponivel ? Math.max(...projectSessions.map((s) => s.id)) : null;
+  const videoSessionId = serie && anchorId !== null ? anchorId : sessionId;
+  const videoSerie = serie && anchorId !== null;
 
   function seek(seconds: number) {
     if (video.current) {
@@ -165,14 +173,23 @@ export default function Revisao() {
                 </li>
               ))}
             </ol>
-            {sessionId !== null && (
-              // Um só pai com `key`: quando a sessão muda, os quatro painéis remontam juntos.
-              <Fragment key={sessionId}>
-                <Roteiro sessionId={sessionId} />
+            {serieDisponivel && (
+              <label>
+                <input type="checkbox" checked={serie} onChange={(e) => setSerie(e.target.checked)} /> Vídeo da
+                série (todas as sessões do projeto, um alvo só; roteiro e embalagem ficam na sessão{" "}
+                {anchorId})
+              </label>
+            )}
+            {videoSessionId !== null && (
+              // Um só pai com `key`: quando a sessão (ou o modo série) muda, os painéis remontam juntos.
+              <Fragment key={`${videoSessionId}-${videoSerie}`}>
+                <Roteiro sessionId={videoSessionId} />
                 {projectId !== null && <Aprendizado key={projectId} projectId={projectId} />}
-                {projectId !== null && <Acabamento sessionId={sessionId} projectId={projectId} />}
-                <Embalagem sessionId={sessionId} />
-                <Exportar sessionId={sessionId} />
+                {projectId !== null && (
+                  <Acabamento sessionId={videoSessionId} projectId={projectId} serie={videoSerie} />
+                )}
+                <Embalagem sessionId={videoSessionId} />
+                <Exportar sessionId={videoSessionId} serie={videoSerie} />
               </Fragment>
             )}
           </>

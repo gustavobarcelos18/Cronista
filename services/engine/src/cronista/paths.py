@@ -92,9 +92,9 @@ def series_package_base(settings: Settings, project_id: int) -> Path:
     return settings.data_dir / "export" / "montagem" / f"serie-{project_id}"
 
 
-def series_story_dir(settings: Settings, project_id: int) -> Path:
-    """Pasta do story-pack da série: `data/story/serie-<projeto>` (não colide com o id de uma sessão)."""
-    return settings.data_dir / "story" / f"serie-{project_id}"
+def series_finishing_dir(settings: Settings, project_id: int) -> Path:
+    """Pasta do plano de acabamento da série: `data/acabamento/serie-<projeto>`."""
+    return settings.data_dir / "acabamento" / f"serie-{project_id}"
 
 
 def shorts_manifest_in(shorts_dir: Path, session_id: int) -> Path:

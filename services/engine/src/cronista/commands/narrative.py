@@ -19,7 +19,7 @@ from cronista.db.session import open_db
 from cronista.domain.frames import frame_to_seconds
 from cronista.domain.models import StageResult
 from cronista.logging_setup import setup_logging
-from cronista.paths import SessionPaths, review_csv, series_story_dir
+from cronista.paths import SessionPaths, review_csv
 from cronista.video.models import build_video_models
 
 
@@ -91,7 +91,13 @@ def register(app: typer.Typer) -> None:
         out: Annotated[Path | None, typer.Option(help="Pasta de saída (padrão: data/story/<sessão>)")] = None,
     ) -> None:
         """Capítulos, beats, objetivos e `story-pack.json` para o roteiro (Fases 5 e 5A)."""
-        from cronista.story.service import StoryError, build_series_story, build_story, write_pack
+        from cronista.story.service import (
+            StoryError,
+            anchor_session,
+            build_series_story,
+            build_story,
+            write_pack,
+        )
 
         if (session is None) == (project is None):
             typer.echo("erro: informe a sessão ou --projeto (um dos dois)", err=True)
@@ -110,11 +116,11 @@ def register(app: typer.Typer) -> None:
             except StoryError as exc:
                 typer.echo(f"erro: {exc}", err=True)
                 raise typer.Exit(1) from exc
-        target = out or (
-            series_story_dir(settings, project)
-            if project is not None
-            else SessionPaths.of(settings, session or 0).story_dir
-        )
+        anchor_id = session or 0
+        if project is not None:
+            with open_db(settings.db_path) as db:
+                anchor_id = anchor_session(db, project).id
+        target = out or SessionPaths.of(settings, anchor_id).story_dir
         pack_path, voice_path = write_pack(target, result)
         for c in result.chapters:
             beats = ", ".join(f"{i.beat.value}" for i in c.items[:8])
@@ -126,6 +132,11 @@ def register(app: typer.Typer) -> None:
             f"objetivos: {d.confirmed} confirmados, {d.hypotheses} hipóteses, "
             f"{d.rejected} citações rejeitadas"
         )
+        if project is not None:
+            typer.echo(
+                f"vídeo da série: o pacote mora na sessão âncora {anchor_id} (a última do projeto); "
+                "use esse número em roteiro-import, titulos, thumbnails e shorts"
+            )
         typer.echo(f"{pack_path}\n{voice_path}\nAgora rode /roteirizar no Claude Code com este pacote.")
 
     @app.command("revisao")

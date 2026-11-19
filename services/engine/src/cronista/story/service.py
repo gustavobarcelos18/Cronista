@@ -105,6 +105,15 @@ def scope_sessions(db: Session, session_id: int | None, project_id: int | None) 
     return [session]
 
 
+def anchor_session(db: Session, project_id: int) -> RecordingSession:
+    """Sessão âncora do vídeo da série: a última do projeto.
+
+    O vídeo único não tem tabela própria; o roteiro, os títulos, as thumbnails e os Shorts dele moram nas
+    pastas (e nas linhas) da sessão âncora, e todos os comandos por sessão funcionam passando o id dela.
+    """
+    return scope_sessions(db, None, project_id)[-1]
+
+
 def _build(
     db: Session,
     project: Project,

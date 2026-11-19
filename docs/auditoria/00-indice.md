@@ -42,12 +42,19 @@ vazio) e B20 (sessão sem `novo_dia` nem fala, painel com 2 projetos). A14, B20,
 pelos testes de regressão da 10A/10C. **Ainda não rodado:** `next build` e o CI no GitHub (só `tsc`, `eslint` e `vitest`
 passaram aqui). Próxima: 10F (narrativa por série).
 
-**Andamento da 10F (2026-11-19):** B1 em parte. `build_series_story(project_id)` (todas as sessões do projeto, um alvo só,
-dia contínuo entre sessões) e `cronista story --projeto N` (saída em `data/story/serie-<projeto>`). `cronista montagem --projeto N` (assemble, mix e pacote
-em `data/export/montagem/serie-<projeto>`; FCPXML `serie-N-vK`) também já usa a série. **Falta:**
-`acabamento`, `titulos`, as skills e o Studio ainda trabalham por sessão e leem a história de `build_story`; B15 feito em versão
-reconciliadora: `validate_script` religa a fala ao segmento do mesmo arquivo que hoje contém o início do id antigo (aviso)
-e, se não houver, acusa roteiro órfão (erro); o id continua `arquivo:início_s`, sem hash.
+**Andamento da 10F (2026-11-19): feita** (B1, B15; B2 já estava na 10A). O vídeo da série mora na **sessão âncora**
+(a última do projeto; histórico §62), então todos os comandos por sessão funcionam passando o id dela.
+- `build_series_story(project_id)`: todas as sessões, um alvo só, dia contínuo entre sessões.
+- `cronista story --projeto N`: grava o pacote na pasta da sessão âncora e imprime o número dela.
+- `cronista montagem --projeto N` (pacote em `data/export/montagem/serie-<projeto>`, FCPXML `serie-N-vK`) e
+  `cronista acabamento --projeto N` (`data/acabamento/serie-<projeto>`).
+- `titulos`, `titulos-import`, `thumbnails`, `shorts` e `publicar` usam o número da sessão âncora; as skills
+  `/roteirizar` e `/titular` dizem isso.
+- Studio: caixa "Vídeo da série" (só aparece com 2+ sessões no projeto); a API aceita `?serie=true` em
+  `/sessions/{âncora}/export` e `/finishing`.
+- B15 em versão reconciliadora: `validate_script` religa a fala ao segmento do mesmo arquivo que hoje contém o início do
+  id antigo (aviso) e, se não houver, acusa roteiro órfão (erro); o id continua `arquivo:início_s`, sem hash.
+- **Não verificado:** montagem/mixagem de série com mídia real e o Studio no navegador (só `tsc`, `eslint`, `vitest`).
 
 ## Divisão lógica do projeto
 

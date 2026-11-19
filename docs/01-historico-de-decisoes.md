@@ -1496,6 +1496,16 @@ sentidos de "pacote", perfil de jogo/voz/ambiente). Ressalva: o vocabulário de 
 (`aprovado`/`rejeitado` nos Shorts, `aceito`/`removido` no acabamento, `aceito`/`rejeitado`/`ajustado` nos segmentos),
 porque exigiria migração de dados; fica como possibilidade sem urgência. Em conflito de vocabulário, vale o glossário.
 
+## 62. Vídeo da série na sessão âncora (2026-11-19)
+
+Para a 10F sem tabela nova nem migração, o vídeo único da série é ancorado na **última sessão do projeto**
+(`anchor_session`). `cronista story --projeto N` grava o story-pack na pasta dela; roteiro, títulos, thumbnails, Shorts
+e publicação seguem como comandos por sessão, chamados com o número da âncora. Montagem e acabamento ganham
+`--projeto N` (alvo único, dias contínuos), e o Studio/API aceitam `serie=true` na sessão âncora. Contrapartida: rodar
+`cronista story <âncora>` por sessão sobrescreve o pacote da série na mesma pasta. Alternativa descartada por ora: tabela
+`video` própria (mais limpa, mas exige migração e reescrita dos caminhos). B15 ficou como reconciliação de ids (religa a
+fala ao segmento que contém o início antigo e acusa roteiro órfão), não como hash estável.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

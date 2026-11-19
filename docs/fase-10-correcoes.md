@@ -15,7 +15,7 @@ não falhar, o item é descartado.
 | 10B | Fundação transversal (T1 a T4) | Feita (T4: glossário aprovado) |
 | 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`) |
 | 10D | Documentação | Em andamento (parte feita; ver abaixo) |
-| 10E | Testes e CI | Feita (falta rodar `next build` e o CI real) |
+| 10E | Testes e CI | Feita (`next build` ok em 2026-11-19; falta o CI real no GitHub) |
 | 10F | Narrativa por série | Feita (conferência com mídia real em `prod`) |
 
 ## 10A. Bugs e regras (concluída)

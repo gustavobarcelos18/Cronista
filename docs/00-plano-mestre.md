@@ -881,12 +881,12 @@ Atualizado em 2026-11-19. "Conferência em `prod`" = o que só o PC de casa (GPU
 | 2 Áudio | Mergeada (2A, 2B, 2C) | #7, #9, #10 | Gabarito real e benchmark de roteiro local (`prod`) |
 | 3 Vídeo e perfis | Mergeada (3A a 3C) | #11 a #13 | Conferir contextos e HUD oculto em sessões reais |
 | 4 Relevância | Mergeada | #16 | Calibrar com decisões reais |
-| 5 e 5A Narrativa e objetivos | Mergeada | #15 | Roteiro por série: Fase 10F |
+| 5 e 5A Narrativa e objetivos | Mergeada | #15 | Roteiro por série feito na 10F; conferir com mídia real em `prod` |
 | 6 Montagem e exportação | Mergeada | #18, #19 | Importar o pacote no Resolve gratuito (`prod`) |
 | 7 Studio | Mergeada | #20, #21 | Uso real |
 | 8 Acabamento | Mergeada | #22 | Conferência em `prod` |
 | 9 Embalagem | Mergeada | #23 | Conferência em `prod` |
-| 10 Correções da auditoria | Em andamento (`fase/10-correcoes`) | | Ver `docs/fase-10-correcoes.md` |
+| 10 Correções da auditoria | 10A a 10F feitas; resta C8 e parte da 10D (`fase/10-correcoes`) | | Ver `docs/fase-10-correcoes.md` |
 
 
 Cada fase vira um plano de execução próprio (`docs/fase-N-*.md`), com tarefas, critérios de aceite e testes.

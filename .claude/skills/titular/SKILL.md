@@ -5,7 +5,7 @@ description: Escreve 3 a 5 sugestões de título do vídeo da série a partir do
 
 # /titular
 
-Escreve `titulos.json` para a sessão. No vídeo da série, "a sessão" é a **sessão âncora** (a última do projeto,
+Escreve `titulos.json` para a sessão. No vídeo da série, "a sessão" é a **sessão âncora** (a primeira do projeto,
 impressa por `cronista story --projeto N`). Entrada: `data/<ambiente>/packaging/<sessão>/titulo-pack.json`
 (gerado por `cronista titulos <sessão>` a partir do story-pack).
 

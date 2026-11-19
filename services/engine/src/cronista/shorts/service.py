@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from cronista.assembly.plan import WordSpan
 from cronista.audio.events import load_active_events
 from cronista.config import Settings
-from cronista.db.models import Marker, RecordingSession
+from cronista.db.models import Marker, MediaFile, RecordingSession
 from cronista.finishing.loader import load_style
 from cronista.montage import SessionPlanError, load_masters
 from cronista.paths import shorts_manifest_in
@@ -35,12 +35,20 @@ class ShortsError(Exception):
     """Sessão inexistente, sem segmentos ou sem material para os Shorts."""
 
 
-def build_shorts(db: Session, session_id: int, params: ShortsParams | None = None) -> list[ShortCandidate]:
+def _media_of(session: RecordingSession, project_wide: bool) -> list[MediaFile]:
+    """Gravações da sessão, ou de todas as do projeto (na ordem das sessões) no vídeo da série."""
+    sessions = sorted(session.project.sessions, key=lambda s: s.id) if project_wide else [session]
+    return [m for s in sessions for m in sorted(s.media_files, key=lambda m: m.ordinal)]
+
+
+def build_shorts(
+    db: Session, session_id: int, params: ShortsParams | None = None, *, project_wide: bool = False
+) -> list[ShortCandidate]:
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise ShortsError(f"sessão {session_id} não existe (veja `cronista status`)")
     materials: list[FileMaterial] = []
-    for media in sorted(session.media_files, key=lambda m: m.ordinal):
+    for media in _media_of(session, project_wide):
         segments = load_effective_segments(db, media.id)
         if not segments:
             continue
@@ -79,13 +87,15 @@ def write_shorts(
     return path
 
 
-def load_caption_words(db: Session, session_id: int) -> dict[int, list[CaptionWord]]:
+def load_caption_words(
+    db: Session, session_id: int, *, project_wide: bool = False
+) -> dict[int, list[CaptionWord]]:
     """Palavras do Whisper (com texto) de cada arquivo da sessão, para a legenda gravada."""
     session = db.get(RecordingSession, session_id)
     if session is None:
         raise ShortsError(f"sessão {session_id} não existe (veja `cronista status`)")
     out: dict[int, list[CaptionWord]] = {}
-    for media in session.media_files:
+    for media in _media_of(session, project_wide):
         words = [
             CaptionWord(int(w["start_frame"]), int(w["end_frame"]), str(w.get("text", "")))
             for e in load_active_events(db, media.id)
@@ -113,22 +123,26 @@ def render_session_shorts(
     style: ShortStyle | None = None,
     serie: str = "",
     gate: GpuGate | None = None,
+    project_wide: bool = False,
 ) -> ShortsPackage:
-    """Escolhe os candidatos e renderiza cada um em 9:16 com a identidade do brand kit (Fase 9A)."""
+    """Escolhe os candidatos e renderiza cada um em 9:16 com a identidade do brand kit (Fase 9A).
+
+    Com `project_wide` (vídeo da série), `session_id` é a sessão âncora e os candidatos saem do projeto
+    inteiro."""
     from cronista.finishing.brand import brand_dir
 
-    candidates = build_shorts(db, session_id, params)
+    candidates = build_shorts(db, session_id, params, project_wide=project_wide)
     resolved, _ = load_style(settings, serie)
     session = db.get(RecordingSession, session_id)
     assert session is not None  # build_shorts já validou
     try:
-        masters, notes = load_masters(db, session)
+        masters, notes = load_masters(db, session, project_wide=project_wide)
     except SessionPlanError as exc:
         raise ShortsError(str(exc)) from exc
     base_style = replace(style or ShortStyle(), loudness_lufs=resolved.brand.sonic.loudness_lufs)
     result = render_shorts(
         candidates,
-        load_caption_words(db, session_id),
+        load_caption_words(db, session_id, project_wide=project_wide),
         masters,
         resolved.brand.visual,
         directory,

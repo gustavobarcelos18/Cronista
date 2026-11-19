@@ -92,6 +92,8 @@ class Segment:
     razoes: list[str] = field(default_factory=list)
     markers: list[str] = field(default_factory=list)
     features: dict[str, float] = field(default_factory=dict)
+    aceito: bool = False
+    """O criador aceitou ou ajustou o trecho no Studio: voto de manter, vale mesmo com nota baixa."""
 
     @property
     def duration_s(self) -> int:
@@ -101,8 +103,11 @@ class Segment:
 def is_kept(seg: Segment, keep_score: float = RelevanceParams.keep_score) -> bool:
     """Critério único de "material mantido" (painel, arco, qualidade).
 
-    Vale nota >= `keep_score`, farm, dia ou trecho com marcador (o voto do criador). Descartável nunca.
+    Vale nota >= `keep_score`, farm, dia ou trecho com marcador (o voto do criador). Descartável nunca,
+    a menos que o criador o tenha aceitado (`aceito`).
     """
+    if seg.aceito:
+        return True
     if seg.classe == "descartavel":
         return False
     return seg.classe in ("farm", "dia") or seg.score >= keep_score or bool(seg.markers)

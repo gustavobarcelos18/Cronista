@@ -117,7 +117,7 @@ export default function Revisao() {
     return true;
   }
 
-  // Vídeo da série: um só vídeo com todas as sessões do projeto, ancorado na última sessão dele.
+  // Vídeo da série: um só vídeo com todas as sessões do projeto, ancorado na primeira sessão dele.
   const projectSessions = (sessions ?? []).filter((s) => s.project_id === projectId);
   const serieDisponivel = projectId !== null && projectSessions.length > 1;
   const anchorId = serieDisponivel ? Math.max(...projectSessions.map((s) => s.id)) : null;

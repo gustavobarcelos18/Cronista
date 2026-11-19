@@ -140,5 +140,16 @@ def params_for_project(
     if row is not None:
         valid = {f.name for f in fields(params)}
         saved = {k: float(v) for k, v in json.loads(row.weights).items() if k in valid}
-        params = RelevanceParams(**{**params.__dict__, **saved})
-    return RelevanceParams(**{**params.__dict__, **overrides}) if overrides else params
+        params = _with_values(params, saved)
+    return _with_values(params, overrides) if overrides else params
+
+
+def _with_values(params: RelevanceParams, values: Mapping[str, float]) -> RelevanceParams:
+    """Aplica `values` mantendo o tipo de cada campo: o YAML e o JSON entregam `120.0` onde o campo é `int`
+    (`max_s`, `min_s`...), e um `float` ali quebra o fatiamento da segmentação.
+    Nome desconhecido é ignorado."""
+    merged = dict(params.__dict__)
+    for name, value in values.items():
+        if name in merged:
+            merged[name] = type(merged[name])(round(value)) if isinstance(merged[name], int) else float(value)
+    return RelevanceParams(**merged)

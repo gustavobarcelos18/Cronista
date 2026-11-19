@@ -43,9 +43,9 @@ def test_escopo_da_serie_exige_ancora_em_todo_o_fluxo(settings: Settings, db: Se
     db.commit()
     client = TestClient(create_app(settings))
     for path in ("export", "finishing"):
-        assert client.get(f"/sessions/1/{path}?serie=true").status_code == 422
-        assert client.get(f"/sessions/2/{path}?serie=true").status_code == 200
-    response = client.post("/sessions/1/finishing/items/x/decision?serie=true", json={"decision": "aceito"})
+        assert client.get(f"/sessions/2/{path}?serie=true").status_code == 422
+        assert client.get(f"/sessions/1/{path}?serie=true").status_code == 200
+    response = client.post("/sessions/2/finishing/items/x/decision?serie=true", json={"decision": "aceito"})
     assert response.status_code == 422
 
 

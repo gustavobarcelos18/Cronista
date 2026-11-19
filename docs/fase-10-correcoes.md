@@ -117,10 +117,10 @@ sobre fala ao vivo, soma do orçamento ≤ alvo, decisão humana nunca sobrescri
 
 ## 10F. Narrativa por série (B1, B2, B15)
 
-A história por sessão continua disponível. Para o vídeo da série, `cronista story --projeto N` aplica um único alvo ao projeto inteiro. A última sessão do projeto é a âncora (histórico §62).
+A história por sessão continua disponível. Para o vídeo da série, `cronista story --projeto N` aplica um único alvo ao projeto inteiro. A primeira sessão do projeto é a âncora (histórico §62, §66).
 
 - `build_series_story(project_id)`: sessões em ordem, alvo único, dias contínuos entre sessões.
-- `montagem` e `acabamento` aceitam `--projeto N`. Roteiro, títulos, thumbnails e pacote de publicação usam o ID da sessão âncora. Os Shorts são gerados por sessão.
+- `montagem` e `acabamento` aceitam `--projeto N`. Roteiro, títulos, thumbnails e pacote de publicação usam o ID da sessão âncora. Os Shorts são gerados por sessão, ou pelo projeto inteiro com `--projeto-todo` (§66).
 - B15 mantém o identificador `arquivo:início_s`. A validação religa a fala ao segmento do mesmo arquivo que contém o início antigo e informa erro se o roteiro ficar órfão.
 - A implementação reutiliza as tabelas existentes e as funções de caminhos em `paths.py`. O plano original de criar um identificador por hash e um modelo novo foi substituído pela decisão do histórico §62.
 

@@ -24,6 +24,13 @@ def register(app: typer.Typer) -> None:
     def shorts(
         session: Annotated[int, typer.Argument(help="Sessão com segmentos (`cronista relevance`)")],
         top: Annotated[int, typer.Option(help="Quantos candidatos listar")] = 10,
+        project_wide: Annotated[
+            bool,
+            typer.Option(
+                "--projeto-todo",
+                help="Vídeo da série: passe a sessão âncora; usa as sessões do projeto inteiro",
+            ),
+        ] = False,
     ) -> None:
         """Lista os candidatos a Shorts: até 13 s, gancho nos 3 primeiros segundos (Fase 6D). Não grava nada:
         o manifesto é do `shorts-render`."""
@@ -34,7 +41,7 @@ def register(app: typer.Typer) -> None:
         setup_logging(settings.log_level)
         with open_db(settings.db_path) as db:
             try:
-                found = build_shorts(db, session, ShortsParams(max_candidates=top))
+                found = build_shorts(db, session, ShortsParams(max_candidates=top), project_wide=project_wide)
             except ShortsError as exc:
                 typer.echo(f"erro: {exc}", err=True)
                 raise typer.Exit(1) from exc
@@ -61,6 +68,13 @@ def register(app: typer.Typer) -> None:
             Reframe, typer.Option(help="`desfoque` (gameplay inteira sobre fundo desfocado) ou `recorte`")
         ] = Reframe.DESFOQUE,
         focus_x: Annotated[float, typer.Option(help="Só no `recorte`: 0 = esquerda, 1 = direita")] = 0.5,
+        project_wide: Annotated[
+            bool,
+            typer.Option(
+                "--projeto-todo",
+                help="Vídeo da série: passe a sessão âncora; usa as sessões do projeto inteiro",
+            ),
+        ] = False,
     ) -> None:
         """Renderiza os Shorts 9:16 com legenda gravada e margens seguras (Fase 9A)."""
         from pydantic import ValidationError
@@ -82,6 +96,7 @@ def register(app: typer.Typer) -> None:
                     style=ShortStyle(reframe=reframe.value, focus_x=focus_x),
                     serie=serie,
                     gate=build_gate(settings),
+                    project_wide=project_wide,
                 )
             except (ShortsError, FileNotFoundError, ValueError, ValidationError, StageError) as exc:
                 typer.echo(f"erro: {exc}", err=True)

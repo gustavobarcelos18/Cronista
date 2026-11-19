@@ -31,7 +31,7 @@ jobs:
       - run: uv run ruff check . ../../integrations
       - run: uv run ruff format --check . ../../integrations
       - run: uv run mypy
-      - run: uv run mypy --config-file ../../integrations/mypy.ini ../../integrations/resolve ../../integrations/cuda ../../integrations/fifine
+      - run: uv run --locked --no-build mypy --config-file ../../integrations/mypy.ini ../../integrations/resolve ../../integrations/cuda ../../integrations/fifine
       - run: uv run pytest -q
       - name: Nenhum caminho pessoal versionado
         shell: bash

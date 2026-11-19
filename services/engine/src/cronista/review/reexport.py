@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from typing import Literal
+
+from pydantic import BaseModel
 
 from cronista.config import Settings
 from cronista.db.models import RecordingSession
@@ -28,15 +29,16 @@ ProfileLoader = Callable[[], tuple[list[str], list[str]]]
 State = Literal["idle", "running", "done", "error"]
 
 
-@dataclass
-class ExportStatus:
+class ExportStatus(BaseModel):
+    """Estado da re-exportação de uma sessão; é também o contrato da API (`/sessions/{id}/export`)."""
+
     state: State = "idle"
     message: str = ""
     version: int | None = None
     reused: bool = False
     directory: str | None = None
-    problems: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
+    problems: list[str] = []
+    warnings: list[str] = []
 
 
 class ReexportJobs:

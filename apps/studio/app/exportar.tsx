@@ -1,17 +1,17 @@
 "use client";
 
-import type { ExportStatusOut } from "@cronista/contracts";
+import type { ExportStatus } from "@cronista/contracts";
 import { useEffect, useState } from "react";
 import { ApiError, getJson, send } from "../lib/api";
 
 export default function Exportar({ sessionId }: { sessionId: number }) {
-  const [status, setStatus] = useState<ExportStatusOut | null>(null);
+  const [status, setStatus] = useState<ExportStatus | null>(null);
   const running = status?.state === "running";
 
   useEffect(() => {
     let alive = true;
     const poll = () =>
-      getJson<ExportStatusOut>(`/sessions/${sessionId}/export`)
+      getJson<ExportStatus>(`/sessions/${sessionId}/export`)
         .then((s) => alive && setStatus(s))
         .catch((e: Error) => alive && setStatus({ state: "error", message: e.message }));
     void poll();
@@ -25,10 +25,10 @@ export default function Exportar({ sessionId }: { sessionId: number }) {
 
   async function start() {
     try {
-      setStatus(await send<ExportStatusOut>(`/sessions/${sessionId}/export`));
+      setStatus(await send<ExportStatus>(`/sessions/${sessionId}/export`));
     } catch (e) {
       // 409 = já há uma exportação rodando: o corpo traz o estado dela.
-      if (e instanceof ApiError && e.status === 409 && e.body) setStatus(e.body as ExportStatusOut);
+      if (e instanceof ApiError && e.status === 409 && e.body) setStatus(e.body as ExportStatus);
       else setStatus({ state: "error", message: e instanceof Error ? e.message : "erro ao exportar" });
     }
   }

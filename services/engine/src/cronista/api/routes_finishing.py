@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import asdict
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -12,7 +11,6 @@ from cronista.api.context import ApiContext
 from cronista.api.schemas import (
     EffectSettingIn,
     EffectSettingOut,
-    ExportStatusOut,
     FinishDecisionIn,
     FinishingOut,
     FinishItemOut,
@@ -36,6 +34,7 @@ from cronista.finishing.plan import FinishPlan, apply_decisions, decision_key
 from cronista.finishing.service import assembly_fingerprint, build_finishing
 from cronista.montage import SessionPlanError
 from cronista.review.panel import TARGET_MIN
+from cronista.review.reexport import ExportStatus
 from cronista.story.service import StoryError, StoryResult
 
 MAX_CACHED_ASSEMBLIES = 8
@@ -45,19 +44,19 @@ MAX_CACHED_ASSEMBLIES = 8
 def finishing_router(ctx: ApiContext) -> APIRouter:
     router = APIRouter()
 
-    @router.get("/sessions/{session_id}/export", response_model=ExportStatusOut)
-    def export_status(session_id: int) -> ExportStatusOut:
-        return ExportStatusOut(**asdict(ctx.jobs.status(session_id)))
+    @router.get("/sessions/{session_id}/export", response_model=ExportStatus)
+    def export_status(session_id: int) -> ExportStatus:
+        return ctx.jobs.status(session_id)
 
-    @router.post("/sessions/{session_id}/export", response_model=ExportStatusOut, status_code=202)
-    def start_export(session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)) -> ExportStatusOut:
+    @router.post("/sessions/{session_id}/export", response_model=ExportStatus, status_code=202)
+    def start_export(session_id: int, target_min: float = Query(TARGET_MIN, gt=0, le=240)) -> ExportStatus:
         """Re-exporta com as decisões e o roteiro atuais; o cache por hash reaproveita o que não mudou."""
         with ctx.connect() as db:
             if db.get(RecordingSession, session_id) is None:
                 raise HTTPException(404, "sessão não encontrada")
         if not ctx.jobs.start(session_id, target_min * 60):
             raise HTTPException(409, "já há uma exportação em andamento")
-        return ExportStatusOut(**asdict(ctx.jobs.status(session_id)))
+        return ctx.jobs.status(session_id)
 
     assembly_cache: dict[tuple[int, float], tuple[tuple[int, ...], EditPlan, StoryResult]] = {}
     assembly_lock = threading.Lock()

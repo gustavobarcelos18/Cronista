@@ -13,7 +13,7 @@ não falhar, o item é descartado.
 |---|---|---|
 | 10A | Bugs de severidade alta e de regra | Concluída (B11 foi para a 10C) |
 | 10B | Fundação transversal (T1 a T4) | T1 a T3 feitas; T4 (glossário) aguarda aprovação |
-| 10C | Consolidação | Quase toda feita; faltam B17 e C8 |
+| 10C | Consolidação | Quase toda feita; falta o C8 (só em `prod`) |
 | 10D | Documentação | Não iniciada |
 | 10E | Testes e CI | Não iniciada |
 | 10F | Narrativa por série | Não iniciada |
@@ -52,6 +52,10 @@ de sessão fora de `paths.py`.
 - C8 (só o pico): o zoom centra no marcador do criador.
 - C12, C13, C14, C15: esqueleto único de FCPXML (`export/fcpxml_base.py`); FFmpeg e encoder únicos; `Track` único com a
   lane do FCPXML (`domain/tracks.py`).
+- B17: `StoryPack` (e `PackBeat`, `PackChapter`...) em `story/models.py`, validado ao montar o pacote e exportado nos
+  contratos; `classe` do trecho e do pacote é `Literal` (`SegmentClass`); `ExportStatus` é um só modelo Pydantic,
+  usado pelo engine e pela API (o tipo do Studio passou de `ExportStatusOut` a `ExportStatus`). `Segment.classe` do
+  engine segue `str`; o `Literal` vale nas fronteiras (API e pacote).
 - D8: `cli.py` só monta o `app`; os comandos ficam em `commands/` (`capture`, `narrative`, `assembly`,
   `packaging`, `devtools`), com `current_settings()` e `profile_objectives()` em `commands/common.py`. Nomes e opções
   não mudaram (comparados com a CLI anterior; `tests/test_cli_help.py`). Os testes que trocavam `cli.load_settings`
@@ -67,7 +71,6 @@ de sessão fora de `paths.py`.
 
 | Item | O quê | Observação |
 |---|---|---|
-| B17 | `StoryPack` como modelo Pydantic exportado, tipos `Literal`, um só modelo de status | Muda os contratos gerados |
 | C8 | Foco x/y do zoom a partir da saliência da Fase 3 | Só em `prod` |
 
 **Aceite:** CLI e Studio mostram os mesmos números; a divisão do `cli.py` não muda nenhum nome de comando nem opção

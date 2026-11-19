@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from cronista.finishing.effects import EffectKind, EffectMode
+from cronista.relevance.engine import SegmentClass
 from cronista.story.models import Script
 
 
@@ -48,7 +49,7 @@ class MarkerOut(BaseModel):
 class SegmentOut(BaseModel):
     start_s: int
     end_s: int
-    classe: str
+    classe: SegmentClass
     score: float
     razoes: list[str]
     markers: list[str]
@@ -60,16 +61,6 @@ class SegmentOut(BaseModel):
 
 class ScriptOut(BaseModel):
     script: Script
-    warnings: list[str] = []
-
-
-class ExportStatusOut(BaseModel):
-    state: Literal["idle", "running", "done", "error"]
-    message: str = ""
-    version: int | None = None
-    reused: bool = False
-    directory: str | None = None
-    problems: list[str] = []
     warnings: list[str] = []
 
 

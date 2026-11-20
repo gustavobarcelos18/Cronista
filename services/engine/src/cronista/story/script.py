@@ -47,6 +47,11 @@ def is_reserved(segment_id: str) -> bool:
     return segment_id in RESERVED_MAX_S
 
 
+def speech_seconds(line: ScriptLine, wps: float = WORDS_PER_S) -> float:
+    """Duração falada da fala: a estimada, quando vem preenchida (e maior que zero), ou a calculada pelo texto."""
+    return line.est_s if line.est_s else estimate_seconds(line.text, wps)
+
+
 LIVE_KINDS = frozenset({"fala", "risada", "exclamacao", "grito"})
 """O que ocupa o áudio ao vivo: voz e emoção (risada e exclamação também não podem ser cobertas)."""
 
@@ -166,7 +171,7 @@ def validate_script(
         label = f"fala {n} ({line.segment_id})"
         if is_reserved(line.segment_id):
             # Janela reservada: sem lacuna a conferir; as falas se encadeiam dentro da janela (`start_s` = deslocamento).
-            est = line.est_s if line.est_s else estimate_seconds(line.text, wps)
+            est = speech_seconds(line, wps)
             if line.kind == "antecipacao":
                 report.errors.append(f"{label}: gancho e fecho não são antecipação")
                 continue
@@ -181,9 +186,14 @@ def validate_script(
                 report.warnings.append(
                     f"{label}: {offset + est:.1f}s para {RESERVED_MAX_S[line.segment_id]:.0f}s da janela (o criador corta)"
                 )
+            if line.kind == "convite":
+                report.warnings.append(f"{label}: convite do criador; confirmar se fica")
             for flag in lint_text(line.text):
                 report.warnings.append(f"{label}: sinal de texto de IA ({flag})")
             report.lines.append(line.model_copy(update={"est_s": est, "start_s": round(offset, 2)}))
+            continue
+        if line.kind == "convite":
+            report.errors.append(f"{label}: convite só vale em {HOOK_ID} e {CLOSE_ID}")
             continue
         if line.segment_id not in segments:
             moved = _reconcile_segment_id(line.segment_id, segments)
@@ -195,7 +205,7 @@ def validate_script(
         if line.kind == "antecipacao" and not (line.justification and line.justification.strip()):
             report.errors.append(f"{label}: antecipação precisa de justificativa")
             continue
-        est = line.est_s if line.est_s else estimate_seconds(line.text, wps)
+        est = speech_seconds(line, wps)
         _, _, gaps = segments[line.segment_id]
         if not gaps:
             report.errors.append(f"{label}: segmento sem espaço livre de fala ao vivo")
@@ -251,8 +261,8 @@ def to_srt(lines: Sequence[ScriptLine], starts: Mapping[str, float]) -> str:
             a = starts.get(line.segment_id, 0.0) + (line.start_s or 0.0)
         else:
             a = line.start_s if line.start_s is not None else starts.get(line.segment_id, 0.0)
-        b = a + (line.est_s or estimate_seconds(line.text))
-        tag = "[ANTECIPAÇÃO] " if line.kind == "antecipacao" else ""
+        b = a + speech_seconds(line)
+        tag = {"antecipacao": "[ANTECIPAÇÃO] ", "convite": "[CONVITE] "}.get(line.kind, "")
         blocks.append(f"{n}\n{_srt_time(a)} --> {_srt_time(b)}\n{tag}{line.text}\n")
     return "\n".join(blocks)
 

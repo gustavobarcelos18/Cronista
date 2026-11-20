@@ -508,6 +508,9 @@ Editor_De_Video/                 # raiz do repositório (o pacote Python se cham
   **complemento**: entra só nos espaços sem fala ao vivo e explica o que foi feito, o tipo de decisão, o porquê das
   coisas, o que vem a seguir e o que você estava pensando no momento. O roteirista recebe, no story-pack, os trechos
   com fala ao vivo (com transcrição) para saber onde não escrever e para dar continuidade ao que você já disse.
+  **Única exceção (histórico §67):** as janelas reservadas `@gancho` (abertura, até 45 s) e `@fecho` (final, até 35 s),
+  que o criador grava à parte, como nas referências do canal; elas não dependem de lacuna e o validador avisa que podem
+  cobrir fala ao vivo. O convite ao like, à comunidade e a despedida entram com `kind: "convite"`, que o criador confirma.
 - **Entrega:** a narração entra como marcadores no Resolve + arquivo SRT alinhado, para você ler e gravar por cima.
 
 ---

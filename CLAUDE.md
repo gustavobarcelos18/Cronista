@@ -29,7 +29,8 @@ por série, com duração-alvo de 30–50 min** (plano §1), montado a partir de
   A tecla grava só onde o dia começa, **sem número**: o número de cada dia é decidido na edição, e cartelas e
   contador saem editáveis.
 - **Fala ao vivo tem prioridade:** o roteiro só complementa (explica decisões, o porquê, o que vem a seguir) nos
-  espaços sem fala ao vivo. Sem voz sintética. Texto sem "cara de IA" (skill `/humanizar`, adaptada do Humanizer, MIT; ver seção 6 do plano).
+  espaços sem fala ao vivo. **Única exceção (histórico §67):** as janelas reservadas `@gancho` (abertura) e `@fecho` (final)
+  do roteiro, que o criador grava à parte e que não dependem de lacuna. Sem voz sintética. Texto sem "cara de IA" (skill `/humanizar`, adaptada do Humanizer, MIT; ver seção 6 do plano).
 - **Custo zero:** tudo local (RTX 3060 12 GB). Claude só via Claude Code no plano Pro (sem API); entradas compactas.
 - **LLM local só para tarefas curtas e fechadas**, com saída em JSON Schema validada por Pydantic. Única exceção
   aprovada, experimental: o `LocalScriptProvider` (roteiro local, por trecho curto, histórico §40), que só vale se passar no

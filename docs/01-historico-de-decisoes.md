@@ -1608,8 +1608,9 @@ números foram refeitos. O lint marcava "jornada" como `vocabulario_inflado`, ma
 próprias aberturas e fechos (perfil §6, item 8); **o criador decidiu tirá-la da lista** (lint, `/humanizar` e plano); (7) **molde de roteiro do canal implementado só na skill
 `/roteirizar`** (gancho com premissa, objetivos confirmados e convite; relato em 1ª pessoa no passado; fecho com balanço
 dos objetivos, convite e despedida). O molde **não muda o código nem o pacote**: respeita lacunas, `segment_id` e "só
-fatos do pacote"; o que o pacote não traz vai para `pendencias.md` e convite/despedida saem marcados na `justification`
-para o criador confirmar, porque o validador só aceita `kind` `narracao` e `antecipacao`.
+fatos do pacote"; o que o pacote não traz vai para `pendencias.md`. Convite/despedida saíram primeiro marcados na
+`justification`; a revisão de código do PR pediu um campo próprio, e hoje usam **`kind: "convite"`** (só vale nas janelas
+reservadas, o validador pede confirmação e a legenda sai com `[CONVITE]`).
 
 **Teste na sessão 1 (2026-11-19):** o molde **não coube** no pacote real. O primeiro e o último trecho não têm lacuna (só
 fala ao vivo), o `projeto.jogo` está vazio e há 0 objetivos confirmados (17 propostos ou incertos, todos intenções
@@ -1630,6 +1631,16 @@ opcional, então pacotes antigos continuam válidos). Corrigido na skill: o exem
 lint recusa (`vocabulario_inflado`). Verificado na sessão 1: `roteiro-import`, lint e `montagem --script` com 4 falas,
 gancho em 0:00 na timeline; 775 testes CPU passam (o teste do anexo gerado falha neste PC porque lista o
 `prod.local.yaml`, que é local e fora do git).
+
+**Revisão de código do PR (2026-11-19), 7 achados corrigidos** (9): (a) falas reservadas sem `start_s` (roteiro não
+validado, lido por `montagem --script` e `mixar --script`) agora se encadeiam na janela em `narration_cues`, em vez de se
+empilhar no deslocamento 0; (b) CLAUDE.md e a seção 6.8 do plano passaram a registrar a exceção das janelas reservadas;
+(c) no SRT em tempo de arquivo, `@gancho` começa no 1º trecho e `@fecho` termina no último **na ordem do pacote**, não pelo
+menor e maior tempo numérico entre arquivos; (d) convite ao like, à comunidade e despedida usam `kind: "convite"` (antes,
+texto livre em `justification`); (e) o docstring e o contrato de `ScriptLine` dizem que `segment_id` pode ser `@gancho` ou
+`@fecho`; (f) a duração falada vem de um auxiliar só (`speech_seconds`), com a mesma regra no validador, no SRT e na
+timeline; (g) testes de `save_script` com janelas, de falas sem `start_s`, de fecho maior que a timeline e do `convite`.
+A skill manda rodar o `roteiro-import` antes de montar ou mixar.
 
 ## Decisões em aberto
 

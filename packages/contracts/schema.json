@@ -1143,7 +1143,7 @@
       "type": "object"
     },
     "ScriptLine": {
-      "description": "Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5).",
+      "description": "Uma fala sugerida, ligada a um segmento (aceite da Fase 5) ou a uma janela reservada.",
       "properties": {
         "est_s": {
           "anyOf": [
@@ -1171,11 +1171,13 @@
           "default": "narracao",
           "enum": [
             "narracao",
-            "antecipacao"
+            "antecipacao",
+            "convite"
           ],
           "type": "string"
         },
         "segment_id": {
+          "description": "`segmento_id` do beat, ou `@gancho` / `@fecho` (janelas reservadas, histórico §67)",
           "minLength": 3,
           "type": "string"
         },

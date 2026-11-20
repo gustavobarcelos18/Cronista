@@ -41,8 +41,8 @@ pacote não tem **não se inventa**: omita a frase e liste a falta em `pendencia
      regra…", "uma vida, um erro"). Com um só objetivo, uma frase basta (nas referências há de 1 a 3);
      nunca cite objetivo `incerto` nem não confirmado;
    - o convite ao like, curto e encaixado na fala, e a virada para o relato ("a minha jornada começa agora", como o criador diz). É a única
-     fala sem fato do pacote; **o criador decide se fica**: marque com `"justification": "convite do criador: confirmar"`
-     (o `kind` continua `narracao`; o validador só aceita `narracao` e `antecipacao`).
+     fala sem fato do pacote; **o criador decide se fica**: use `"kind": "convite"` (só vale em `@gancho` e `@fecho`;
+     o validador pede confirmação e a legenda sai com `[CONVITE]`).
 2. **Relato (capítulos).** Primeira pessoa, **passado**, blocos curtos: o que fez e por quê ("Pra não arriscar o bote, arrastei
    ele até a praia"). Complementa a fala ao vivo e **volta a ela** logo depois: nunca emende duas falas de narração
    seguidas sem uma fala ao vivo no meio, quando o beat tiver fala ao vivo. Não diga "dia N" a cada trecho: a marcação
@@ -50,7 +50,7 @@ pacote não tem **não se inventa**: omita a frase e liste a falta em `pendencia
 3. **Fecho (final do vídeo, até 35 s).** Janela reservada, `segment_id` **`@fecho`**, sem `start_s`. Em ordem: o final do jogo ou do desafio e o que ele significa
    (só fatos do pacote); o balanço dos objetivos pelo `estado` (`concluido`, `falhou`, `abandonado`), com o motivo se estiver
    no pacote e **preservando o fracasso**; o convite à comunidade (Discord, lista de mods na descrição) e a despedida curta.
-   Convite e despedida são do criador: marque com a mesma `justification` e não os invente com nome ou link.
+   Convite e despedida são do criador: use `"kind": "convite"` e não os invente com nome ou link.
    O fecho do canal tem **três formas** (perfil, seção 2): balanço com números e despedida; terminar na cena final do
    jogo (o fecho vira só o agradecimento e a despedida); ou gancho para a próxima parte, sem despedida. Escolha pela
    situação do pacote (objetivos concluídos, fim da série ou série em andamento) e, na dúvida, pergunte ao criador.
@@ -71,5 +71,6 @@ Arquivo `roteiro.json`:
 `segment_id` vem do campo `segmento_id` do beat (obrigatório: cada fala é ligada a um segmento).
 Se o molde pediu algo que o pacote não traz (número de dias, o que torna o jogo diferente, motivo de um objetivo
 falhar), escreva `pendencias.md` ao lado: uma linha por falta, para o criador completar na gravação.
+Rode **sempre** o `roteiro-import` antes de montar ou mixar: ele encadeia as falas das janelas reservadas e normaliza `est_s`/`start_s`.
 Depois valide: `uv run cronista roteiro-import <sessão> roteiro.json` (gera também o SRT) e
 `uv run cronista roteiro-lint roteiro.json`. Corrija o que o validador apontar antes de entregar.

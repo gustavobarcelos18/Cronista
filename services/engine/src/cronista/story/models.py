@@ -52,11 +52,16 @@ class Span(BaseModel):
 
 
 class ScriptLine(BaseModel):
-    """Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5)."""
+    """Uma fala sugerida, ligada a um segmento (aceite da Fase 5) ou a uma janela reservada."""
 
-    segment_id: str = Field(min_length=3)
+    segment_id: str = Field(
+        min_length=3,
+        description="`segmento_id` do beat, ou `@gancho` / `@fecho` (janelas reservadas, histórico §67)",
+    )
     text: str = Field(min_length=1)
-    kind: Literal["narracao", "antecipacao"] = "narracao"
+    kind: Literal["narracao", "antecipacao", "convite"] = "narracao"
+    """`convite`: pedido de like, convite à comunidade ou despedida; só vale em `@gancho` e `@fecho`
+    e é decisão do criador (o validador pede confirmação)."""
     justification: str | None = None
     """Obrigatória na antecipação (plano 6.8): por que mostrar antes da hora."""
     est_s: float | None = None

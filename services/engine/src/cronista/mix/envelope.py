@@ -16,7 +16,7 @@ from cronista.domain.frames import FPS
 from cronista.domain.tracks import Track
 from cronista.domain.types import FloatArray
 from cronista.story.models import ScriptLine
-from cronista.story.script import CLOSE_ID, HOOK_ID, estimate_seconds, is_reserved
+from cronista.story.script import CLOSE_ID, HOOK_ID, is_reserved, speech_seconds
 
 CONTROL_RATE = 200
 
@@ -62,16 +62,16 @@ def narration_cues(
     out: list[tuple[int, int, ScriptLine]] = []
     if v1:  # janelas reservadas (histórico §67): o gancho abre a timeline e o fecho termina nela
         first, last = min(i.timeline_start for i in v1), max(i.timeline_end for i in v1)
-        close_total = sum(
-            round((x.est_s if x.est_s is not None else estimate_seconds(x.text)) * FPS)
-            for x in lines
-            if x.segment_id == CLOSE_ID
-        )
+        close_total = sum(round(speech_seconds(x) * FPS) for x in lines if x.segment_id == CLOSE_ID)
+        chained: dict[str, int] = {}  # falas sem `start_s` (roteiro não validado) se encadeiam na janela
         for line in lines:
             if not is_reserved(line.segment_id):
                 continue
-            seconds = line.est_s if line.est_s is not None else estimate_seconds(line.text)
-            offset = round((line.start_s or 0.0) * FPS)
+            seconds = speech_seconds(line)
+            offset = (
+                round(line.start_s * FPS) if line.start_s is not None else chained.get(line.segment_id, 0)
+            )
+            chained[line.segment_id] = offset + round(seconds * FPS)
             base = first if line.segment_id == HOOK_ID else max(last - close_total, first)
             start = base + offset
             end = min(start + round(seconds * FPS), last)
@@ -83,7 +83,7 @@ def narration_cues(
         item = by_segment.get(line.segment_id)
         if item is None:
             continue
-        seconds = line.est_s if line.est_s is not None else estimate_seconds(line.text)
+        seconds = speech_seconds(line)
         start_file = round(line.start_s * FPS) if line.start_s is not None else item.in_frame
         start_file = min(max(start_file, item.in_frame), item.out_frame)
         start = item.timeline_start + start_file - item.in_frame

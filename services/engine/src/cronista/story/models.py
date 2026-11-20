@@ -52,17 +52,24 @@ class Span(BaseModel):
 
 
 class ScriptLine(BaseModel):
-    """Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5)."""
+    """Uma fala sugerida, ligada a um segmento (aceite da Fase 5) ou a uma janela reservada."""
 
-    segment_id: str = Field(min_length=3)
+    segment_id: str = Field(
+        min_length=3,
+        description="`segmento_id` do beat, ou `@gancho` / `@fecho` (janelas reservadas, histórico §67)",
+    )
     text: str = Field(min_length=1)
-    kind: Literal["narracao", "antecipacao"] = "narracao"
+    kind: Literal["narracao", "antecipacao", "convite"] = "narracao"
+    """`convite`: pedido de like, convite à comunidade ou despedida; só vale em `@gancho` e `@fecho`
+    e é decisão do criador (o validador pede confirmação)."""
     justification: str | None = None
     """Obrigatória na antecipação (plano 6.8): por que mostrar antes da hora."""
     est_s: float | None = None
     """Duração estimada falada; calculada na validação quando vem vazia."""
     start_s: float | None = None
-    """Onde a fala entra, em segundos do arquivo; vazio = começo do primeiro espaço livre do segmento."""
+    """Onde a fala entra, em segundos do arquivo; vazio = começo do primeiro espaço livre do segmento.
+
+    Nas janelas reservadas (`@gancho`, `@fecho`) é o deslocamento, em segundos, dentro da janela."""
 
 
 class Script(BaseModel):
@@ -116,6 +123,15 @@ class PackProject(BaseModel):
     jogo: str = ""
 
 
+class PackReserva(BaseModel):
+    """Janela de narração reservada fora das lacunas: gancho (abertura) e fecho (final), gravados à parte."""
+
+    id: str
+    onde: str
+    max_s: float
+    instrucao: str
+
+
 class StoryPack(BaseModel):
     """`story-pack.json`: o recorte compacto que o roteirista recebe (Fase 5). Só fatos verificáveis."""
 
@@ -124,4 +140,5 @@ class StoryPack(BaseModel):
     objetivos: list[PackObjective]
     instrucoes: list[str]
     capitulos: list[PackChapter]
+    reservas: list[PackReserva] = Field(default_factory=list)
     truncado: bool = False

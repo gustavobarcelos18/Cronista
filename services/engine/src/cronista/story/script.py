@@ -35,6 +35,23 @@ def estimate_seconds(text: str, wps: float = WORDS_PER_S) -> float:
     return round(max(len(re.findall(r"\w+", text)), 1) / wps, 1)
 
 
+HOOK_ID = "@gancho"
+CLOSE_ID = "@fecho"
+RESERVED_MAX_S: dict[str, float] = {HOOK_ID: 45.0, CLOSE_ID: 35.0}
+"""Janelas de narração reservadas (histórico §67): o gancho abre o vídeo e o fecho o encerra. Exceção declarada à
+regra "fala ao vivo primeiro": o criador grava essas duas partes à parte (as referências do canal fazem assim), então
+elas não dependem de lacuna. O valor é o tempo máximo da janela, em segundos."""
+
+
+def is_reserved(segment_id: str) -> bool:
+    return segment_id in RESERVED_MAX_S
+
+
+def speech_seconds(line: ScriptLine, wps: float = WORDS_PER_S) -> float:
+    """Duração falada da fala: a estimada, quando vem preenchida (e maior que zero), ou a calculada pelo texto."""
+    return line.est_s if line.est_s else estimate_seconds(line.text, wps)
+
+
 LIVE_KINDS = frozenset({"fala", "risada", "exclamacao", "grito"})
 """O que ocupa o áudio ao vivo: voz e emoção (risada e exclamação também não podem ser cobertas)."""
 
@@ -64,7 +81,7 @@ def free_gaps(
 PATTERNS: dict[str, str] = {
     "nao_e_x_e_y": r"\bn[aã]o [eé] [^.,;]{2,40}[,;]? (mas )?[eé] ",
     "muleta_escrita": r"\b(vale ressaltar|nesse sentido|em suma|em resumo|cabe destacar|diga-se de passagem)\b",
-    "vocabulario_inflado": r"\b(jornada|[eé]pico|[eé]pica|incr[ií]vel|monumental|verdadeiramente|surpreendente)\b",
+    "vocabulario_inflado": r"\b([eé]pico|[eé]pica|incr[ií]vel|monumental|verdadeiramente|surpreendente)\b",
     "autoridade_vaga": r"\b(dizem que|especialistas|todo mundo sabe|como se sabe)\b",
     "residuo_chatbot": r"\b(claro!|com certeza!|espero que ajude|como (uma )?ia|posso ajudar)\b",
     "fechamento_dramatico": r"\b(e assim,? (come[cç]ou|terminou)|nada seria como antes|o resto [eé] hist[oó]ria)\b",
@@ -152,6 +169,32 @@ def validate_script(
     cursor: dict[str, float] = {}
     for n, line in enumerate(script.lines, start=1):
         label = f"fala {n} ({line.segment_id})"
+        if is_reserved(line.segment_id):
+            # Janela reservada: sem lacuna a conferir; as falas se encadeiam dentro da janela (`start_s` = deslocamento).
+            est = speech_seconds(line, wps)
+            if line.kind == "antecipacao":
+                report.errors.append(f"{label}: gancho e fecho não são antecipação")
+                continue
+            if line.segment_id not in used:
+                report.warnings.append(
+                    f"{line.segment_id}: janela reservada, gravada à parte; pode cobrir fala ao vivo (o criador confere)"
+                )
+            offset = cursor.get(line.segment_id, 0.0)
+            used[line.segment_id] = offset + est
+            cursor[line.segment_id] = offset + est
+            if offset + est > RESERVED_MAX_S[line.segment_id] + SLACK_S:
+                report.warnings.append(
+                    f"{label}: {offset + est:.1f}s para {RESERVED_MAX_S[line.segment_id]:.0f}s da janela (o criador corta)"
+                )
+            if line.kind == "convite":
+                report.warnings.append(f"{label}: convite do criador; confirmar se fica")
+            for flag in lint_text(line.text):
+                report.warnings.append(f"{label}: sinal de texto de IA ({flag})")
+            report.lines.append(line.model_copy(update={"est_s": est, "start_s": round(offset, 2)}))
+            continue
+        if line.kind == "convite":
+            report.errors.append(f"{label}: convite só vale em {HOOK_ID} e {CLOSE_ID}")
+            continue
         if line.segment_id not in segments:
             moved = _reconcile_segment_id(line.segment_id, segments)
             if moved is None:
@@ -162,7 +205,7 @@ def validate_script(
         if line.kind == "antecipacao" and not (line.justification and line.justification.strip()):
             report.errors.append(f"{label}: antecipação precisa de justificativa")
             continue
-        est = line.est_s if line.est_s else estimate_seconds(line.text, wps)
+        est = speech_seconds(line, wps)
         _, _, gaps = segments[line.segment_id]
         if not gaps:
             report.errors.append(f"{label}: segmento sem espaço livre de fala ao vivo")
@@ -214,9 +257,12 @@ def to_srt(lines: Sequence[ScriptLine], starts: Mapping[str, float]) -> str:
     """SRT do roteiro em tempo do arquivo de origem (a Fase 6 remapeia para a timeline)."""
     blocks: list[str] = []
     for n, line in enumerate(lines, start=1):
-        a = line.start_s if line.start_s is not None else starts.get(line.segment_id, 0.0)
-        b = a + (line.est_s or estimate_seconds(line.text))
-        tag = "[ANTECIPAÇÃO] " if line.kind == "antecipacao" else ""
+        if is_reserved(line.segment_id):
+            a = starts.get(line.segment_id, 0.0) + (line.start_s or 0.0)
+        else:
+            a = line.start_s if line.start_s is not None else starts.get(line.segment_id, 0.0)
+        b = a + speech_seconds(line)
+        tag = {"antecipacao": "[ANTECIPAÇÃO] ", "convite": "[CONVITE] "}.get(line.kind, "")
         blocks.append(f"{n}\n{_srt_time(a)} --> {_srt_time(b)}\n{tag}{line.text}\n")
     return "\n".join(blocks)
 

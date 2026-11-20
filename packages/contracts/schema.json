@@ -910,6 +910,31 @@
       "title": "PackProject",
       "type": "object"
     },
+    "PackReserva": {
+      "description": "Janela de narração reservada fora das lacunas: gancho (abertura) e fecho (final), gravados à parte.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "instrucao": {
+          "type": "string"
+        },
+        "max_s": {
+          "type": "number"
+        },
+        "onde": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "onde",
+        "max_s",
+        "instrucao"
+      ],
+      "title": "PackReserva",
+      "type": "object"
+    },
     "PackWindow": {
       "description": "Intervalo em segundos do arquivo de origem.",
       "properties": {
@@ -1118,7 +1143,7 @@
       "type": "object"
     },
     "ScriptLine": {
-      "description": "Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5).",
+      "description": "Uma fala sugerida, ligada a um segmento (aceite da Fase 5) ou a uma janela reservada.",
       "properties": {
         "est_s": {
           "anyOf": [
@@ -1146,11 +1171,13 @@
           "default": "narracao",
           "enum": [
             "narracao",
-            "antecipacao"
+            "antecipacao",
+            "convite"
           ],
           "type": "string"
         },
         "segment_id": {
+          "description": "`segmento_id` do beat, ou `@gancho` / `@fecho` (janelas reservadas, histórico §67)",
           "minLength": 3,
           "type": "string"
         },
@@ -1486,6 +1513,12 @@
         },
         "projeto": {
           "$ref": "#/$defs/PackProject"
+        },
+        "reservas": {
+          "items": {
+            "$ref": "#/$defs/PackReserva"
+          },
+          "type": "array"
         },
         "truncado": {
           "default": false,

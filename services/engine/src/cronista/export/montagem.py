@@ -177,7 +177,7 @@ def _srt_time(frames: int) -> str:
 
 
 def _cue_text(line: ScriptLine) -> str:
-    return ("[ANTECIPAÇÃO] " if line.kind == "antecipacao" else "") + line.text
+    return {"antecipacao": "[ANTECIPAÇÃO] ", "convite": "[CONVITE] "}.get(line.kind, "") + line.text
 
 
 def render_timeline_srt(plan: EditPlan, lines: Sequence[ScriptLine]) -> str:

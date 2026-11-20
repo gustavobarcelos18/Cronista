@@ -498,7 +498,8 @@ Editor_De_Video/                 # raiz do repositório (o pacote Python se cham
     Os "fracos sozinhos" (excesso de qualificadores, voz passiva) só contam quando aparecem juntos.
   - **Padrões que não se aplicam** (o roteiro é lido em voz alta): negrito, títulos, emojis, setas e aspas curvas.
   - **Acréscimos para pt-BR falado:** muletas de texto escrito ("vale ressaltar", "nesse sentido", "em suma",
-    "jornada", "épico" em toda frase), frases longas demais para dizer num fôlego, gerúndio em cascata.
+    "épico" em toda frase), frases longas demais para dizer num fôlego, gerúndio em cascata. "Jornada" não entra: é
+    palavra do próprio criador (histórico §67).
   - **Combinação com o perfil de voz:** o original aceita uma amostra de escrita para imitar a voz; aqui a amostra
     são as transcrições das suas narrações ao vivo (bordões, gírias, tamanho de frase).
 - **Ritmo de referência:** você escolhe vídeos de criadores que admira e o sistema extrai **métricas de ritmo**
@@ -507,6 +508,9 @@ Editor_De_Video/                 # raiz do repositório (o pacote Python se cham
   **complemento**: entra só nos espaços sem fala ao vivo e explica o que foi feito, o tipo de decisão, o porquê das
   coisas, o que vem a seguir e o que você estava pensando no momento. O roteirista recebe, no story-pack, os trechos
   com fala ao vivo (com transcrição) para saber onde não escrever e para dar continuidade ao que você já disse.
+  **Única exceção (histórico §67):** as janelas reservadas `@gancho` (abertura, até 45 s) e `@fecho` (final, até 35 s),
+  que o criador grava à parte, como nas referências do canal; elas não dependem de lacuna e o validador avisa que podem
+  cobrir fala ao vivo. O convite ao like, à comunidade e a despedida entram com `kind: "convite"`, que o criador confirma.
 - **Entrega:** a narração entra como marcadores no Resolve + arquivo SRT alinhado, para você ler e gravar por cima.
 
 ---
@@ -1124,6 +1128,10 @@ histórico §58).
 - Studio (Fase 7, histórico §56): decisões do criador só por inserção e presas à janela do segmento; roteiro, montagem e
   Shorts usam os segmentos com as decisões aplicadas; escrita da API só da origem do Studio; recalibração de pesos só vale
   depois de aceita; feedback em texto fica guardado sem interpretação até o benchmark do LLM local.
+- Estilo do canal (histórico §67, [perfil](referencias/estilo-do-canal.md)): extraído de 5 vídeos de referência do criador;
+  é ponto de partida para calibrar acabamento e roteiro, não meta. O molde de roteiro do canal está na skill `/roteirizar`
+  e o pacote reserva as janelas `@gancho` (45 s) e `@fecho` (35 s) fora das lacunas: **exceção declarada** à regra
+  "fala ao vivo tem prioridade", só nessas duas janelas, gravadas à parte pelo criador. As demais propostas do perfil seguem em aberto.
 - Acabamento (Fase 8, histórico §57): brand kit e estilo por série em YAML versionado (`packages/brand-kit/`); cada efeito com
   modo, máximo por minuto e nota mínima, mais teto somado; humor e impacto nascem só como `sugerir`; biblioteca pessoal com
   licença obrigatória por item e bloqueio de uso comercial. Render e exportação (8C/8D): zoom/shake por `zoompan` do FFmpeg

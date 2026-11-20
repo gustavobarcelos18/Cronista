@@ -1586,6 +1586,62 @@ O `/code-review` (nível high) achou 10 pontos; os 4 mais graves foram corrigido
 Os outros 6 achados (manifesto de thumbnail malformado, quadro do asset OTIO, perfil sobrepondo a calibração aceita,
 arredondamento do status do painel, marcador na divisão do `novo_dia`, custo do truncamento do pacote) **seguem abertos**.
 
+## 67. Perfil de estilo do canal a partir de 5 vídeos de referência (2026-11-19)
+
+O primeiro pacote real da sessão 1 saiu com ~2 cortes/min e 2,8 min de material, e o criador não gostou do resultado
+(zooms e escolha dos trechos). Ele passou 5 vídeos próprios de "100 dias" como referência, e o estilo foi extraído em
+[estilo-do-canal.md](referencias/estilo-do-canal.md): números de ritmo e volume, construção do vídeo (gancho de ~40 s com
+objetivos, relato em primeira pessoa com reação ao vivo, fecho), efeitos visuais (legenda com palavra em destaque,
+objetivos como cabeçalho, contador de dias fixo no canto, ícone com seta, tela dividida) e som (música contínua e SFX).
+
+Decisões: (1) os vídeos de referência ficam numa pasta local **fora do git**; só o perfil (números e descrição) entra no
+repositório; (2) a análise é local e para calibrar o app, sem redistribuir (EA-27 segue aberta para baixar vídeos de
+terceiros); (3) o perfil é **ponto de partida**, não meta: o §40 continua valendo (qualidade antes de minutagem);
+(4) as propostas do §6 do perfil (molde de roteiro, contador de dias fixo, legenda destacada, objetivos, densidade por
+posição, biblioteca de assets) **não estão decididas nem implementadas**; (5) a leitura de som é inferência do classificador
+de áudio, e a de zoom de edição fica **não confirmada** até medir por fluxo óptico; (6) a análise cobria transcrição
+completa só de V1 e V2; **atualizada no mesmo dia com V3 a V5**: o gancho é um molde fixo nos 5 (premissa "nos próximos 100
+dias…", o que torna a série diferente, regras ou objetivos, like encaixado, virada para o relato), e o **fecho tem três
+formas** (balanço com números, cena final do jogo, gancho para a próxima parte). **Correção:** a primeira versão do perfil
+associou as durações aos arquivos na ordem errada e errou a duração, os cortes por minuto e o silêncio dos 5 vídeos; os
+números foram refeitos. O lint marcava "jornada" como `vocabulario_inflado`, mas o criador usa a palavra nas
+próprias aberturas e fechos (perfil §6, item 8); **o criador decidiu tirá-la da lista** (lint, `/humanizar` e plano); (7) **molde de roteiro do canal implementado só na skill
+`/roteirizar`** (gancho com premissa, objetivos confirmados e convite; relato em 1ª pessoa no passado; fecho com balanço
+dos objetivos, convite e despedida). O molde **não muda o código nem o pacote**: respeita lacunas, `segment_id` e "só
+fatos do pacote"; o que o pacote não traz vai para `pendencias.md`. Convite/despedida saíram primeiro marcados na
+`justification`; a revisão de código do PR pediu um campo próprio, e hoje usam **`kind: "convite"`** (só vale nas janelas
+reservadas, o validador pede confirmação e a legenda sai com `[CONVITE]`).
+
+**Teste na sessão 1 (2026-11-19):** o molde **não coube** no pacote real. O primeiro e o último trecho não têm lacuna (só
+fala ao vivo), o `projeto.jogo` está vazio e há 0 objetivos confirmados (17 propostos ou incertos, todos intenções
+pequenas da fala). Saíram só 2 falas de complemento (~9 s), válidas no `roteiro-import` e sem sinais de IA no lint
+(a 1ª versão tinha "jornada" e o lint acusou `vocabulario_inflado`); gancho, fecho, convite e despedida ficaram em
+`pendencias.md`. Conclusão: o molde depende de o pacote trazer premissa, dias e objetivos confirmados, e de haver
+lacuna no começo e no fim.
+
+**Decisão (2026-11-19, o criador): reservar espaço para gancho e fecho no pacote** (8). O `story-pack.json` ganhou
+`reservas` com as janelas `@gancho` (abertura, até 45 s) e `@fecho` (final, até 35 s). A fala com esse `segment_id` **não
+depende de lacuna** e o validador não confere fala ao vivo ali: é **exceção declarada à regra "fala ao vivo tem
+prioridade"** (CLAUDE.md, plano 6.8), limitada a essas duas janelas e válida porque o criador as grava à parte, como nas
+referências. O validador avisa uma vez por janela ("pode cobrir fala ao vivo, o criador confere") e avisa se estoura o
+máximo. `start_s` nessas falas é o deslocamento dentro da janela (as falas se encadeiam sozinhas); na timeline o gancho
+abre a V1 e o fecho termina nela (`narration_cues`, usado no SRT e no ducking); no SRT do arquivo, o gancho cai no começo do 1º trecho e
+o fecho no fim do último. Antecipação não vale no gancho nem no fecho. Contratos regenerados (`PackReserva`, `reservas`
+opcional, então pacotes antigos continuam válidos). Corrigido na skill: o exemplo "minha jornada" usava palavra que o
+lint recusa (`vocabulario_inflado`). Verificado na sessão 1: `roteiro-import`, lint e `montagem --script` com 4 falas,
+gancho em 0:00 na timeline; 775 testes CPU passam (o teste do anexo gerado falha neste PC porque lista o
+`prod.local.yaml`, que é local e fora do git).
+
+**Revisão de código do PR (2026-11-19), 7 achados corrigidos** (9): (a) falas reservadas sem `start_s` (roteiro não
+validado, lido por `montagem --script` e `mixar --script`) agora se encadeiam na janela em `narration_cues`, em vez de se
+empilhar no deslocamento 0; (b) CLAUDE.md e a seção 6.8 do plano passaram a registrar a exceção das janelas reservadas;
+(c) no SRT em tempo de arquivo, `@gancho` começa no 1º trecho e `@fecho` termina no último **na ordem do pacote**, não pelo
+menor e maior tempo numérico entre arquivos; (d) convite ao like, à comunidade e despedida usam `kind: "convite"` (antes,
+texto livre em `justification`); (e) o docstring e o contrato de `ScriptLine` dizem que `segment_id` pode ser `@gancho` ou
+`@fecho`; (f) a duração falada vem de um auxiliar só (`speech_seconds`), com a mesma regra no validador, no SRT e na
+timeline; (g) testes de `save_script` com janelas, de falas sem `start_s`, de fecho maior que a timeline e do `convite`.
+A skill manda rodar o `roteiro-import` antes de montar ou mixar.
+
 ## Decisões em aberto
 
 A lista atual fica na seção 9 do [plano mestre](00-plano-mestre.md).

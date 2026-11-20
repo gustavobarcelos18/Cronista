@@ -314,6 +314,18 @@ export interface PackProject {
   nome?: string;
 }
 /**
+ * Janela de narração reservada fora das lacunas: gancho (abertura) e fecho (final), gravados à parte.
+ *
+ * This interface was referenced by `CronistaContracts`'s JSON-Schema
+ * via the `definition` "PackReserva".
+ */
+export interface PackReserva {
+  id: string;
+  instrucao: string;
+  max_s: number;
+  onde: string;
+}
+/**
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "PackagingOut".
  */
@@ -441,7 +453,7 @@ export interface Script {
   version?: number;
 }
 /**
- * Uma fala sugerida, sempre ligada a um segmento (aceite da Fase 5).
+ * Uma fala sugerida, ligada a um segmento (aceite da Fase 5) ou a uma janela reservada.
  *
  * This interface was referenced by `CronistaContracts`'s JSON-Schema
  * via the `definition` "ScriptLine".
@@ -449,7 +461,10 @@ export interface Script {
 export interface ScriptLine {
   est_s?: number | null;
   justification?: string | null;
-  kind?: "narracao" | "antecipacao";
+  kind?: "narracao" | "antecipacao" | "convite";
+  /**
+   * `segmento_id` do beat, ou `@gancho` / `@fecho` (janelas reservadas, histórico §67)
+   */
   segment_id: string;
   start_s?: number | null;
   text: string;
@@ -535,6 +550,7 @@ export interface StoryPack {
   instrucoes: string[];
   objetivos: PackObjective[];
   projeto: PackProject;
+  reservas?: PackReserva[];
   truncado?: boolean;
 }
 /**

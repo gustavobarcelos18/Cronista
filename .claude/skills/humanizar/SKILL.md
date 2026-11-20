@@ -29,7 +29,7 @@ Não se aplicam (o texto é lido em voz alta): negrito, títulos, emojis, setas,
 
 ## Acréscimos para pt-BR falado
 
-Muletas de texto escrito ("vale ressaltar", "nesse sentido", "em suma", "jornada", "épico" em toda frase); frases longas
+Muletas de texto escrito ("vale ressaltar", "nesse sentido", "em suma", "épico" em toda frase; "jornada" é palavra do criador e vale); frases longas
 demais para um fôlego (mais de ~28 palavras); gerúndio em cascata.
 
 ## Cuidados

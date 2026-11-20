@@ -37,19 +37,23 @@ pacote não tem **não se inventa**: omita a frase e liste a falta em `pendencia
      jogo, desafio) só entra se estiver no pacote (objetivo do tipo `restricao`, ou fala ao vivo do criador);
    - a promessa de dias, só se o número de dias estiver no pacote;
    - os **objetivos** de `objetivos` com `confirmado: true`: "Primeiro…", "Segundo…", "Terceiro, e mais importante…",
-     um por fala; `principal` por último ("mais importante"); `restricao` descrita como regra ("uma vida, um erro");
+     um por fala; `principal` por último ("mais importante"); `restricao` descrita como regra numerada ("a primeira
+     regra…", "uma vida, um erro"). Com um só objetivo, uma frase basta (nas referências há de 1 a 3);
      nunca cite objetivo `incerto` nem não confirmado;
-   - o convite ao like, curto e encaixado na fala, e a virada para o relato ("agora é só começar"). É a única
+   - o convite ao like, curto e encaixado na fala, e a virada para o relato ("a minha jornada começa agora", como o criador diz). É a única
      fala sem fato do pacote; **o criador decide se fica**: marque com `"justification": "convite do criador: confirmar"`
      (o `kind` continua `narracao`; o validador só aceita `narracao` e `antecipacao`).
 2. **Relato (capítulos).** Primeira pessoa, **passado**, blocos curtos: o que fez e por quê ("Pra não arriscar o bote, arrastei
    ele até a praia"). Complementa a fala ao vivo e **volta a ela** logo depois: nunca emende duas falas de narração
-   seguidas sem uma fala ao vivo no meio, quando o beat tiver fala ao vivo. Não diga "dia N": a marcação de dias é
-   do contador na tela, não da narração.
+   seguidas sem uma fala ao vivo no meio, quando o beat tiver fala ao vivo. Não diga "dia N" a cada trecho: a marcação
+   de dias é do contador na tela; a narração só aponta o dia quando importa ("17 dias depois do assalto…").
 3. **Fecho (final do vídeo, até 35 s).** Janela reservada, `segment_id` **`@fecho`**, sem `start_s`. Em ordem: o final do jogo ou do desafio e o que ele significa
    (só fatos do pacote); o balanço dos objetivos pelo `estado` (`concluido`, `falhou`, `abandonado`), com o motivo se estiver
    no pacote e **preservando o fracasso**; o convite à comunidade (Discord, lista de mods na descrição) e a despedida curta.
    Convite e despedida são do criador: marque com a mesma `justification` e não os invente com nome ou link.
+   O fecho do canal tem **três formas** (perfil, seção 2): balanço com números e despedida; terminar na cena final do
+   jogo (o fecho vira só o agradecimento e a despedida); ou gancho para a próxima parte, sem despedida. Escolha pela
+   situação do pacote (objetivos concluídos, fim da série ou série em andamento) e, na dúvida, pergunte ao criador.
 4. **Densidade.** Mais fala de narração no gancho e no fecho que no meio; no meio, só onde há lacuna e algo a explicar.
    No relato, sem lacuna, sem fala (o validador recusa); só `@gancho` e `@fecho` dispensam lacuna.
 

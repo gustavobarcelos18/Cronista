@@ -1599,8 +1599,13 @@ repositório; (2) a análise é local e para calibrar o app, sem redistribuir (E
 terceiros); (3) o perfil é **ponto de partida**, não meta: o §40 continua valendo (qualidade antes de minutagem);
 (4) as propostas do §6 do perfil (molde de roteiro, contador de dias fixo, legenda destacada, objetivos, densidade por
 posição, biblioteca de assets) **não estão decididas nem implementadas**; (5) a leitura de som é inferência do classificador
-de áudio, e a de zoom de edição fica **não confirmada** até medir por fluxo óptico; (6) a análise cobre transcrição completa
-só de V1 e V2, e os outros 3 vídeos seguem pendentes; (7) **molde de roteiro do canal implementado só na skill
+de áudio, e a de zoom de edição fica **não confirmada** até medir por fluxo óptico; (6) a análise cobria transcrição
+completa só de V1 e V2; **atualizada no mesmo dia com V3 a V5**: o gancho é um molde fixo nos 5 (premissa "nos próximos 100
+dias…", o que torna a série diferente, regras ou objetivos, like encaixado, virada para o relato), e o **fecho tem três
+formas** (balanço com números, cena final do jogo, gancho para a próxima parte). **Correção:** a primeira versão do perfil
+associou as durações aos arquivos na ordem errada e errou a duração, os cortes por minuto e o silêncio dos 5 vídeos; os
+números foram refeitos. O lint marcava "jornada" como `vocabulario_inflado`, mas o criador usa a palavra nas
+próprias aberturas e fechos (perfil §6, item 8); **o criador decidiu tirá-la da lista** (lint, `/humanizar` e plano); (7) **molde de roteiro do canal implementado só na skill
 `/roteirizar`** (gancho com premissa, objetivos confirmados e convite; relato em 1ª pessoa no passado; fecho com balanço
 dos objetivos, convite e despedida). O molde **não muda o código nem o pacote**: respeita lacunas, `segment_id` e "só
 fatos do pacote"; o que o pacote não traz vai para `pendencias.md` e convite/despedida saem marcados na `justification`

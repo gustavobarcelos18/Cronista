@@ -236,6 +236,7 @@ def test_validate_script_rules() -> None:
 def test_lint_flags() -> None:
     assert "nao_e_x_e_y" in lint_text("Não é só um jogo, é uma jornada.")
     assert "vocabulario_inflado" in lint_text("Foi épico.")
+    assert lint_text("Agora a minha jornada começa.") == []  # palavra do próprio criador (histórico §67)
     assert lint_text("Fui buscar madeira e voltei antes de escurecer.") == []
     assert "frases_comecando_igual" in lint_text("Eu fui. Eu vi. Eu voltei.")
 

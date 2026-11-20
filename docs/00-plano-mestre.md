@@ -498,7 +498,8 @@ Editor_De_Video/                 # raiz do repositório (o pacote Python se cham
     Os "fracos sozinhos" (excesso de qualificadores, voz passiva) só contam quando aparecem juntos.
   - **Padrões que não se aplicam** (o roteiro é lido em voz alta): negrito, títulos, emojis, setas e aspas curvas.
   - **Acréscimos para pt-BR falado:** muletas de texto escrito ("vale ressaltar", "nesse sentido", "em suma",
-    "jornada", "épico" em toda frase), frases longas demais para dizer num fôlego, gerúndio em cascata.
+    "épico" em toda frase), frases longas demais para dizer num fôlego, gerúndio em cascata. "Jornada" não entra: é
+    palavra do próprio criador (histórico §67).
   - **Combinação com o perfil de voz:** o original aceita uma amostra de escrita para imitar a voz; aqui a amostra
     são as transcrições das suas narrações ao vivo (bordões, gírias, tamanho de frase).
 - **Ritmo de referência:** você escolhe vídeos de criadores que admira e o sistema extrai **métricas de ritmo**

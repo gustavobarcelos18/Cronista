@@ -76,7 +76,7 @@ def free_gaps(
 PATTERNS: dict[str, str] = {
     "nao_e_x_e_y": r"\bn[aã]o [eé] [^.,;]{2,40}[,;]? (mas )?[eé] ",
     "muleta_escrita": r"\b(vale ressaltar|nesse sentido|em suma|em resumo|cabe destacar|diga-se de passagem)\b",
-    "vocabulario_inflado": r"\b(jornada|[eé]pico|[eé]pica|incr[ií]vel|monumental|verdadeiramente|surpreendente)\b",
+    "vocabulario_inflado": r"\b([eé]pico|[eé]pica|incr[ií]vel|monumental|verdadeiramente|surpreendente)\b",
     "autoridade_vaga": r"\b(dizem que|especialistas|todo mundo sabe|como se sabe)\b",
     "residuo_chatbot": r"\b(claro!|com certeza!|espero que ajude|como (uma )?ia|posso ajudar)\b",
     "fechamento_dramatico": r"\b(e assim,? (come[cç]ou|terminou)|nada seria como antes|o resto [eé] hist[oó]ria)\b",
